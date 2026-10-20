@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-20
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,20 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **[Arc Codex #286] Kiro Stage 1 packet ready for review (2026-10-20, Codex Astra):**
+  the [read-only packet](ASTRA-2026-10-20-issue-286-kiro-stage1-packet.md) on
+  `docs/2026-10-20-issue-286-kiro-stage1-packet` ranks five exact Kiro sessions
+  (28 nominal bootstrap calls; proposed 120-attempt lifetime cohort cap).
+  **Spending remains NO-GO:** bootstrap per-source accounting is shadowed by the
+  cohort hook; the Oct 13 pending transaction lacks rollback/snapshot authority;
+  guard accounting, new-source binding, materialized ledger, backups, and writer
+  window still need qualification. **Next lane: Kiro** reviews the exact packet,
+  then Ryan decides prerequisites and the eventual exact “go Stage 1”. No PR or
+  live action was requested. The original pilot is K1 plus one new session.
+  See the [current arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
+  This current-state pointer supersedes the older default-off Codex routing
+  bullet below; the older bullet remains historical context.
 
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
@@ -298,3 +312,5 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+
+<!-- ref: ./ASTRA-2026-10-20-issue-286-kiro-stage1-packet.md — Kiro Stage 1 review entry point -->

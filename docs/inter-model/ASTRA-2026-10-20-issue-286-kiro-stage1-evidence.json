@@ -1,0 +1,376 @@
+{
+  "purpose": "Read-only planning evidence, not an executable grant or operational cohort ledger",
+  "captured_at_utc": "2026-10-20T03:11:07.946189+00:00",
+  "baseline_revision": "686d50e8e671b773cacc44c14e70aa3cbd822d2e",
+  "window_start_utc": "2026-10-19T03:05:17.189705+00:00",
+  "window_end_utc": "2026-10-20T03:05:17.189705+00:00",
+  "processed_sha256": "f451ad9dd92bcdb336aa0362ab56e5acafa224a632e29c5933db366cf915875a",
+  "journal_stdout_sha256": "e4acab5d56af13aefc2e974af50957a84c82d48d4a605fdc3a5a80ba42690b51",
+  "config_sha256": "f83aeec2587db08b672bb4bb53513a333560178a3e608fbceebe02146ba89d08",
+  "incremental_config_observed": {
+    "allow_full_rebuild": true,
+    "enabled": true,
+    "embed_dimension": 768,
+    "live_sources": [],
+    "mutation_proof_observer": "shadow",
+    "codex_rollout_admission": {
+      "root": "/home/lauer/.codex/sessions",
+      "admitted_after": "2026-10-12T04:04:00Z",
+      "max_transform_chunks_per_run": 20,
+      "max_source_bytes": 268435456
+    }
+  },
+  "nonexcluded_processed_kiro_paths": 28,
+  "ranking": [
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_1195be52-6ab0-4008-8503-3645fa46bd94/messages.jsonl",
+      "processed_chunks": 3,
+      "watch_spawns_24h": 7,
+      "burn_priority_proxy": 42
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_d6055dc4-fefe-4ce8-b49b-c660a9b1be5f/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 7,
+      "burn_priority_proxy": 28
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_6c2e4d86-7609-4f6e-b3f5-e101b01d68c4/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 3,
+      "burn_priority_proxy": 12
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_c5d99720-bd85-449d-b27a-797ba8c81531/messages.jsonl",
+      "processed_chunks": 4,
+      "watch_spawns_24h": 1,
+      "burn_priority_proxy": 8
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/cbc2d18059e50959/sess_c39d4797-cac2-4ec5-a1ea-16ffea15bd57/messages.jsonl",
+      "processed_chunks": 3,
+      "watch_spawns_24h": 1,
+      "burn_priority_proxy": 6
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_ba1f418c-feb3-473b-95de-8d73b867f6eb/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 1,
+      "burn_priority_proxy": 2
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/95236b67b2db2900/sess_0030a6dc-3286-4a87-84da-63efd8f0569b/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 1,
+      "burn_priority_proxy": 2
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_0ce128ec-c664-4dd6-bf43-ca8fea08d161/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_0d5bc4fb-ad5f-43fc-81af-88bd91abceff/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_22c596ac-f944-4020-bf0b-628df3229f7e/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_2863d7a7-1c95-4f34-8edd-a1982069534a/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_3df753e3-2642-4bce-b2f1-8a06ff97505f/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_45be5569-3c6f-481a-b7f5-fda34d4299d8/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_4d4a1a14-925a-4107-ab71-17190a729aa1/messages.jsonl",
+      "processed_chunks": 5,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_571aeb80-1a90-42f8-a0c3-06a691b9c300/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_5973e89b-1942-430b-adee-981ca2ec09d0/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_8412cf8a-e1c7-4228-bf43-3249e2a7f0a0/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_8991692d-9d92-4c48-bec0-7f79739970f7/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_98d902db-afbb-4633-b384-7b5ff84f77f1/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_a506b675-05f4-495f-8344-15e5d382572e/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_ce82e8e3-e810-48bf-82fd-5bbdb9f111fb/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_ef7ac1fc-d3b8-479d-a4d2-e96cef17a0be/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_f521fd86-0ff5-42b4-97b2-2147dded58b0/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_f93520ac-e764-47c0-80ff-6dfa8fa8fa08/messages.jsonl",
+      "processed_chunks": 2,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/4765f762107fdad4/sess_3099c9b0-85f6-42d2-a6ed-101e25eb5372/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/8100421c9b7c620e/sess_d2d376a2-1dd9-4ea4-9b01-8a3b31c061a0/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/8100421c9b7c620e/sess_e421517e-0fab-49c5-b0a8-d041fed9eb60/messages.jsonl",
+      "processed_chunks": 5,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    },
+    {
+      "path": "/home/lauer/.kiro/sessions/95236b67b2db2900/sess_22a76618-1410-4d7b-872d-c1a8fa3519b6/messages.jsonl",
+      "processed_chunks": 1,
+      "watch_spawns_24h": 0,
+      "burn_priority_proxy": 0
+    }
+  ],
+  "cohort": [
+    {
+      "label": "K1",
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_1195be52-6ab0-4008-8503-3645fa46bd94/messages.jsonl",
+      "title": "Kiro exact-review #286 incremental",
+      "file_sha256": "7676d5557986925a888ccd38278bd8c92936fb76f052c645a894e633c463bcee",
+      "bytes": 481907,
+      "complete_boundary": 481907,
+      "prefix_sha256": "7676d5557986925a888ccd38278bd8c92936fb76f052c645a894e633c463bcee",
+      "session_json_sha256": "e05c1a1d0b836505a38de4208d3bdc347c492384827aa4f14b5cc9a8fb1312f6",
+      "semantic_session_meta_digest": "a211b841bcac8bca5706a3dec0e040626c5a89d6487ce903cd94e6ad47fe64a4",
+      "workspace": "/home/lauer/Projects/convmem",
+      "device": 66306,
+      "inode": 29622487,
+      "mtime_ns": 1792384938492664968,
+      "stat_stable_during_read": true,
+      "accepted_messages": 141,
+      "current_chunks": 3,
+      "processed_chunks": 3,
+      "processed_key": "7676d5557986925a888ccd38278bd8c92936fb76f052c645a894e633c463bcee",
+      "watch_spawns_24h": 7,
+      "timestamped_records_24h": 392,
+      "watch_reach": 1,
+      "burn_priority_proxy": 42,
+      "line_outcomes": {
+        "skipped_no_message": 251,
+        "emitted": 141
+      },
+      "source_state_id": "fc27149744c4d2cc1b7f69f6ed391325c269103679d4efc158679b0a0c32098a",
+      "state_exists": false,
+      "checkpoint_exists": false,
+      "transaction_exists": false,
+      "nominal_bootstrap_calls": 6,
+      "proposed_bootstrap_paid_cap": 18,
+      "small_append_nominal_calls": 2,
+      "next_boundary_additional_accepted_messages": 20
+    },
+    {
+      "label": "K2",
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_d6055dc4-fefe-4ce8-b49b-c660a9b1be5f/messages.jsonl",
+      "title": "Debug Convmem Timeout Issue",
+      "file_sha256": "25871092b76b5effbb3b01e2c02ab5d6a1e5845b09d8f7f6a5196aa1d14d9795",
+      "bytes": 322087,
+      "complete_boundary": 322087,
+      "prefix_sha256": "25871092b76b5effbb3b01e2c02ab5d6a1e5845b09d8f7f6a5196aa1d14d9795",
+      "session_json_sha256": "15c21dcd35bfc1d6b69d469bc35fb42b471109ea837f73af657b07918420cd79",
+      "semantic_session_meta_digest": "819f1f17fffe787d3d8a8cc61da04b84946419cd94873a30ec5fa58ee8b90076",
+      "workspace": "/home/lauer/Projects/convmem",
+      "device": 66306,
+      "inode": 29622510,
+      "mtime_ns": 1792463266410081933,
+      "stat_stable_during_read": true,
+      "accepted_messages": 89,
+      "current_chunks": 2,
+      "processed_chunks": 2,
+      "processed_key": "7a11f5c9a1ce47a0ab14e3a1fb67d707be7c51d2fb7bc24b3d2adca57ad47ed8",
+      "watch_spawns_24h": 7,
+      "timestamped_records_24h": 261,
+      "watch_reach": 1,
+      "burn_priority_proxy": 28,
+      "line_outcomes": {
+        "skipped_no_message": 172,
+        "emitted": 89
+      },
+      "source_state_id": "370ce039ad6a161d3f8d59399ec0ce9d48e2505552bc424cbfa5a6ea57e80139",
+      "state_exists": false,
+      "checkpoint_exists": false,
+      "transaction_exists": false,
+      "nominal_bootstrap_calls": 4,
+      "proposed_bootstrap_paid_cap": 12,
+      "small_append_nominal_calls": 2,
+      "next_boundary_additional_accepted_messages": 22
+    },
+    {
+      "label": "K3",
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_6c2e4d86-7609-4f6e-b3f5-e101b01d68c4/messages.jsonl",
+      "title": "Review Kiro Checkpoint Session Digest Fix",
+      "file_sha256": "bf81ed4c4abfe9e602f1a629520a9cd9a7729f4186453e223ee51b74dde1a066",
+      "bytes": 298511,
+      "complete_boundary": 298511,
+      "prefix_sha256": "bf81ed4c4abfe9e602f1a629520a9cd9a7729f4186453e223ee51b74dde1a066",
+      "session_json_sha256": "f8e3c28741219a3d8b83c20de5aa1c5a6c3e5dd04875a3ed41de4b643d82992f",
+      "semantic_session_meta_digest": "78087121dcae14e0439ee02f4f554bbbfb70d0af620e25503cce36457e0a5ce6",
+      "workspace": "/home/lauer/Projects/convmem",
+      "device": 66306,
+      "inode": 29622507,
+      "mtime_ns": 1792415812643271596,
+      "stat_stable_during_read": true,
+      "accepted_messages": 68,
+      "current_chunks": 2,
+      "processed_chunks": 2,
+      "processed_key": "bf81ed4c4abfe9e602f1a629520a9cd9a7729f4186453e223ee51b74dde1a066",
+      "watch_spawns_24h": 3,
+      "timestamped_records_24h": 191,
+      "watch_reach": 1,
+      "burn_priority_proxy": 12,
+      "line_outcomes": {
+        "skipped_no_message": 123,
+        "emitted": 68
+      },
+      "source_state_id": "22eb05345d705322e5f8bf26a271819c77ff4a1b3d82463ff06bb35c6c1f1acd",
+      "state_exists": false,
+      "checkpoint_exists": false,
+      "transaction_exists": false,
+      "nominal_bootstrap_calls": 4,
+      "proposed_bootstrap_paid_cap": 12,
+      "small_append_nominal_calls": 2,
+      "next_boundary_additional_accepted_messages": 43
+    },
+    {
+      "label": "K4",
+      "path": "/home/lauer/.kiro/sessions/0fdb3f7faae1e6f9/sess_c5d99720-bd85-449d-b27a-797ba8c81531/messages.jsonl",
+      "title": "Automate ConvMem Doctor Refresh After Midnight",
+      "file_sha256": "b20eb70adb75b7ec2893f208ecd4a82a19be415075ce2ec7c376c54855832c1d",
+      "bytes": 483824,
+      "complete_boundary": 483824,
+      "prefix_sha256": "b20eb70adb75b7ec2893f208ecd4a82a19be415075ce2ec7c376c54855832c1d",
+      "session_json_sha256": "ce79bd01d3eff6258f42bc4d772aed953010a2977d7f8b7cc8155962d0f951c5",
+      "semantic_session_meta_digest": "6993fb8c246c11b6850894d99ed47adb4e2b9cd95c93352c1514141f6ecdac27",
+      "workspace": "/home/lauer/Projects/convmem",
+      "device": 66306,
+      "inode": 26789109,
+      "mtime_ns": 1792414214841426131,
+      "stat_stable_during_read": true,
+      "accepted_messages": 183,
+      "current_chunks": 4,
+      "processed_chunks": 4,
+      "processed_key": "b20eb70adb75b7ec2893f208ecd4a82a19be415075ce2ec7c376c54855832c1d",
+      "watch_spawns_24h": 1,
+      "timestamped_records_24h": 132,
+      "watch_reach": 1,
+      "burn_priority_proxy": 8,
+      "line_outcomes": {
+        "skipped_no_message": 319,
+        "emitted": 183
+      },
+      "source_state_id": "0b52228f29469c430e46454c0114885bd07b2bc9ba601692954e474286f2a581",
+      "state_exists": false,
+      "checkpoint_exists": false,
+      "transaction_exists": false,
+      "nominal_bootstrap_calls": 8,
+      "proposed_bootstrap_paid_cap": 24,
+      "small_append_nominal_calls": 2,
+      "next_boundary_additional_accepted_messages": 28
+    },
+    {
+      "label": "K5",
+      "path": "/home/lauer/.kiro/sessions/cbc2d18059e50959/sess_c39d4797-cac2-4ec5-a1ea-16ffea15bd57/messages.jsonl",
+      "title": "Review FILE-STYLE Scope Boundary Rules",
+      "file_sha256": "c8833c4252b248a50456e12fab63566e3d3a88d222ada90d4338a4db9b192c0e",
+      "bytes": 586499,
+      "complete_boundary": 586499,
+      "prefix_sha256": "c8833c4252b248a50456e12fab63566e3d3a88d222ada90d4338a4db9b192c0e",
+      "session_json_sha256": "d5bad6c26dcf0a0b0e38444251a1747520f1d8eabc3514bbeb8dbfcd121e7f83",
+      "semantic_session_meta_digest": "c0510d136f4f229acb39da54f12a13dce8425fa2a3327e31ed6182a7451f7fd8",
+      "workspace": "/home/lauer/Projects/SubProjects/ButsabaJobScout",
+      "device": 66306,
+      "inode": 23762394,
+      "mtime_ns": 1792464662794599605,
+      "stat_stable_during_read": true,
+      "accepted_messages": 148,
+      "current_chunks": 3,
+      "processed_chunks": 3,
+      "processed_key": "c8833c4252b248a50456e12fab63566e3d3a88d222ada90d4338a4db9b192c0e",
+      "watch_spawns_24h": 1,
+      "timestamped_records_24h": 19,
+      "watch_reach": 1,
+      "burn_priority_proxy": 6,
+      "line_outcomes": {
+        "skipped_no_message": 276,
+        "emitted": 148
+      },
+      "source_state_id": "4c911c3df5f68934d8a80e1991ab3f33b65529825279aaebc44adbc318419c27",
+      "state_exists": false,
+      "checkpoint_exists": false,
+      "transaction_exists": false,
+      "nominal_bootstrap_calls": 6,
+      "proposed_bootstrap_paid_cap": 18,
+      "small_append_nominal_calls": 2,
+      "next_boundary_additional_accepted_messages": 13
+    }
+  ]
+}
