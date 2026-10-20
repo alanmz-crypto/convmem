@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import tomllib
 import json
 import threading
 from pathlib import Path
@@ -24,13 +25,14 @@ from tests.incremental_jsonl_helpers import (
     enable_incremental,
     install_fakes,
     isolated_env,
+    kiro_record,
     write_source,
     worker_run,
 )
 
 
 @pytest.fixture(autouse=True)
-def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: ARG001
+def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:
     install_network_denial()
 
 
@@ -52,8 +54,7 @@ def test_1_stale_empty_processed_override_captures_disk_via_route(
     install_fakes(monkeypatch)
     enable_incremental(boundary)
     source = write_source(boundary.root, 4)
-    first = _coordinator(boundary, source)
-    first.run()
+    _coordinator(boundary, source).run()
     disk_entry = None
     processed_path = Path(boundary.layout["processed"])
     processed_on_disk = json.loads(processed_path.read_text(encoding="utf-8"))
@@ -64,24 +65,47 @@ def test_1_stale_empty_processed_override_captures_disk_via_route(
     assert disk_entry is not None
     source.write_bytes(
         source.read_bytes()
-        + b'{"payload":{"type":"user","content":"more"}}\n'
+        + kiro_record(4)
     )
     captured: dict = {}
-    holder: dict = {}
+    cfg = tomllib.loads(
+        Path(boundary.layout["user_config"]).read_text(encoding="utf-8")
+    )
 
     def fault(point: str) -> None:
         if point == "after_rollback_publish":
-            coord = holder["coordinator"]
-            rollback = json.loads(
-                coord.paths["rollback"].read_text(encoding="utf-8")
-            )
+            rollback_path = next(Path(boundary.layout["state"]).rglob("rollback.json"))
+            rollback = json.loads(rollback_path.read_text(encoding="utf-8"))
             captured["processed_preimage"] = rollback.get("processed_preimage")
             raise incremental_jsonl.IncrementalJsonlError("synthetic_abort", "stop")
 
-    stale = _coordinator(boundary, source, processed={}, fault=fault)
-    holder["coordinator"] = stale
+    real_init = IncrementalJsonlCoordinator.__init__
+
+    def routed_init(self, *args, **kwargs):
+        kwargs["fault"] = fault
+        return real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(IncrementalJsonlCoordinator, "__init__", routed_init)
     with pytest.raises(IncrementalJsonlError, match="synthetic_abort"):
-        stale.run()
+        incremental_jsonl.maybe_route_incremental(
+            cfg=cfg,
+            idx=cfg["index"],
+            path=str(source),
+            path_key=str(source),
+            file_hash="stale-caller",
+            processed={},
+            models=cfg.get("models"),
+            tool="kiro",
+            units_export=Path(cfg["index"]["units_export"]),
+            chunk_size=int(cfg.get("index", {}).get("chunk_size", 2)),
+            overlap=int(cfg.get("index", {}).get("chunk_overlap", 0)),
+            min_confidence=0.6,
+            force_reindex=False,
+            supersede_on_reindex=False,
+            verbose=False,
+            detected_format="jsonl_kiro_session",
+        )
+    monkeypatch.setattr(IncrementalJsonlCoordinator, "__init__", real_init)
     preimage = captured.get("processed_preimage") or {}
     assert preimage
     assert any(v == disk_entry for v in preimage.values())
@@ -189,8 +213,11 @@ def test_6_concurrent_foreign_processed_writer_survives(
     holder = threading.Event()
 
     original_mutate = mutate_processed
+    restore_mutate_calls: list[int] = []
 
     def racing_mutate(path, mutator):
+        if threading.current_thread().name == "restore":
+            restore_mutate_calls.append(1)
         if threading.current_thread().name != "MainThread":
             holder.set()
             barrier.wait(timeout=5)
@@ -212,6 +239,7 @@ def test_6_concurrent_foreign_processed_writer_survives(
     thread.join(timeout=10)
     restored = load_processed(processed_path)
     assert foreign_key in restored
+    assert restore_mutate_calls, "restore must use mutate_processed sidecar lock"
 
 
 def test_7_later_same_source_processed_refused_at_preflight(
