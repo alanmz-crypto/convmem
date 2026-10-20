@@ -65,87 +65,72 @@ Key invariants:
 
 ## 3. What Exists Right Now (file map)
 
-| Surface | Current state |
-|---|---|
-| Incremental coordinator | On main, default off. Enabled Kiro routing without the hermetic root returns skipped. Existing indexed sources without a checkpoint return bootstrap_required/skipped. |
-| Hermetic isolation | Tokenized, fake-provider test boundary; it cannot be a live switch. |
-| Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
-| Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
-| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
-| Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
-| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
-| Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
+The coordinator and guarded Codex rollout route are implemented on `main`.
+The code baseline examined on 2026-10-20 is `686d50e`. The earlier sections
+above describe the original Kiro-first design; current code also has admitted
+Codex rollout v2 transforms and recovery compatibility gates.
+
+- `incremental_jsonl.py` owns capture, prepared outputs, checkpoint publication
+  and rollback; `ingest.py` owns the shared processed-state helpers.
+- Live read-only observations on 2026-10-20 show the watcher active and Codex
+  admission enabled. This is an observation, not a new activation grant. Older
+  "watcher disabled / no admission" descriptions are no longer current.
+- The rollback investigation found stale caller dictionaries used as processed
+  before-images and an unlocked processed restore on both historical runtime
+  `8a7cdab` and main `686d50e`. No corrective implementation has been made by
+  this investigation.
+- The preserved Oct 17 evidence identifies source `975fc327…` with an empty
+  processed before-image despite a complete prior checkpoint. Its valid
+  processed entry is now absent. Source `914be526…` also lacks an entry, but
+  its cause is unproven. Both still match their source prefixes, projections
+  and exports in the read-only checks.
+- The known `0d508630…` APPLYING wedge lacks its live rollback authority. Three
+  other source directories lack their original checkpoints. These are existing
+  collateral/recovery matters; the new report does not authorize their repair.
+- Investigation report, metadata census, and proposed Cursor fix brief are on
+  `docs/2026-10-20-issue-286-rollback-empty-before-image` for Kiro review. They
+  are not yet on main. No PR was requested or opened.
 
 ## 4. Completion State
 
-| Milestone | State | Next gate |
-|---|---|---|
-| Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
-| S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
-| Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
-| Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
-| Codex rollout admission | Merged on `main` via PR #388; default off, with no admission config. Design: `docs/plans/DESIGN-issue-286-codex-rollout-admission.md` (Kiro PASS at `9e91973`, §13 amended 2026-10-11). It admits new rollouts after an explicit, identity-checked `admitted_after` time; pre-activation rollouts stay legacy; refusals quarantine terminally by path. Copilot PASS and Kiro PASS at `78b9295`. | Ryan Stage 1 grant (`docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`) |
-| Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
+The incremental runtime is operational, but rollback safety is **not closed**.
+The read-only investigation is complete: historical runtime identity matched,
+18 method-level defect/control observations reproduced, retained rollback
+records censused, and the exact R-975 metadata repair specified. These are
+investigation results, not acceptance of a production fix.
+
+The next gates are Kiro review of the proposed fail-closed correction, Ryan's
+Cursor Execute decision, hermetic implementation verification, and independent
+review. Production repair, watcher/retry release, runtime promotion and spend
+remain separate grants. The R-975 entry has not been repaired here.
 
 ## 5. Your Role
 
-The Kiro bootstrap remains stopped before grant materialization or paid calls.
-Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
-inventory drift was two mocked 402/503 rows that
-`tests/test_index_loud_failures.py` appended to live
-`synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
-source's two summary rows and 17 knowledge units, remained exact.
+Kiro: read the rollback investigation and Cursor brief linked below. Review
+fresh disk capture, semantic journal validation before writes, locked conditional
+processed restore, conservative handling of legacy journals, and the stated
+cross-surface concurrency limit. Decide whether the separate R-975 repair
+specification should become a rehearsed execution packet.
 
-Cursor corrected the isolation leak at code commit `eaae6e9` on
-`fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
-call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
-the real failure-logging code under exercise. Production code is unchanged.
-Copilot's targeted safety/isolation audit PASSed that exact code commit with no
-blockers. The two focused refusal tests pass in 0.50 seconds. The live ledger's
-SHA-256 (`31e8d29e…9672`), 633839-byte size, and nanosecond mtime were identical
-before and after; all four paused timers were restored active. Ryan decides PR
-creation and merge. Fresh backups, proposal, packet review, and live execution
-remain later separate gates. No lane may promote config/runtime or restart the
-watcher without separate Ryan authority.
+Cursor: implement only after Ryan grants Execute. Use the brief's hermetic
+stale-caller, foreign-writer, exclusion, ownership and crash-boundary tests.
+Do not treat a valid rollback SHA as proof that its before-image matches the
+prior checkpoint or that it owns later same-source work.
 
-**Codex rollouts (separate track):** Codex rollout admission is on `main`
-(PR #388), default off. Its purpose is to stop the paid re-index burn for
-new Codex sessions; nothing in production is reduced until Stage 1 and
-Stage 2 run. Prepare or run Stage 1 only under Ryan's grant, following the
-Stage 1 packet. Active pre-activation rollouts, including a 590.7 MiB
-session started Sep 21, stay on the legacy route and need the packet's
-residual-burn decision before Stage 2. This track authorizes no live
-bootstrap, config, runtime, or watcher action.
+No lane may repair R-914 by analogy, replay a v1 journal under an incompatible
+runtime, clear retry state, restart services, or incur provider spend from this
+investigation. Ryan owns grants and merges.
 
-## 6. What Remains Before Live (sequential)
+## 6. What Remains (current sequence)
 
-1. Ryan decides whether to create and merge the test-isolation PR.
-2. After the fix lands, capture current mutation state, refresh
-   backup coverage, and prepare a new exact proposal and review packet.
-3. Immediately before any later authorized retry, revalidate the exact
-   local/offsite pair, source/runtime/config/binding/dimension, and establish a
-   no-other-writer window through final evidence capture.
-4. If granted, execute only the exact source/runtime/config/budget operation and
-   return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
-   watcher promotion; measure calls and coverage by source class.
-
-Codex rollouts (separate track):
-
-1. Ryan grants Stage 1 (manual, watcher stopped), per
-   `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
-   Don't add the incremental table to the shared live config while
-   `runtime-main` is still on `a92a74e`.
-2. Before Stage 2, decide the residual burn (retire or exclude active
-   pre-activation rollouts), fix #308 (the inter-model rejection loop) and
-   reconcile the 4G watch drop-in. Then Ryan grants Stage 2 (a 24 h watcher
-   canary); activation is a separate grant.
-3. Before any Kiro exact-path live incremental run, land the exact-path
-   recovery parity fix. Its design is on
-   `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
-   separate prerequisite.
+1. Kiro reviews the report and bounded Cursor fix brief.
+2. Ryan decides Cursor Execute; Cursor then corrects capture/recovery/merge
+   behavior and proves it with isolated, provider-free tests.
+3. Obtain the required independent reviews and Ryan's merge/promotion decision.
+4. Separately review/rehearse/grant the exact R-975 one-entry repair, with a
+   backup and an approved writer-free window; decide subsequent rebuild spend.
+5. Keep R-914 cause attribution and the existing collateral recovery packets
+   separate; do not turn census findings into implicit live-write authority.
 
 ## 7. Hard Stops
 
@@ -183,6 +168,8 @@ recoverable, while a later canary must measure how long mixed state can remain
 visible to readers.
 
 ## 9. Key Design Files
+
+Current review: [rollback investigation](../inter-model/ASTRA-2026-10-20-issue-286-rollback-empty-before-image.md) and [Cursor fix brief](../inter-model/ASTRA-2026-10-20-issue-286-rollback-fix-brief.md).
 
 | Purpose | Path |
 |---|---|
@@ -282,23 +269,17 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
+| 2026-10-20 | Codex | Read-only rollback investigation identifies stale before-image capture and unlocked restore; report/census/fix brief ready for Kiro, R-975 repair specified but not executed, R-914 cause open. |
 
 ## TL;DR
 
-- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
-  stopped and disabled with no restart authority.
-- Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
-  first successor grant safely refused with zero new calls or corpus mutation;
-  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
-  `5e29ae13…90bb`, with no blockers.
-- Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
-  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
-  mutation inventory no longer matches its bound digest. The sole drift is two
-  mocked test failures appended to the live synthesis-failure ledger. The retry
-  stopped before grant materialization or paid calls. The isolation fix is
-  implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
-  the live failure ledger unchanged. Ryan's PR decision is next. Config and
-  watcher promotion remain separately gated.
-- Codex track: rollout admission merged via PR #388, default off. The burn
-  isn't reduced until Stage 1 and Stage 2 run under Ryan's grants. No live
-  bootstrap, config change, or watcher promotion is authorized.
+- [Arc Codex #286] The incremental route is implemented and live Codex admission
+  is observed active. Rollback safety remains open: capture can use stale caller
+  state, and processed restore bypasses its sidecar lock.
+- The read-only investigation, 91-directory census and Cursor fix brief are
+  ready for Kiro. R-975 has an exact one-entry repair specification; R-914 is an
+  additional missing-entry finding with cause unproven.
+- Kiro review and Ryan's Execute decision come next. Implementation, live repair,
+  runtime promotion, watcher/retry release and provider spend remain separate.
+
+<!-- ref: ../inter-model/ASTRA-2026-10-20-issue-286-rollback-empty-before-image.md, ../inter-model/ASTRA-2026-10-20-issue-286-rollback-fix-brief.md — current rollback investigation and next review -->
