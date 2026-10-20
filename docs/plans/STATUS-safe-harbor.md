@@ -53,7 +53,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Focused Python 3.11 evidence reviewed:** 83 existing safety cases and five new legacy cases passed, no skips/source drift. Kiro PASSed the bounded evidence with high confidence, correcting its initially overstated coverage before completion. Recorded logs were read, not rerun; hash maps were not independently recomputed by Kiro. This is not a full-suite or deployment PASS, or Ryan's acceptance.
 - **Deployment readiness OPEN:** old processes, timer routing, recovery inputs and an operational legacy initializer still require the named dispositions in ROLLOUT. The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
 - **Initializer planning/review complete:** Kiro's same-session delta closed B1–B3 (preview no-effect control, live/original source comparison, apply-time backend recheck). No scope-decision condition remains; isolated implementation/evidence still needs Ryan's grant. No new tests or production commands ran during this planning/review turn.
-- The key-copy file is now present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The new ext4 destination is mounted and empty at top level. No current Rescuezilla artifact or accepted lost-work interval is established by this preflight.
+- At the October 14 preflight, the key-copy file was present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The ext4 destination was mounted and empty at top level. Those observations have not been refreshed. No current Rescuezilla artifact or accepted lost-work interval was established by that preflight.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
 - **Startup exception (October 17):** doctor exited 1 on the retained Typora CPU-tripwire warning. Bounded read-only inspection established no ConvMem link or hardware cause. Ryan explicitly allowed static Safe Harbor planning/review to continue with the warning intact; this supplies no live-operation or healthy-host claim.
 
@@ -108,7 +108,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
-- 2026-10-19 — Codex: parked Safe Harbor on its existing pushed branch at Ryan's request; scope review complete, initializer unimplemented, explicit owner resume required.
+- 2026-10-19 — Codex: parked Safe Harbor on its existing pushed branch and synchronized the saved handoff, including VERIFY's hold state and dated storage observations; scope review complete, initializer unimplemented, explicit owner resume required.
 
 - 2026-10-17 — Codex: retained the warning under Ryan's static-only exception; Kiro PASSed the initializer scope and B1–B3 delta at `c46fbc6`; isolated implementation grant and live recovery facts remain pending.
 

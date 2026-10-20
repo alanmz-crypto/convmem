@@ -1,14 +1,20 @@
 # Verify Plan — Safe Harbor
 
+**ON HOLD — Ryan, 2026-10-19.** Evidence and pinned reviews below are preserved.
+No new verification, reviewer invocation or implementation is active. Resume only
+on Ryan's explicit instruction through [STATUS](STATUS-safe-harbor.md). The latest
+scope review is [the initializer review](#legacy-initializer-scope--governing-review)
+at `c46fbc6`; it establishes no initializer implementation or live readiness.
+
 > **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED.** [Final T5 closeout](#t5-hosted-ci-owner-exception-and-squash-mapping) records the exact-tree squash, hosted CI and owner outage exception. [ROLLOUT](ROLLOUT-safe-harbor.md) holds the subsequent read-only preflight; deployment and recovery qualification remain separate.
 
 ```text
 Planning Status
-Phase:        T1–T5 merged; read-only deployment preflight returned
+Phase:        ON HOLD; T1–T5 merged, initializer scope reviewed
 Characters:   Implementer, Test-First Reviewer
 Function:     Record observed evidence, failures and remaining limits
-Lanes:        Codex operational draft; Kiro later procedure review; Ryan live gate
-Authority:    EXECUTION section 19; read-only preflight/draft only, no live changes
+Lanes:        None active; Ryan explicit resume required
+Authority:    Ryan hold (2026-10-19); historical grants do not resume work
 ```
 
 **Historical reviewed subject:** `677c8a0d17618166c454b4523d6767e48cfa330a`, base `db8aebbfb9ac20afb081bd43bf42315a1524ac9b`. T1 runtime changes are at `496792fad80d9759ca26e5cbf2ad7d6cd60bc28e`; subsequent CI correction changed the test harness and derived inventory. Initial candidates remain historical. **Successor correction code:** `8b410445ac55f3a5dafede030a40f26c318ae784` (tests only; parent chain `0347328` → `95486a6` → `8b41044`). Copilot's delta review PASSed the corrections at `2977c4531cf446974b0c86994dbca757715dca76` (85%, static). **Integration:** merge commit `c624e2f39a2f76a18eacca76d9affb7f7dff6f50`, parents `5d0209033c50adb48d7d39f107aa84504514f29e` (branch) and main `5550def70c72bc7a60f0c5216b46cd4cf629f5d2`. Its final candidate `0c7b4e2` received fresh CI and the integration review recorded below; the earlier PASS was not automatically transferred.
@@ -2011,9 +2017,10 @@ were confirmed at the same `c46fbc6`; the intended `feat/2026-10-15-safe-harbor-
 was updated, tracking restored, and the accidental copy deleted. No force-push,
 PR or runtime change resulted. The intended branch remains the fallback.
 
-**Next:** Ryan's bounded isolated implementation/evidence decision; recovery
-inputs are still pending for eventual live apply. No further unchanged-artifact
-review, implementation, new tests, PR or live action is authorized here.
+**Deferred while on hold:** Ryan's explicit resume, then a separately scoped
+isolated implementation/evidence decision. Recovery inputs remain pending for
+eventual live apply. No further unchanged-artifact review, implementation, new
+tests, PR or live action is authorized here.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->
