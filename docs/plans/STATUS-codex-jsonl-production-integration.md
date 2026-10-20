@@ -74,7 +74,11 @@ Key invariants:
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
 | Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
-| Watcher | Running on `runtime-main` `633f1d1` since 2026-10-17 16:02:43 under the canary guard; see §6 Codex item 2. |
+| Watcher | Running on `runtime-main` `686d50e` (restarted 2026-10-19 21:29) under the canary guard; see §6 Codex item 2. |
+| Kiro incremental (#406) | On `main` and deployed; opt-in per source (`live_sources` + `kiro_session` table, both absent live). Durable cohort paid-call budget required for admitted Kiro paid calls. |
+| Shadow integrity check (#405) | On `main` and deployed; `mutation_proof_observer` defaults `off`. |
+| Full-chunk expansion (#407, #409) | Deployed: read-only `convmem expand <id>`, `search --expand`, MCP `expand`. No LLM calls or writes. |
+| OpenAI provider (#408) | Deployed; `gpt-*` models route to OpenAI with `OPENAI_API_KEY` (not set). Distill still `deepseek-v4-flash`. |
 
 ## 4. Completion State
 
@@ -119,7 +123,13 @@ session started Sep 21, stay on the legacy route and need the packet's
 residual-burn decision before Stage 2. This track authorizes no live
 bootstrap, config, runtime, or watcher action.
 
-**Stage 2 fixes (deployed; runtime now `633f1d1`, see §6):** after the Stage 2 canary hit its
+**Current role (2026-10-19):** keep the burn guarded and pick the next item from §6 Codex item 5.
+Everything merged through #409 is deployed (`runtime-main` `686d50e`); nothing new is switched on
+live. Verify every branch with `tests/test_config.py` first, the committed-manifest guard on a
+clean commit, and the whole-repo CI pylint gate, not a per-file score. Each implementation lane
+works in its own worktree, never in the shared `~/Projects/convmem` checkout.
+
+**Stage 2 fixes (history; deployed 2026-10-16):** after the Stage 2 canary hit its
 paid ceiling, Ryan squash-merged PR #395 as `3e705e4` (2026-10-16), with the
 tree identical to the verified head `1a70c41`. It adds the store-wide index write
 lock, source-scoped recovery, bounded paid retries, watcher intake that
@@ -151,30 +161,27 @@ Codex rollouts (separate track):
    `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
    Don't add the incremental table to the shared live config while
    `runtime-main` is still on `a92a74e`.
-2. **Live state (deployed 2026-10-18 ~03:45 CDT).** `runtime-main` is on `395e523` (#399–#403 over `633f1d1`;
-   Kiro DEPLOY PASS with D1–D4 and converter preconditions P1/P2), `doctor` exit 0;
-   watcher running since 16:02:43 under the canary guard (ceiling raised to 3,000 for
-   the free-provider window; fault stops unchanged). DeepSeek is temporarily free, so
-   Ryan granted an aggressive backfill:
-   - Backfill of all 59 new-route Codex rollouts: 26 indexed (52 calls); rebuild pass:
-     15 sessions rebuilt (38 calls). Oct 9 and Oct 10 pre-cutoff threads refreshed once,
-     then soft-excluded (index kept).
-   - Largest-first queue of 84 stale/never-indexed transcripts (Claude 55, Copilot 28,
-     Cursor 1; 671 MB) runs overnight from the Claude scratchpad.
+2. **Live state (2026-10-19 21:29 CDT).** `runtime-main` is on `686d50e` (#404–#409 over `395e523`),
+   `doctor` exit 0 with 5 pre-existing WARNs. The first Codex run after the deploy committed normally
+   (fingerprint unchanged, no rebuilds). The watcher runs under the Claude canary guard
+   (`scratchpad/canary2/guard24.sh`; window 2026-10-19 12:02 → 2026-10-20 12:02, ceiling 3,000
+   estimated paid calls; about 564 used by 21:02). DeepSeek is on Ryan's gratuity credits.
+   - The 2026-10-17 bulk archive soft-excluded 1,993 dormant, fully indexed sessions from
+     re-indexing; their units stay searchable and expandable.
+   - The digest unit `convmem-cross-project-digest.service` now loads `env.systemd` (DeepSeek key)
+     and sets `CONVMEM_FAIL_ON_FALLBACK=1` (backup `.service.bak-2026-10-19`); the repo template
+     still needs the same lines.
    - **LIVE FLAG TO REVERT:** `allow_full_rebuild = true` under `[index.incremental_jsonl]`
      in `~/.config/convmem/config.toml` (backup `config.toml.pre-allow-full-rebuild-2026-10-17`).
      Remove it the moment billing resumes: `sed -i '/^allow_full_rebuild = true$/d'
      ~/.config/convmem/config.toml`. While on, any fingerprint-refused session is fully
      re-transformed on its next write.
-3. **Deployed 2026-10-18 (history):** #399 transform compatibility (`9be0a4f`; semantic v2
-   fingerprints, hermetic-only converter), #400 watcher run-outcome events. #401 (Claude
-   adapter: transcripts with >10 metadata lines were silently not ingested) is open.
-   **Deploy blocker:** on `main`, every admitted-Codex v1 checkpoint refuses
-   `migration_required` even with `allow_full_rebuild`, and ~40 live sessions hold v1
-   checkpoints, so deploying `main` would stop all Codex indexing. Cursor is implementing
-   "allow_full_rebuild also rebuilds v1 checkpoints" (branch
-   `fix/2026-10-17-issue-286-v1-rebuild-when-allowed`); then a short Kiro check, Kiro's
-   #399 implementation review, and Ryan's grant to promote `runtime-main` to `main`.
+3. **Distill model decision (2026-10-19 blind study, 24 chunks, Claude + GPT judges):** recall is
+   about 50–60% for every model (Flash, Pro, Sol, Luna, Sonnet, Opus, Haiku), so completeness
+   comes from full-chunk expansion, not a bigger model. Unsupported claims (Claude/GPT judge):
+   Sol 0/0, `gpt-6-luna` max 1/5, Flash 16/27; Claude 5.5 models 14–21/51–71 at 2.5–5.6¢/chunk.
+   Planned switch: `distill_model = gpt-6-luna` with `distill_reasoning_effort = "max"` (~0.13¢/chunk
+   vs Flash 0.29¢), going forward only. Artifacts: `~/.cache/convmem-distill-ab-2026-10-19/`.
 4. **Known stuck sources (old content indexed; new appends refused, no cost):**
    `projection_checkpoint_mismatch` (rollouts 2026-10-12T20-20-37, 2026-10-15T02-15-37:
    a legacy re-index overwrote the processed lineage), `frontier_violation`
@@ -182,9 +189,22 @@ Codex rollouts (separate track):
    `bootstrap_required` (3 sessions; needs the Stage 1 bootstrap grant), and the wedged
    Oct 13 transaction `46313d43…` (`recovery_unproven`). Fold their repair into the
    real-data converter slice (dry run, per-source grant, coordinator source lock).
-5. Then: commit-cost slice 1 (Kiro PASS; ~73 s off each ~5 min commit) to Cursor, and the
-   repository-manifest fix (`fix/2026-10-17-repository-manifest-failure-cache`, Cursor
-   report pending).
+5. **Next actions (pick in order; each needs its own Ryan grant):**
+   - Luna max pilot: Ryan adds `OPENAI_API_KEY` (project key with a monthly cap) to
+     `~/.config/convmem/env.systemd` and `~/.zshrc`; Claude runs a direct-API pilot on the 24 study
+     chunks; then the one-line `distill_model` config change.
+   - Turn on the shadow observer (`mutation_proof_observer = "shadow"`) and measure its overhead
+     against the ≤5 s median budget; Kiro GS-1..GS-4 feed the later scoped-proof evidence.
+   - Kiro Stage 1 packet (Kiro's verdict: spending FAIL until listed sessions, a created cohort
+     ledger, the Oct 13 wedge resolved, and a no-other-writer window).
+   - Real-data converter slice (Kiro P1/P2) for the stuck sources in item 4.
+   - Fix the Crush ritual hook (`~/.config/crush/hooks/convmem-ritual-autorun.sh`): it spawned 4–5
+     concurrent `convmem doctor` processes (5–12 GB each) on 2026-10-19 and the low-memory reaper
+     killed the guard.
+   - Repo digest unit template: add `EnvironmentFile` + fail-loud. Manifest live-config restore
+     (backup `config.toml.pre-manifest-removal-2026-10-12`). `--clear-quarantine` should reach a
+     running watcher.
+   - When DeepSeek billing resumes: revert `allow_full_rebuild` (above), lower the guard to 200/day.
 
 ## 7. Hard Stops
 
@@ -360,11 +380,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-17 | Ryan / Claude / Cursor | #399, #400 merged (not deployed); #401 open; free-provider backfill + rebuilds (41 sessions); `allow_full_rebuild` live flag ON (revert when billing resumes); deploy blocked on v1-rebuild fix |
 | 2026-10-18 | Ryan / Claude | #401 merged, #402 (v1 rebuild + frontier fix) open; Codex handoff for free-window coverage (Crush/Kiro CLI DBs, timing baseline, 3-session bootstrap packet) |
 | 2026-10-18 | Ryan / Claude / Kiro | #402, #403 merged; runtime-main `633f1d1` → `395e523` (#399–#403), watcher restarted, doctor 0; overnight transcript queue 77/84, 7 re-queued after the adapter fix |
+| 2026-10-19 | Ryan / Claude / Kiro / Astra / Cursor | #404–#409 merged and deployed (runtime-main `686d50e`): shadow observer (off), opt-in Kiro incremental with cohort budget, full-chunk expansion, OpenAI provider; distill study picks Luna max; nothing new switched on live |
 
 ## TL;DR
 
-- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
-  stopped and disabled with no restart authority.
+- 2026-10-19: everything through #409 is deployed (`runtime-main` `686d50e`); the watcher runs
+  under the canary guard; Codex sessions index incrementally. Kiro incremental, the shadow
+  observer and the OpenAI provider are deployed but off. Next: Luna max pilot (needs Ryan's
+  `OPENAI_API_KEY`), then §6 Codex item 5. `allow_full_rebuild` stays on until billing resumes.
+- The Kiro bootstrap packet history below is older and unchanged.
 - Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
   first successor grant safely refused with zero new calls or corpus mutation;
   Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
