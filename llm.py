@@ -103,11 +103,8 @@ def _compose_provider_permit_nested(
     def composed(event: dict[str, object]) -> None:
         ev = dict(event)
         settled: list[ProviderAttemptFinished | None] = []
-        try:
-            inner(ev)
-            settled.append(inner_finished)
-        except Exception:
-            raise
+        inner(ev)
+        settled.append(inner_finished)
         try:
             outer(ev)
             settled.append(outer_finished)

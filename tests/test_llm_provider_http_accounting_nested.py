@@ -1,6 +1,6 @@
 """Hermetic nested provider_http_accounting composition (issue #286)."""
 
-# pylint: disable=protected-access
+# pylint: disable=protected-access,duplicate-code
 
 from __future__ import annotations
 
@@ -164,7 +164,7 @@ def test_nested_inner_refusal_never_reaches_outer(
                     "https://provider.invalid",
                     max_attempts=1,
                 )
-    assert outer_seen == []
+    assert not outer_seen
 
 
 def test_nested_context_restores_outer_hooks_on_exception() -> None:
