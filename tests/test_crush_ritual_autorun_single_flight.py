@@ -67,6 +67,7 @@ class CrushRitualAutorunSingleFlightTests(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=120,
+            check=False,
         )
 
     def _install_stub(self, tmp: Path) -> tuple[Path, Path, Path]:
@@ -105,6 +106,7 @@ class CrushRitualAutorunSingleFlightTests(unittest.TestCase):
                     capture_output=True,
                     text=True,
                     timeout=120,
+                    check=False,
                 )
 
             with ThreadPoolExecutor(max_workers=5) as pool:
@@ -168,6 +170,7 @@ class CrushRitualAutorunSingleFlightTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=30,
+                check=False,
             )
             self.assertEqual(out.returncode, 0)
             self.assertEqual(_count_lines(log, "doctor"), 0)
