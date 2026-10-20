@@ -112,9 +112,7 @@ def _tamper_export_line(export_path: Path, source: Path) -> None:
         handle.write(line)
 
 
-def test_s1_real_rollback_path_reports_tamper(
-    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_s1_real_rollback_path_reports_tamper(tmp_path, monkeypatch) -> None:
     replay, export_path, _foreign, source = _wedge_then_replay(
         tmp_path, monkeypatch, "after_summary_upsert"
     )

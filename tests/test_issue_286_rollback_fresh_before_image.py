@@ -10,6 +10,8 @@ import json
 import threading
 from pathlib import Path
 
+import socket
+
 import pytest
 
 import incremental_jsonl
@@ -17,7 +19,7 @@ from incremental_jsonl import (
     IncrementalJsonlCoordinator,
     IncrementalJsonlError,
 )
-from incremental_jsonl_isolation import install_network_denial
+from incremental_jsonl_isolation import IsolationViolation
 from ingest import load_processed, mutate_processed
 from purge_locks import index_write_lock_depth, source_lock_depth
 from tests.incremental_jsonl_helpers import (
@@ -33,7 +35,13 @@ from tests.incremental_jsonl_helpers import (
 
 @pytest.fixture(autouse=True)
 def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:
-    install_network_denial()
+    def denied(*_args, **_kwargs):
+        raise IsolationViolation("outbound network denied in production-integration tests")
+
+    monkeypatch.setattr(socket, "create_connection", denied)
+    monkeypatch.setattr(socket, "getaddrinfo", denied)
+    monkeypatch.setattr(socket.socket, "connect", denied)
+    monkeypatch.setattr(socket.socket, "connect_ex", denied)
 
 
 def _coordinator(boundary, source, *, processed=None, fault=None):
@@ -288,26 +296,38 @@ def test_10_recovery_lock_order_source_before_c1(
     install_fakes(monkeypatch)
     enable_incremental(boundary)
     source = write_source(boundary.root, 2)
+    _coordinator(boundary, source).run()
+    source.write_bytes(source.read_bytes() + kiro_record(2))
+    crashed = worker_run(boundary, env, source, fault="after_unit_upsert")
+    assert crashed.returncode == 86
     coordinator = _coordinator(boundary, source)
-    coordinator.run()
-    snapshot = coordinator._snapshot_before_images()
-    depths: list[tuple[int, int]] = []
+    depths: list[tuple[str, int, int]] = []
+    import contextlib
+    import purge_locks
 
-    from purge_locks import index_write_flock, source_flock
+    original_source = purge_locks.source_flock
+    original_c1 = purge_locks.index_write_flock
 
-    original = coordinator._restore_before_images
+    @contextlib.contextmanager
+    def _wrap_source(cfg, path_key):
+        with original_source(cfg, path_key):
+            depths.append(("source", source_lock_depth(), index_write_lock_depth()))
+            yield
 
-    def traced_restore(rollback, **kwargs):
-        depths.append((source_lock_depth(), index_write_lock_depth()))
-        return original(rollback, **kwargs)
+    @contextlib.contextmanager
+    def _wrap_c1(cfg):
+        with original_c1(cfg):
+            depths.append(("c1", source_lock_depth(), index_write_lock_depth()))
+            yield
 
-    coordinator._restore_before_images = traced_restore  # type: ignore[method-assign]
-    coordinator._preflight_rollback_restore(snapshot)
-    with source_flock(coordinator.cfg, coordinator.path_key):
-        with index_write_flock(coordinator.cfg):
-            coordinator._restore_before_images(snapshot, preserve_recovery_authority=True)
-    assert depths
-    assert all(src >= 1 and c1 >= 1 for src, c1 in depths)
+    monkeypatch.setattr(purge_locks, "source_flock", _wrap_source)
+    monkeypatch.setattr(purge_locks, "index_write_flock", _wrap_c1)
+    _fail_forward_commit_once(monkeypatch)
+    result = coordinator.run()
+    assert result.outcome == "rolled_back"
+    source_events = [entry for entry in depths if entry[0] == "source"]
+    assert source_events
+    assert any(src_depth >= 1 and c1_depth == 0 for _, src_depth, c1_depth in source_events)
 
 
 def test_source_flock_not_nested_on_recovery_replay(
@@ -368,7 +388,42 @@ def test_foreign_key_collision_refuses(
         coordinator._preflight_rollback_restore(snapshot)
 
 
-def test_transaction_owned_processed_restore_succeeds(
+def _artifact_bytes(boundary) -> dict[str, bytes]:
+    root = Path(boundary.layout["state"])
+    artifacts: dict[str, bytes] = {}
+    if root.is_dir():
+        for path in root.rglob("*"):
+            if path.is_file():
+                artifacts[str(path.relative_to(root))] = path.read_bytes()
+    for label in ("processed", "export"):
+        path = Path(boundary.layout[label])
+        artifacts[label] = path.read_bytes() if path.is_file() else b""
+    return artifacts
+
+
+def _ensure_processed_file(boundary) -> Path:
+    path = Path(boundary.layout["processed"])
+    if not path.is_file():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{}", encoding="utf-8")
+    return path
+
+
+
+
+def _fail_forward_commit_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    attempts: list[int] = []
+    original = IncrementalJsonlCoordinator._commit_generation
+
+    def _fail(self, **kwargs):
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise IncrementalJsonlError("synthetic_forward_fail", "stop")
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(IncrementalJsonlCoordinator, "_commit_generation", _fail)
+
+def test_5_foreign_owner_unrelated_map_equality_on_refusal(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     boundary, env = isolated_env(tmp_path)
@@ -379,14 +434,112 @@ def test_transaction_owned_processed_restore_succeeds(
     coordinator = _coordinator(boundary, source)
     coordinator.run()
     snapshot = coordinator._snapshot_before_images()
-    tx = json.loads(snapshot["state_files"]["transaction"] or "{}")
-    processed_path = Path(boundary.layout["processed"])
+    key = next(iter(snapshot["processed_preimage"]))
+    processed_path = _ensure_processed_file(boundary)
+    before = json.loads(processed_path.read_text(encoding="utf-8"))
+    unrelated_key = "unrelated-" + hashlib.sha256(b"unrelated").hexdigest()
+    before[unrelated_key] = {"path": "/other-source", "chunks": 1}
+    unrelated_before = {k: v for k, v in before.items() if k != key}
+    before[key] = {"path": "/foreign-owner", "chunks": 1}
+    processed_path.write_text(json.dumps(before), encoding="utf-8")
+    with pytest.raises(IncrementalJsonlError, match="foreign key collision"):
+        coordinator._preflight_rollback_restore(snapshot)
+    after = json.loads(processed_path.read_text(encoding="utf-8"))
+    unrelated_after = {k: v for k, v in after.items() if k != key}
+    assert unrelated_after == unrelated_before
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "before_checkpoint_publish",
+        "after_checkpoint_publish",
+        "after_processed_publish",
+    ],
+)
+def test_8_crash_windows_preserve_authority_and_idempotent_retry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 4)
+    _coordinator(boundary, source).run()
+    source.write_bytes(source.read_bytes() + kiro_record(4))
+    crashed = worker_run(boundary, env, source, fault=fault)
+    assert crashed.returncode == 86
+    coordinator = _coordinator(boundary, source)
+    assert coordinator.paths["rollback"].is_file()
+    assert coordinator.paths["transaction"].is_file()
+    rollback_before = coordinator.paths["rollback"].read_bytes()
+    tx_before = coordinator.paths["transaction"].read_bytes()
+    _fail_forward_commit_once(monkeypatch)
+    first = coordinator.run()
+    assert first.outcome == "rolled_back"
+    assert rollback_before
+    assert tx_before
+    replay = _coordinator(boundary, source)
+    second = replay.run()
+    assert second.outcome in {"rolled_back", "unchanged", "recovery_partial", "committed"}
+
+
+def test_c5_recovery_partial_after_late_processed_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    _coordinator(boundary, source).run()
+    source.write_bytes(source.read_bytes() + kiro_record(2))
+    crashed = worker_run(boundary, env, source, fault="after_unit_upsert")
+    assert crashed.returncode == 86
+    coordinator = _coordinator(boundary, source)
+    rollback_before = coordinator.paths["rollback"].read_bytes()
+    tx_before = coordinator.paths["transaction"].read_bytes()
+    processed_path = _ensure_processed_file(boundary)
+    late_key = "late-" + hashlib.sha256(b"late").hexdigest()
+    original_restore_processed = coordinator._restore_processed
+
+    def restore_with_late_write(preimage: dict) -> None:
+        late = json.loads(processed_path.read_text(encoding="utf-8"))
+        late[late_key] = {"path": str(source), "chunks": 2}
+        processed_path.write_text(json.dumps(late), encoding="utf-8")
+        original_restore_processed(preimage)
+
+    coordinator._restore_processed = restore_with_late_write  # type: ignore[method-assign]
+    _fail_forward_commit_once(monkeypatch)
+    result = coordinator.run()
+    assert result.outcome == "recovery_partial"
+    assert coordinator.paths["rollback"].read_bytes() == rollback_before
+    assert coordinator.paths["transaction"].read_bytes() == tx_before
+    assert late_key in json.loads(processed_path.read_text(encoding="utf-8"))
+
+
+def test_transaction_owned_processed_restore_after_partial_apply_crash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    _coordinator(boundary, source).run()
+    source.write_bytes(source.read_bytes() + kiro_record(2))
+    crashed = worker_run(boundary, env, source, fault="after_summary_upsert")
+    assert crashed.returncode == 86
+    coordinator = _coordinator(boundary, source)
+    tx = json.loads(coordinator.paths["transaction"].read_text(encoding="utf-8"))
+    owned_key = tx.get("prefix_sha256")
+    assert owned_key
+    processed_path = _ensure_processed_file(boundary)
     processed = json.loads(processed_path.read_text(encoding="utf-8"))
-    owned_key = tx.get("prefix_sha256") or tx.get("generation", {}).get("prefix_sha256")
-    if owned_key:
-        processed[owned_key] = {"path": str(source), "chunks": 9, "units": 9}
-        processed_path.write_text(json.dumps(processed), encoding="utf-8")
-    coordinator._preflight_rollback_restore(snapshot, transaction=tx)
-    coordinator._restore_processed(snapshot.get("processed_preimage") or {})
+    processed[owned_key] = {"path": str(source), "chunks": 1}
+    processed_path.write_text(json.dumps(processed), encoding="utf-8")
+    _fail_forward_commit_once(monkeypatch)
+    result = coordinator.run()
+    assert result.outcome == "rolled_back"
     restored = json.loads(processed_path.read_text(encoding="utf-8"))
-    assert snapshot["processed_preimage"].keys() <= restored.keys()
+    assert owned_key not in restored

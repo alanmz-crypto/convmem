@@ -202,9 +202,11 @@ def processed_lock_path(processed_path: str) -> Path:
 @contextmanager
 def _processed_lock(processed_path: str):
     """Exclusive advisory lock on the processed-state sidecar."""
+    from purge_locks import _open_private_lock
+
     lock = processed_lock_path(processed_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    with _open_private_lock(lock) as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield

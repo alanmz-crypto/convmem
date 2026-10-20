@@ -7272,6 +7272,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_issue_286_rollback_fresh_before_image.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_issue_286_stage2_corrective12.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"

@@ -456,6 +456,19 @@ def _embedded_rollback_checkpoint(state_files: dict | None) -> dict | None:
     return payload
 
 
+
+
+def _transaction_prefix_sha256(transaction: dict | None) -> str:
+    if not isinstance(transaction, dict):
+        return ""
+    prefix = str(transaction.get("prefix_sha256") or "")
+    if prefix:
+        return prefix
+    generation = transaction.get("generation")
+    if isinstance(generation, dict):
+        return str(generation.get("prefix_sha256") or "")
+    return ""
+
 def _source_processed_entries(processed: dict, path_key: str) -> dict[str, dict]:
     return {
         key: value
@@ -469,6 +482,7 @@ def validate_rollback_processed_semantics(
     *,
     path_key: str,
     bootstrap_existing: bool = False,
+    transaction: dict | None = None,
 ) -> None:
     preimage = rollback.get("processed_preimage")
     if preimage is None:
@@ -489,6 +503,12 @@ def validate_rollback_processed_semantics(
     units = rollback.get("units") or []
     if embedded is not None:
         if not preimage:
+            expected_hash = str(embedded.get("processed_hash") or "")
+            if (
+                expected_hash
+                and _transaction_prefix_sha256(transaction) == expected_hash
+            ):
+                return
             raise IncrementalJsonlError(
                 "rollback_processed_authority_invalid",
                 "empty processed preimage with prior checkpoint",
@@ -513,10 +533,13 @@ def validate_rollback_processed_semantics(
         return
     if preimage:
         return
-    # Empty processed at capture is allowed without an embedded checkpoint even when
-    # row snapshots exist (crash after apply, before processed publish).
     if bootstrap_existing:
         return
+    if summaries or units:
+        raise IncrementalJsonlError(
+            "rollback_processed_authority_invalid",
+            "empty processed preimage with prior rows",
+        )
 
 
 def _path_has_processed_entry(processed: dict, path_key: str) -> bool:
@@ -1829,11 +1852,18 @@ class IncrementalJsonlCoordinator:
                 if expected_key:
                     disk_entry = processed.get(expected_key)
                     if not isinstance(disk_entry, dict) or disk_entry.get("path") != self.path_key:
-                        raise IncrementalJsonlError(
-                            "recovery_unproven",
-                            "processed capture missing checkpoint entry",
+                        tx_payload = _read_json(self.paths["transaction"])
+                        tx_prefix = (
+                            str(tx_payload.get("prefix_sha256") or "")
+                            if isinstance(tx_payload, dict)
+                            else ""
                         )
-                    if expected_key not in preimage or preimage[expected_key] != disk_entry:
+                        if tx_prefix != expected_key:
+                            raise IncrementalJsonlError(
+                                "recovery_unproven",
+                                "processed capture missing checkpoint entry",
+                            )
+                    elif expected_key not in preimage or preimage[expected_key] != disk_entry:
                         raise IncrementalJsonlError(
                             "recovery_unproven",
                             "processed capture stale vs checkpoint",
@@ -1841,18 +1871,8 @@ class IncrementalJsonlCoordinator:
             return {key: dict(value) for key, value in preimage.items()}
 
     def _transaction_owned_processed_keys(self, transaction: dict | None) -> set[str]:
-        if not isinstance(transaction, dict):
-            return set()
-        owned: set[str] = set()
-        prefix = str(transaction.get("prefix_sha256") or "")
-        if prefix:
-            owned.add(prefix)
-        generation = transaction.get("generation")
-        if isinstance(generation, dict):
-            gen_prefix = str(generation.get("prefix_sha256") or "")
-            if gen_prefix:
-                owned.add(gen_prefix)
-        return owned
+        prefix = _transaction_prefix_sha256(transaction)
+        return {prefix} if prefix else set()
 
     def _preflight_rollback_restore(
         self,
@@ -1861,16 +1881,17 @@ class IncrementalJsonlCoordinator:
         transaction: dict | None = None,
     ) -> None:
         validate_rollback(rollback, source_path=self.path_key)
-        validate_rollback_processed_semantics(
-            rollback,
-            path_key=self.path_key,
-            bootstrap_existing=self.bootstrap_existing,
-        )
         tx = transaction
         if tx is None:
             tx = _read_json(self.paths["transaction"]) or {}
         if not isinstance(tx, dict):
             tx = {}
+        validate_rollback_processed_semantics(
+            rollback,
+            path_key=self.path_key,
+            bootstrap_existing=self.bootstrap_existing,
+            transaction=tx,
+        )
         preimage = rollback.get("processed_preimage") or {}
         if not isinstance(preimage, dict):
             raise IncrementalJsonlError("recovery_unproven", "processed_preimage invalid")
@@ -2060,13 +2081,17 @@ class IncrementalJsonlCoordinator:
         processed_path = str(self.cfg["index"]["processed_log"])
 
         def mutator(data: dict) -> None:
+            tx_payload = _read_json(self.paths["transaction"])
+            owned_keys = self._transaction_owned_processed_keys(
+                tx_payload if isinstance(tx_payload, dict) else None
+            )
             current_slice = _source_processed_entries(data, self.path_key)
             for key, entry in current_slice.items():
                 if entry.get("excluded"):
                     raise IncrementalJsonlError(
                         "recovery_processed_conflict", "processed exclusion present"
                     )
-                if key not in preimage_keys:
+                if key not in preimage_keys and key not in owned_keys:
                     raise IncrementalJsonlError(
                         "recovery_processed_conflict", "unowned processed entry"
                     )
@@ -2905,8 +2930,8 @@ class IncrementalJsonlCoordinator:
     ) -> None:
         from purge_locks import index_write_flock, source_flock
 
-        self._preflight_rollback_restore(rollback, transaction=transaction)
         with source_flock(self.cfg, self.path_key):
+            self._preflight_rollback_restore(rollback, transaction=transaction)
             with index_write_flock(self.cfg):
                 attempt_non_source = self._non_source_collection_digest()
                 self._restore_before_images(
