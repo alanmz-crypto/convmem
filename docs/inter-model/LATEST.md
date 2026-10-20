@@ -9,12 +9,11 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **Recovery, detection and containment review — BLOCKED_ON_RYAN (2026-10-11):**
-  Four Opus↔Codex review rounds converged. Codex will architect (Opus reviews once
-  plus one delta, Kiro signs off). Ryan first takes a fresh Rescuezilla image,
-  names the arc, and separately decides the exact #341 detector deploy
-  (`5c6a4a8`, watch stays stopped). No implementation, deploy, or live write is
-  authorized. Resume from the
+- **Recovery, detection and containment review — COMPLETE; superseded by Arc Safe
+  Harbor (updated 2026-10-19):** Four Opus↔Codex review rounds converged; Codex
+  then authored Safe Harbor (Opus delta PASS `505a422`, Kiro PASS + Ryan approval
+  `5ea16a6`, Cursor T1 grant `b4c0e73`). Resume from `STATUS-safe-harbor.md` on
+  `plan/2026-10-11-safe-harbor`, not from the historical
   [Opus review handoff](CLAUDE-2026-10-11-recovery-containment-review-handoff.md).
 - **Arc Codex / issue #286 — replay-authority corrective REVIEWED PASS / CI
   PENDING

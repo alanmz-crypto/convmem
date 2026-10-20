@@ -7,18 +7,25 @@
 Rescuezilla reboot, and agreed that Codex architects while Opus reviews. **This document authorizes no
 implementation, deployment, arc, service change, or live write.**
 
+> **Status update 2026-10-19 (Opus) — this packet is superseded; do not resume from it.**
+> Codex authored **Arc Safe Harbor** from this packet. Opus review + delta PASS at `505a422` (85%),
+> Kiro PASS and Ryan direction approval at `5ea16a6`, execution plan accepted at `dca13a5`, Cursor T1
+> grant at `b4c0e73`. The live arc state is `docs/plans/STATUS-safe-harbor.md` on branch
+> `plan/2026-10-11-safe-harbor`. Opus returns only if contracts beyond the E7 clause are added.
+> The sections below are the 2026-10-11 record, kept unchanged.
+
 ---
 
 ## Resume state
 
 | Field | Value |
 |-------|--------|
-| **State** | `BLOCKED_ON_RYAN` |
+| **State** | `COMPLETE` — superseded by Arc Safe Harbor (see status update above); work placed on hold by Ryan 2026-10-19 |
 | **Branch** | `docs/2026-10-11-recovery-containment-review-handoff` |
 | **Push status** | pushed to origin |
-| **PR** | not opened |
-| **Ryan GATE** | (1) take a fresh Rescuezilla image; (2) name the arc and confirm the review chain; (3) authorize or decline the #341 detector deploy (exact `5c6a4a8`, watch stays stopped); (4) answer the backup facts in "Open questions"; (5) state the acceptable loss window |
-| **Track A ingest** | `~/.claude/projects/-home-lauer-Projects-convmem/67a19512-adab-4337-990a-de1649c128a4.jsonl` — **not yet indexed** (deliberately deferred: a reboot during indexing would interrupt a Chroma write) |
+| **PR** | not opened; not intended for merge (cite, then delete when convenient) |
+| **Ryan GATE** (2026-10-11 list → 2026-10-19 state) | (1) fresh Rescuezilla image — **still unconfirmed** per Safe Harbor STATUS §3; (2) arc named **Safe Harbor**, review chain completed; (3) #341 detector — **observed deployed** 2026-10-19 (runtime checkout contains `5c6a4a8`; audit timer enabled and ran; watch active); (4)–(5) backup facts and loss window — **still open**, tracked in Safe Harbor STATUS §6 item 3 |
+| **Track A ingest** | `~/.claude/projects/-home-lauer-Projects-convmem/67a19512-adab-4337-990a-de1649c128a4.jsonl` — **not indexed**. Safe Harbor STATUS §7 hard stops forbid indexing from that brief; run only on Ryan's explicit "ingest your chat" |
 | **Resume chat** | `claude --resume 67a19512-adab-4337-990a-de1649c128a4` |
 
 ---
@@ -171,6 +178,9 @@ Level per `DECISION-REVIEW-GUARDRAILS.md`: local / interface / architectural.
 pre-check. Its procedure needs two corrections: fast-forward to `5c6a4a8` only, and do **not**
 "restart convmem-watch" (watch is inactive; a restart would start ingestion).
 
+*2026-10-19:* question 1 answered (Safe Harbor). Question 4 overtaken: the detector is observed
+deployed and the reminder file is gone. Questions 2–3 remain open in Safe Harbor STATUS.
+
 ---
 
 ## Could not verify
@@ -207,8 +217,11 @@ pre-check. Its procedure needs two corrections: fast-forward to `5c6a4a8` only, 
 
 - [x] This file committed on a pushed branch
 - [x] `LATEST.md` bullet at top with link and resume state
-- [ ] `STATUS-*.md` Update Log line — not applicable until Ryan names the arc
+- [x] `STATUS-*.md` Update Log line — done by Codex in `STATUS-safe-harbor.md` once the arc was named
 - [x] Branch pushed
 
-**Codex (picking up):** read this file, then `DECISION-REVIEW-GUARDRAILS.md`; wait for Ryan's arc name;
-author `ARCHITECTURE-<slug>.md` + `STATUS-<slug>.md` on a `plan/` branch; route to Opus for one review.
+**Codex (picking up):** done — Safe Harbor architecture, STATUS and execution plan authored on
+`plan/2026-10-11-safe-harbor`; Opus review cadence complete.
+
+<!-- src: docs/plans/STATUS-safe-harbor.md (branch plan/2026-10-11-safe-harbor, tip b4c0e73) — 2026-10-19 status update -->
+<!-- ref: docs/inter-model/LATEST.md — routing bullet updated with this status -->
