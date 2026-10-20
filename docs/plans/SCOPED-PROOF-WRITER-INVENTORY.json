@@ -37,34 +37,34 @@
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "incremental_jsonl.py:838",
+      "entrypoint": "incremental_jsonl.py:947",
       "owner": "production_chroma_write_session",
-      "route_id": "incremental_jsonl.py:838",
-      "shadow_inventory_ref": "incremental_jsonl.py:838"
+      "route_id": "incremental_jsonl.py:947",
+      "shadow_inventory_ref": "incremental_jsonl.py:947"
     },
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "ingest.py:662",
+      "entrypoint": "ingest.py:671",
       "owner": "production_chroma_write_session",
-      "route_id": "ingest.py:662",
-      "shadow_inventory_ref": "ingest.py:662"
+      "route_id": "ingest.py:671",
+      "shadow_inventory_ref": "ingest.py:671"
     },
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "ingest.py:662",
+      "entrypoint": "ingest.py:671",
       "owner": "production_chroma_write_session",
-      "route_id": "ingest.py:662",
-      "shadow_inventory_ref": "ingest.py:662"
+      "route_id": "ingest.py:671",
+      "shadow_inventory_ref": "ingest.py:671"
     },
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "ingest.py:662",
+      "entrypoint": "ingest.py:1257",
       "owner": "production_chroma_write_session",
-      "route_id": "ingest.py:662",
-      "shadow_inventory_ref": "ingest.py:662"
+      "route_id": "ingest.py:1257",
+      "shadow_inventory_ref": "ingest.py:1257"
     },
     {
       "coverage_status": "shadow_observed",
