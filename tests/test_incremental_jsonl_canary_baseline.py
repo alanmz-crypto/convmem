@@ -48,7 +48,8 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 corrective 2: fail-closed paid cohort accounting.
     # Refreshed for issue #286 corrective 4: checkpoint sidecar identity guard.
     # Refreshed for issue #286 scoped proof shadow observer wiring.
-    "incremental_jsonl.py": "2ef62294b18de8dc0723b842e79c1625f48b026eb8b3b403e470b10a57680c95",
+    # Refreshed for issue #286 nested provider HTTP accounting release wiring.
+    "incremental_jsonl.py": "081c270956bd070c1db7e7d6aab2798fc70a3c16bfa7f973990c6d2731fc5660",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

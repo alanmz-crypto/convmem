@@ -547,6 +547,7 @@ def bootstrap(
         with provider_http_accounting(
             journal.consume_provider_http_attempt,
             journal.report_provider_usage,
+            attempt_released=journal.release_provider_http_attempt,
         ):
             result = coordinator.run()
         receipt_payload = _receipt(

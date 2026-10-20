@@ -96,6 +96,8 @@ def _validate_provider_attempt_event(event: dict[str, object]) -> None:
 
 
 def _provider_attempt_paid_cap_consumed(row: dict[str, Any]) -> bool:
+    if row.get("record_type") == "permit_released":
+        return False
     if (
         row.get("record_type") == "permit_consumed"
         and row.get("provider") == "ollama"
@@ -104,6 +106,44 @@ def _provider_attempt_paid_cap_consumed(row: dict[str, Any]) -> bool:
         return False
     # Unknown types, missing fields, legacy rows, and falsely exempt rows count.
     return True
+
+
+def _released_attempt_ordinals(attempts: list[dict[str, Any]]) -> set[int]:
+    return {
+        int(row["released_attempt_ordinal"])
+        for row in attempts
+        if row.get("record_type") == "permit_released"
+        and row.get("released_attempt_ordinal") is not None
+    }
+
+
+def _active_provider_attempt_rows(attempts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    released_ordinals = _released_attempt_ordinals(attempts)
+    active: list[dict[str, Any]] = []
+    for row in attempts:
+        if row.get("record_type") != "permit_consumed":
+            continue
+        ordinal = row.get("attempt_ordinal")
+        if ordinal in released_ordinals:
+            continue
+        active.append(row)
+    return active
+
+
+def _paid_cap_attempt_count(attempts: list[dict[str, Any]]) -> int:
+    released_ordinals = _released_attempt_ordinals(attempts)
+    total = 0
+    for row in attempts:
+        if row.get("record_type") == "permit_released":
+            continue
+        if (
+            row.get("record_type") == "permit_consumed"
+            and row.get("attempt_ordinal") in released_ordinals
+        ):
+            continue
+        if _provider_attempt_paid_cap_consumed(row):
+            total += 1
+    return total
 
 
 def _new_provider_attempt_paid_cap_consumed(event: dict[str, object]) -> bool:
@@ -505,9 +545,7 @@ class BootstrapOperationJournal:
         paid_cap_consumed = _new_provider_attempt_paid_cap_consumed(event)
         with self._locked():
             attempts = _read_jsonl(self.attempts_path)
-            consumed_local = sum(
-                _provider_attempt_paid_cap_consumed(row) for row in attempts
-            )
+            consumed_local = _paid_cap_attempt_count(attempts)
             consumed_total = self.predecessor_paid_http_attempts + consumed_local
             if paid_cap_consumed and consumed_local >= self.max_attempts:
                 raise ProviderAttemptBudgetExceeded(
@@ -528,6 +566,36 @@ class BootstrapOperationJournal:
                     "grant_fingerprint": self.fingerprint,
                     "invocation_ordinal": self.current.ordinal,
                     "attempt_ordinal": observed + 1,
+                    "paid_cap_consumed": paid_cap_consumed,
+                    **event,
+                },
+            )
+
+    def release_provider_http_attempt(self, event: dict[str, object]) -> None:
+        """Mark a pre-transport permit released when a nested outer layer refused."""
+        if self.current is None or not self.current.authorized:
+            return
+        _validate_provider_attempt_event(event)
+        paid_cap_consumed = _new_provider_attempt_paid_cap_consumed(event)
+        with self._locked():
+            attempts = _read_jsonl(self.attempts_path)
+            if not attempts or attempts[-1].get("record_type") != "permit_consumed":
+                return
+            last = attempts[-1]
+            if last.get("invocation_ordinal") != self.current.ordinal:
+                return
+            for key in ("provider", "operation", "model", "base_url"):
+                if last.get(key) != event.get(key):
+                    return
+            _append_jsonl(
+                self.attempts_path,
+                {
+                    "record_type": "permit_released",
+                    "recorded_at": utc_now(),
+                    "operation_id": self.operation_id,
+                    "grant_fingerprint": self.fingerprint,
+                    "invocation_ordinal": self.current.ordinal,
+                    "released_attempt_ordinal": last.get("attempt_ordinal"),
                     "paid_cap_consumed": paid_cap_consumed,
                     **event,
                 },
@@ -569,12 +637,15 @@ class BootstrapOperationJournal:
         usage = _read_jsonl(self.usage_path)
         current_ordinal = self.current.ordinal if self.current else 0
         current_attempts = [
-            row for row in attempts if row.get("invocation_ordinal") == current_ordinal
+            row
+            for row in _active_provider_attempt_rows(attempts)
+            if row.get("invocation_ordinal") == current_ordinal
         ]
+        active_attempts = _active_provider_attempt_rows(attempts)
         paid_current = sum(
             _provider_attempt_paid_cap_consumed(row) for row in current_attempts
         )
-        paid_cumulative = sum(_provider_attempt_paid_cap_consumed(row) for row in attempts)
+        paid_cumulative = _paid_cap_attempt_count(attempts)
         lifetime_paid_current = self.predecessor_paid_http_attempts + paid_current
         lifetime_paid_cumulative = self.predecessor_paid_http_attempts + paid_cumulative
         return {

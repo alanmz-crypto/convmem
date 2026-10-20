@@ -757,6 +757,10 @@ class IncrementalJsonlCoordinator:
                     self._cohort_ledger.report_provider_attempt_finished
                     if self._cohort_ledger else None
                 ),
+                attempt_released=(
+                    self._cohort_ledger.report_provider_attempt_released
+                    if self._cohort_ledger else None
+                ),
             ):
                 return self._build_frontier(
                     messages,

@@ -118,6 +118,19 @@ class CohortBudgetLedger:
         finally:
             self._release_budget_lock(fd)
 
+    def release_reservation(self, reservation_id: str) -> None:
+        """Drop a pre-HTTP reservation without spending the paid cap."""
+        fd = self._acquire_budget_lock()
+        try:
+            ledger = _read_ledger(self.settings.ledger_path)
+            reserved = int(ledger.get("reserved") or 0)
+            if reserved <= 0:
+                raise CohortBudgetError("cohort_reservation_missing", reservation_id)
+            ledger["reserved"] = reserved - 1
+            self._persist(ledger)
+        finally:
+            self._release_budget_lock(fd)
+
     def finalize_reservation(self, reservation_id: str, *, success: bool) -> None:
         fd = self._acquire_budget_lock()
         try:
@@ -149,6 +162,15 @@ class CohortBudgetLedger:
                 "prior HTTP reservation was not finalized",
             )
         self._open_reservation = self.reserve_paid_http_attempt(event)
+
+    def report_provider_attempt_released(self, event: dict[str, object]) -> None:
+        import llm
+
+        if event.get("provider") not in llm.PAID_PROVIDERS or self._open_reservation is None:
+            return
+        reservation_id = self._open_reservation
+        self.release_reservation(reservation_id)
+        self._open_reservation = None
 
     def report_provider_attempt_finished(self, event: dict[str, object], success: bool) -> None:
         import llm

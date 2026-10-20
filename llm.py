@@ -41,8 +41,12 @@ PAID_PROVIDERS = frozenset({"deepseek", "openai"})
 ProviderAttemptPermit = Callable[[dict[str, object]], None]
 ProviderUsageReporter = Callable[[dict[str, object], dict[str, object]], None]
 ProviderAttemptFinished = Callable[[dict[str, object], bool], None]
+ProviderAttemptReleased = Callable[[dict[str, object]], None]
 _PROVIDER_ATTEMPT_FINISHED: ContextVar[ProviderAttemptFinished | None] = ContextVar(
     "provider_attempt_finished", default=None
+)
+_PROVIDER_ATTEMPT_RELEASED: ContextVar[ProviderAttemptReleased | None] = ContextVar(
+    "provider_attempt_released", default=None
 )
 _PROVIDER_ATTEMPT_PERMIT: ContextVar[ProviderAttemptPermit | None] = ContextVar(
     "provider_attempt_permit", default=None
@@ -91,27 +95,42 @@ def _compose_provider_attempt_finished_nested(
     return composed
 
 
+def _compose_provider_attempt_released_nested(
+    inner: ProviderAttemptReleased | None,
+    outer: ProviderAttemptReleased | None,
+) -> ProviderAttemptReleased | None:
+    if inner is None and outer is None:
+        return None
+
+    def composed(event: dict[str, object]) -> None:
+        if inner is not None:
+            inner(event)
+        if outer is not None:
+            outer(event)
+
+    return composed
+
+
 def _compose_provider_permit_nested(
     inner: ProviderAttemptPermit,
-    inner_finished: ProviderAttemptFinished | None,
+    inner_released: ProviderAttemptReleased | None,
     outer: ProviderAttemptPermit | None,
-    outer_finished: ProviderAttemptFinished | None,
+    outer_released: ProviderAttemptReleased | None,
 ) -> ProviderAttemptPermit:
     if outer is None:
         return inner
 
     def composed(event: dict[str, object]) -> None:
         ev = dict(event)
-        settled: list[ProviderAttemptFinished | None] = []
+        to_release: list[ProviderAttemptReleased | None] = []
         inner(ev)
-        settled.append(inner_finished)
+        to_release.append(inner_released)
         try:
             outer(ev)
-            settled.append(outer_finished)
         except Exception:
-            for finished in settled:
-                if finished is not None:
-                    finished(ev, False)
+            for released in to_release:
+                if released is not None:
+                    released(ev)
             raise
 
     return composed
@@ -123,40 +142,50 @@ def provider_http_accounting(
     usage_reporter: ProviderUsageReporter,
     *,
     attempt_finished: ProviderAttemptFinished | None = None,
+    attempt_released: ProviderAttemptReleased | None = None,
 ):
     """Install bootstrap-only HTTP accounting without changing ordinary calls."""
 
     outer_permit = _PROVIDER_ATTEMPT_PERMIT.get()
     outer_usage = _PROVIDER_USAGE_REPORTER.get()
     outer_finished = _PROVIDER_ATTEMPT_FINISHED.get()
+    outer_released = _PROVIDER_ATTEMPT_RELEASED.get()
     nested = (
         outer_permit is not None
         or outer_usage is not None
         or outer_finished is not None
+        or outer_released is not None
     )
     if not nested:
         active_permit = permit
         active_usage = usage_reporter
         active_finished = attempt_finished
+        active_released = attempt_released
     else:
         active_permit = _compose_provider_permit_nested(
             permit,
-            attempt_finished,
+            attempt_released,
             outer_permit,
-            outer_finished,
+            outer_released,
         )
         active_usage = _compose_provider_usage_nested(usage_reporter, outer_usage)
         active_finished = _compose_provider_attempt_finished_nested(
             attempt_finished,
             outer_finished,
         )
+        active_released = _compose_provider_attempt_released_nested(
+            attempt_released,
+            outer_released,
+        )
 
     permit_token = _PROVIDER_ATTEMPT_PERMIT.set(active_permit)
     usage_token = _PROVIDER_USAGE_REPORTER.set(active_usage)
     finished_token = _PROVIDER_ATTEMPT_FINISHED.set(active_finished)
+    released_token = _PROVIDER_ATTEMPT_RELEASED.set(active_released)
     try:
         yield
     finally:
+        _PROVIDER_ATTEMPT_RELEASED.reset(released_token)
         _PROVIDER_ATTEMPT_FINISHED.reset(finished_token)
         _PROVIDER_USAGE_REPORTER.reset(usage_token)
         _PROVIDER_ATTEMPT_PERMIT.reset(permit_token)
