@@ -151,7 +151,7 @@ def test_nested_outer_refusal_unwinds_inner_reservation(
                     "https://provider.invalid",
                     max_attempts=1,
                 )
-    assert inner_ledger == []
+    assert not inner_ledger
 
 
 def test_nested_inner_refusal_never_reaches_outer(

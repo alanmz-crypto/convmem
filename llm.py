@@ -115,7 +115,7 @@ def _compose_provider_permit_nested(
     inner: ProviderAttemptPermit,
     inner_released: ProviderAttemptReleased | None,
     outer: ProviderAttemptPermit | None,
-    outer_released: ProviderAttemptReleased | None,
+    _outer_released: ProviderAttemptReleased | None,
 ) -> ProviderAttemptPermit:
     if outer is None:
         return inner

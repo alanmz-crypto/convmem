@@ -641,7 +641,6 @@ class BootstrapOperationJournal:
             for row in _active_provider_attempt_rows(attempts)
             if row.get("invocation_ordinal") == current_ordinal
         ]
-        active_attempts = _active_provider_attempt_rows(attempts)
         paid_current = sum(
             _provider_attempt_paid_cap_consumed(row) for row in current_attempts
         )
