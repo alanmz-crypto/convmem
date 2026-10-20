@@ -5752,6 +5752,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "scripts/crush-hook-convmem-ritual-autorun.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "scripts/deepseek_audit_substitute.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6843,6 +6848,11 @@
     },
     {
       "path": "tests/test_crush_hook_search_inheritance.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_crush_ritual_autorun_single_flight.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
