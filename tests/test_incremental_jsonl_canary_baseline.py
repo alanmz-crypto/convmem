@@ -54,7 +54,7 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 rollback processed authority replay (2026-10-20):
 # 2ef62294b18de8dc0723b842e79c1625f48b026eb8b3b403e470b10a57680c95 ->
 # c6a0d555dcdd3243f26140437506c791a0d3729f55d9eb2daa37bd49dda22158
-    "incremental_jsonl.py": "c6a0d555dcdd3243f26140437506c791a0d3729f55d9eb2daa37bd49dda22158",
+    "incremental_jsonl.py": "b63fe717951081a33e6a0bf709fb47928b5df88991ca6fba7f4d634a901b5895",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

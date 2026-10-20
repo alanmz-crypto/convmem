@@ -503,12 +503,6 @@ def validate_rollback_processed_semantics(
     units = rollback.get("units") or []
     if embedded is not None:
         if not preimage:
-            expected_hash = str(embedded.get("processed_hash") or "")
-            if (
-                expected_hash
-                and _transaction_prefix_sha256(transaction) == expected_hash
-            ):
-                return
             raise IncrementalJsonlError(
                 "rollback_processed_authority_invalid",
                 "empty processed preimage with prior checkpoint",
