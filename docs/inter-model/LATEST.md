@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-19
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -37,15 +37,15 @@ cross-arc snapshot and the linked arc brief below.
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
   **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
 
-- **Arc Codex / issue #286 — Codex rollout admission merged, default off;
-  Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
-  guarded incremental route instead of re-indexing the whole file on every
-  append, which is the paid "Codex burn". Copilot and Kiro both PASSed exact
-  tip `78b9295`. Production burn is unchanged until Ryan grants Stage 1 (see
-  the [Stage 1 packet](CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md))
-  and later Stage 2. Stage 2 also needs the residual-burn decision, the #308
-  fix and the 4G drop-in reconciliation. The Kiro bootstrap is a separate
-  track. No live config, runtime or watcher action is authorized. See the
+- **Arc Codex / issue #286 — PAUSED after Kiro implementation merged
+  (2026-10-19):** recovery parity PR #396 (`9ef4ecd`), transform compatibility
+  PR #399 (`9be0a4f`), incremental commit-cost PR #404 (`07117ed`), and the
+  opt-in Kiro v2 route with a crash-safe paid-call budget in PR #406
+  (`adcf5b3`) are on `main`. Current live config has no selected Kiro source.
+  Ryan placed further Arc Codex work on hold before live proof or activation.
+  **Resume only after an explicit Ryan decision**, then re-measure current
+  source/runtime/config/backup/budget state and prepare a fresh same-revision
+  Kiro/Copilot packet. Never reuse earlier grants or proposals. See the
   [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
@@ -298,3 +298,5 @@ its existing archive/reference location. Use
 | T4 | The next Recovery Authority execution stage; it is not currently authorized. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
+
+<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — Arc Codex pause and resume gate -->
