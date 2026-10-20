@@ -30,7 +30,7 @@ from tests.incremental_jsonl_helpers import (
 
 
 @pytest.fixture(autouse=True)
-def _deny_network(_monkeypatch: pytest.MonkeyPatch) -> None:
+def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:  # noqa: ARG001
     install_network_denial()
 
 
@@ -161,10 +161,10 @@ def test_4_legitimate_empty_preimage_for_new_source(
     source = write_source(boundary.root, 2)
     coordinator = _coordinator(boundary, source)
     rollback = {
-        "version": 1,
+        "version": 2,
         "summaries": [],
         "units": [],
-        "export_preimage": {"version": 1, "source_lines": []},
+        "export_preimage": {"version": 2, "source_lines": []},
         "processed_preimage": {},
         "source_path": str(source),
         "state_files": {"checkpoint": None, "transaction": None, "rollback": None},
