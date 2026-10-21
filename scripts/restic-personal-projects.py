@@ -128,6 +128,41 @@ def symlink_report() -> dict:
     }
 
 
+def reviewed_socket(path: Path) -> bool:
+    return inside(path, SHARE / "butsaba-index-preview") and \
+        "profiles" in path.parts and "runtime" in path.parts
+
+
+def reviewed_fifo(path: Path) -> bool:
+    return inside(path, SHARE / "ryan-index-preview/crush-tests-v2") and \
+        "evidence" in path.parts and \
+        any(part.startswith("save-snapshot-") for part in path.parts) and \
+        path.name == "pipe"
+
+
+def special_report() -> dict:
+    sockets = 0
+    fifos = 0
+    unreviewed = []
+    for root in SOURCES:
+        for parent, dirs, files in os.walk(root, followlinks=False):
+            for name in dirs + files:
+                path = Path(parent) / name
+                mode = path.lstat().st_mode
+                if stat.S_ISSOCK(mode):
+                    sockets += 1
+                    if not reviewed_socket(path):
+                        unreviewed.append(str(path))
+                elif stat.S_ISFIFO(mode):
+                    fifos += 1
+                    if not reviewed_fifo(path):
+                        unreviewed.append(str(path))
+                elif stat.S_ISBLK(mode) or stat.S_ISCHR(mode):
+                    unreviewed.append(str(path))
+    return {"runtime_sockets_not_restorable": sockets,
+            "fifo_entries": fifos, "unreviewed": unreviewed[:20]}
+
+
 def preflight(*, require_local: bool = False,
               require_external: bool = False) -> dict:
     errors = []
@@ -184,9 +219,13 @@ def preflight(*, require_local: bool = False,
     links = symlink_report() if not errors else None
     if links and links["unreviewed_outside"]:
         errors.append("Symlinks outside manifest need review")
+    specials = special_report() if not errors else None
+    if specials and specials["unreviewed"]:
+        errors.append("Special files need review")
     return {"ok": not errors, "sources": [str(p) for p in SOURCES],
             "reviewed_adjacent": sorted(REVIEWED_ADJACENT),
             "unreviewed_adjacent": unreviewed, "symlinks": links,
+            "special_files": specials,
             "errors": errors}
 
 
@@ -325,6 +364,11 @@ def source_inventory(*, deadline: float | None = None) -> tuple[dict, list[Path]
                                           "mode": stat.S_IMODE(mode)}
                     if sample is None:
                         sample = path
+                elif stat.S_ISSOCK(mode) and reviewed_socket(path):
+                    # Restic cannot archive a live Unix socket endpoint.
+                    continue
+                elif stat.S_ISFIFO(mode) and reviewed_fifo(path):
+                    entries[str(path)] = {"fifo": stat.S_IMODE(mode)}
                 elif not stat.S_ISDIR(mode):
                     raise GateError(f"Unsupported source type: {path}")
         if sample is None:

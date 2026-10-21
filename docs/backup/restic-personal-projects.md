@@ -12,7 +12,11 @@ The source manifest is the thirteen absolute paths in
 `/home/lauer/Projects/SubProjects` and nine under `/home/lauer/.local/share`.
 No exclusions are passed to Restic. Hidden files, Git metadata, `.crush` data,
 SQLite databases, WAL/SHM files, dependencies, and preview artifacts are in
-scope. Restic stores symlinks as links; it does not copy their targets.
+scope. Restic stores symlinks as links; it does not copy their targets. Restic
+archives named-pipe entries and metadata but not their volatile contents. Unix
+sockets represent transient process connections and cannot be backed up; the
+reviewed viewer-runtime sockets are reported but not treated as missing data.
+Any new socket or pipe pattern blocks the next capture for review.
 
 `butsaba-google-backup` and `butsaba-drive-tools` appeared after the request.
 They were reviewed on 2026-10-21 and belong to the separately managed Google

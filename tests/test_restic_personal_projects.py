@@ -2,7 +2,10 @@
 
 import importlib.util
 import json
+import os
 from pathlib import Path
+import socket
+import tempfile
 from unittest import mock
 
 import pytest
@@ -81,6 +84,35 @@ def test_copy_uses_explicit_source_repository_flags_after_subcommand():
         "--from-password-file", str(profile.PASSWORD),
     ]
     assert command[-1] == "f" * 64
+
+
+def test_reviewed_socket_is_transient_and_fifo_entry_is_inventoried():
+    with tempfile.TemporaryDirectory(prefix="rp-", dir="/tmp") as scratch:
+        base = Path(scratch)
+        viewer = base / "butsaba-index-preview"
+        runtime = viewer / "profiles/office/runtime"
+        runtime.mkdir(parents=True)
+        (viewer / "sample.txt").write_text("data")
+        endpoint = runtime / "bus"
+        bound = socket.socket(socket.AF_UNIX)
+        bound.bind(str(endpoint))
+        fixture = base / "ryan-index-preview/crush-tests-v2/evidence/save-snapshot-test"
+        fixture.mkdir(parents=True)
+        (fixture / "sample.txt").write_text("data")
+        os.mkfifo(fixture / "pipe")
+        try:
+            with mock.patch.object(profile, "SHARE", base), \
+                    mock.patch.object(profile, "SOURCES", (viewer, fixture.parents[2])):
+                specials = profile.special_report()
+                entries, samples = profile.source_inventory()
+        finally:
+            bound.close()
+        assert specials["unreviewed"] == []
+        assert specials["runtime_sockets_not_restorable"] == 1
+        assert specials["fifo_entries"] == 1
+        assert str(endpoint) not in entries
+        assert entries[str(fixture / "pipe")]["fifo"] >= 0
+        assert len(samples) == 2
 
 
 # ref: ../scripts/restic-personal-projects.py — source, lineage, and result boundaries
