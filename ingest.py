@@ -202,9 +202,11 @@ def processed_lock_path(processed_path: str) -> Path:
 @contextmanager
 def _processed_lock(processed_path: str):
     """Exclusive advisory lock on the processed-state sidecar."""
+    from purge_locks import _open_private_lock
+
     lock = processed_lock_path(processed_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    with _open_private_lock(lock) as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield
@@ -425,6 +427,36 @@ def commit_processed_index_entry(
 
     mutate_processed(processed_path, mutator)
     return result["committed"]
+
+
+def commit_processed_index_entry_fenced(
+    cfg: dict,
+    processed_path: str,
+    *,
+    file_hash: str,
+    path_key: str,
+    chunks: int,
+    units: int,
+    incremental_jsonl_lineage: str | None = None,
+) -> bool:
+    """Publish one processed entry under the source publication fence.
+
+    The lower-level helper is used by the incremental coordinator while it
+    already holds ``source_flock``. Legacy and manual/index-file callers use
+    this wrapper so their final processed publication cannot race a roll-forward
+    publication for the same source.
+    """
+    from purge_locks import source_flock
+
+    with source_flock(cfg, path_key):
+        return commit_processed_index_entry(
+            processed_path,
+            file_hash=file_hash,
+            path_key=path_key,
+            chunks=chunks,
+            units=units,
+            incremental_jsonl_lineage=incremental_jsonl_lineage,
+        )
 
 
 def exclude_processed_path(
@@ -1512,7 +1544,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             verbose=verbose,
         ):
             return "skipped", 0, n_units, 0, 0
-        committed = commit_processed_index_entry(
+        committed = commit_processed_index_entry_fenced(
+            cfg,
             idx["processed_log"],
             file_hash=file_hash,
             path_key=path_key,
@@ -1556,7 +1589,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             verbose=verbose,
         ):
             return "skipped", 0, n_units, 0, 0
-        committed = commit_processed_index_entry(
+        committed = commit_processed_index_entry_fenced(
+            cfg,
             idx["processed_log"],
             file_hash=file_hash,
             path_key=path_key,
@@ -1614,7 +1648,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             result.semantic_queued,
         )
 
-    committed = commit_processed_index_entry(
+    committed = commit_processed_index_entry_fenced(
+        cfg,
         idx["processed_log"],
         file_hash=file_hash,
         path_key=path_key,
@@ -1805,3 +1840,7 @@ def _index_impl(
     _compact_units_export_after_index(units_export, stats)
 
     return stats
+
+
+# ref: ./incremental_jsonl.py — incremental publication uses the same source fence
+# ref: ./purge_locks.py — source publication lock implementation
