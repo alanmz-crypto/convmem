@@ -55,6 +55,9 @@ def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(socket, "socket", _DeniedSocket)
 
+# Kiro C5 ruling: set to "ACCEPT-SUPERSEDE" or "REFUSE" before merging behavior change.
+C5_SECOND_RUN_RULING: str | None = None
+
 
 def _coordinator(boundary, source, *, processed=None, fault=None):
     return IncrementalJsonlCoordinator.from_isolated_boundary(
@@ -280,12 +283,8 @@ def test_3_real_recovery_path_refuses_tampered_rollback(
     _publish_tampered_rollback(coordinator, mutator)
     before = _byte_artifacts(boundary, coordinator)
     _fail_forward_commit_once(monkeypatch)
-    try:
-        result = coordinator.run()
-    except IncrementalJsonlError as exc:
-        assert match in str(exc.detail)
-    else:
-        assert result.outcome == "rolled_back"
+    with pytest.raises(IncrementalJsonlError, match=match):
+        coordinator.run()
     after = _byte_artifacts(boundary, coordinator)
     _assert_artifacts_unchanged(before, after)
 
@@ -342,6 +341,9 @@ def test_6_concurrent_foreign_processed_writer_survives(
     original_mutate = ingest.mutate_processed
     restore_pause = threading.Event()
     restore_release = threading.Event()
+    foreign_attempting = threading.Event()
+    foreign_first_mutated = threading.Event()
+    thread_errors: list[BaseException] = []
 
     def _mutate_with_restore_pause(path, mutator):
         if threading.current_thread().name.startswith("restore"):
@@ -356,15 +358,21 @@ def test_6_concurrent_foreign_processed_writer_survives(
     monkeypatch.setattr(ingest, "mutate_processed", _mutate_with_restore_pause)
 
     def _foreign_iud() -> None:
-        mutate_processed(
-            processed_path,
-            lambda data: data.update({foreign_key: {"path": "/other", "chunks": 1}}),
-        )
-        mutate_processed(
-            processed_path,
-            lambda data: data.update({foreign_key: {"path": "/other", "chunks": 2}}),
-        )
-        mutate_processed(processed_path, lambda data: data.pop(foreign_key, None))
+        try:
+            foreign_attempting.set()
+
+            def first_mut(data: dict) -> None:
+                data.update({foreign_key: {"path": "/other", "chunks": 1}})
+                foreign_first_mutated.set()
+
+            mutate_processed(processed_path, first_mut)
+            mutate_processed(
+                processed_path,
+                lambda data: data.update({foreign_key: {"path": "/other", "chunks": 2}}),
+            )
+            mutate_processed(processed_path, lambda data: data.pop(foreign_key, None))
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            thread_errors.append(exc)
 
     restore_thread = threading.Thread(
         target=lambda: coordinator._restore_processed(
@@ -376,9 +384,14 @@ def test_6_concurrent_foreign_processed_writer_survives(
     restore_pause.wait(timeout=5)
     foreign_thread = threading.Thread(target=_foreign_iud, name="foreign")
     foreign_thread.start()
+    foreign_attempting.wait(timeout=5)
+    assert foreign_first_mutated.is_set() is False
     restore_release.set()
     restore_thread.join(timeout=10)
     foreign_thread.join(timeout=10)
+    assert not restore_thread.is_alive()
+    assert not foreign_thread.is_alive()
+    assert thread_errors == []
     after_unrelated = {
         k: v
         for k, v in load_processed(processed_path).items()
@@ -389,16 +402,21 @@ def test_6_concurrent_foreign_processed_writer_survives(
 
     holder_ready = threading.Event()
     holder_release = threading.Event()
+    thread_errors.clear()
 
     def _hold_and_mutate() -> None:
-        def block(data: dict) -> None:
-            holder_ready.set()
-            data.update({foreign_key: {"path": "/other", "chunks": 1}})
-            data.update({foreign_key: {"path": "/other", "chunks": 2}})
-            data.pop(foreign_key, None)
-            holder_release.wait(timeout=5)
+        try:
 
-        original_mutate(processed_path, block)
+            def block(data: dict) -> None:
+                holder_ready.set()
+                data.update({foreign_key: {"path": "/other", "chunks": 1}})
+                data.update({foreign_key: {"path": "/other", "chunks": 2}})
+                data.pop(foreign_key, None)
+                holder_release.wait(timeout=5)
+
+            original_mutate(processed_path, block)
+        except BaseException as exc:  # pragma: no cover - surfaced below
+            thread_errors.append(exc)
 
     hold_thread = threading.Thread(target=_hold_and_mutate, name="holder")
     hold_thread.start()
@@ -415,6 +433,9 @@ def test_6_concurrent_foreign_processed_writer_survives(
     holder_release.set()
     hold_thread.join(timeout=10)
     restore_thread2.join(timeout=10)
+    assert not hold_thread.is_alive()
+    assert not restore_thread2.is_alive()
+    assert thread_errors == []
     after_unrelated2 = {
         k: v
         for k, v in load_processed(processed_path).items()
@@ -686,6 +707,32 @@ def test_8_corrupt_prepared_artifact_preserves_authority(
     assert result.outcome == "rolled_back"
     assert prepared_path.read_text(encoding="utf-8") == expected_prepared
 
+def test_non_conflict_processed_restore_propagates_after_partial_surface(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _boundary, _source, coordinator = _pending_apply_coordinator(tmp_path, monkeypatch)
+    rollback_before = coordinator.paths["rollback"].read_bytes()
+    tx_before = coordinator.paths["transaction"].read_bytes()
+
+    def _raise_non_conflict(_preimage: dict) -> None:
+        raise IncrementalJsonlError(
+            "recovery_unproven",
+            "synthetic non-conflict after partial surface restore",
+        )
+
+    coordinator._restore_processed = _raise_non_conflict  # type: ignore[method-assign]
+    _fail_forward_commit_once(monkeypatch)
+    with pytest.raises(
+        IncrementalJsonlError,
+        match="synthetic non-conflict after partial surface restore",
+    ) as excinfo:
+        coordinator.run()
+    assert excinfo.value.code == "recovery_unproven"
+    assert coordinator.paths["rollback"].read_bytes() == rollback_before
+    assert coordinator.paths["transaction"].read_bytes() == tx_before
+    assert coordinator.counters.total == 0
+
+
 def test_c5_recovery_partial_after_late_processed_conflict(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -710,9 +757,21 @@ def test_c5_recovery_partial_after_late_processed_conflict(
     assert coordinator.paths["transaction"].read_bytes() == tx_before
     assert late_key in json.loads(processed_path.read_text(encoding="utf-8"))
     replay = _coordinator(boundary, _source)
-    assert replay.counters.total == 0
-    assert replay.paths["rollback"].read_bytes() == rollback_before
-    assert replay.paths["transaction"].read_bytes() == tx_before
+    second = replay.run()
+    assert second.counters.total == 0
+    if C5_SECOND_RUN_RULING == "ACCEPT-SUPERSEDE":
+        assert second.outcome == "committed"
+        assert not replay.paths["rollback"].exists()
+        assert not replay.paths["transaction"].exists()
+        processed_after = json.loads(processed_path.read_text(encoding="utf-8"))
+        assert late_key not in processed_after
+    elif C5_SECOND_RUN_RULING == "REFUSE":
+        assert second.outcome == "recovery_partial"
+        assert replay.paths["rollback"].read_bytes() == rollback_before
+        assert replay.paths["transaction"].read_bytes() == tx_before
+        assert late_key in json.loads(processed_path.read_text(encoding="utf-8"))
+    else:
+        pytest.skip("awaiting Kiro C5 ruling (ACCEPT-SUPERSEDE vs REFUSE)")
 
 
 

@@ -482,7 +482,6 @@ def validate_rollback_processed_semantics(
     *,
     path_key: str,
     bootstrap_existing: bool = False,
-    transaction: dict | None = None,
 ) -> None:
     preimage = rollback.get("processed_preimage")
     if preimage is None:
@@ -1884,7 +1883,6 @@ class IncrementalJsonlCoordinator:
             rollback,
             path_key=self.path_key,
             bootstrap_existing=self.bootstrap_existing,
-            transaction=tx,
         )
         preimage = rollback.get("processed_preimage") or {}
         if not isinstance(preimage, dict):
