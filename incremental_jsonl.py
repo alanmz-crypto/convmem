@@ -1454,7 +1454,7 @@ class IncrementalJsonlCoordinator:
             return "transform_chunk_cap"
         return None
 
-    def _roll_forward_refusal(
+    def _roll_forward_refusal(  # pylint: disable=too-many-return-statements
         self,
         snapshot: dict,
         *,
@@ -1462,6 +1462,14 @@ class IncrementalJsonlCoordinator:
         phase: str,
         rollback: dict | None,
     ) -> str | None:
+        if rollback is not None:
+            validate_rollback_processed_semantics(
+                rollback,
+                path_key=self.path_key,
+                bootstrap_existing=self.bootstrap_existing,
+            )
+            if self._same_source_unowned_processed_keys(rollback, transaction):
+                return "recovery_partial"
         if not self.production_boundary_live:
             return None
         if self.codex_admitted_live:
@@ -1867,6 +1875,26 @@ class IncrementalJsonlCoordinator:
         prefix = _transaction_prefix_sha256(transaction)
         return {prefix} if prefix else set()
 
+    def _same_source_unowned_processed_keys(
+        self, rollback: dict, transaction: dict | None
+    ) -> set[str]:
+        """Keys for this source in processed.json absent from rollback preimage and txn ownership."""
+        preimage = rollback.get("processed_preimage") or {}
+        if not isinstance(preimage, dict):
+            return set()
+        preimage_keys = set(preimage.keys())
+        processed_path = str(self.cfg["index"]["processed_log"])
+        current = load_processed(processed_path)
+        current_slice = _source_processed_entries(current, self.path_key)
+        owned_keys = self._transaction_owned_processed_keys(transaction)
+        unowned: set[str] = set()
+        for key in current_slice:
+            if key in preimage_keys:
+                continue
+            if key not in owned_keys:
+                unowned.add(key)
+        return unowned
+
     def _preflight_rollback_restore(
         self,
         rollback: dict,
@@ -1897,19 +1925,17 @@ class IncrementalJsonlCoordinator:
                     "recovery_unproven", "processed foreign key collision"
                 )
         current_slice = _source_processed_entries(current, self.path_key)
-        owned_keys = self._transaction_owned_processed_keys(tx)
         for key, entry in current_slice.items():
             if entry.get("excluded"):
                 raise IncrementalJsonlError(
                     "recovery_unproven", "processed exclusion blocks restore"
                 )
-            if key in preimage_keys:
-                continue
-            if key not in owned_keys:
-                raise IncrementalJsonlError(
-                    "recovery_unproven",
-                    "later same-source processed state not transaction-owned",
-                )
+        unowned = self._same_source_unowned_processed_keys(rollback, tx)
+        if unowned:
+            raise IncrementalJsonlError(
+                "recovery_unproven",
+                "later same-source processed state not transaction-owned",
+            )
         written_summaries, written_units = self._transaction_written_row_ids(tx)
         before_summary_ids = {row["id"] for row in rollback.get("summaries") or []}
         before_unit_ids = {row["id"] for row in rollback.get("units") or []}
@@ -3047,6 +3073,10 @@ class IncrementalJsonlCoordinator:
                     elapsed_seconds=time.monotonic() - self._run_started,
                 )
                 return result
+            if roll_refusal == "recovery_partial":
+                return self._refusal(
+                    "recovery_partial", mode="rollback", snapshot=snapshot
+                )
             assert rollback_sha256 is not None
             return self._replay_rollback_authority(
                 rollback,

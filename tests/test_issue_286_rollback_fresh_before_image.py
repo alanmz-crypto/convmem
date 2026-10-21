@@ -1,6 +1,6 @@
 """Hermetic regression tests for issue #286 rollback processed authority."""
 
-# pylint: disable=duplicate-code,protected-access
+# pylint: disable=duplicate-code,protected-access,too-many-lines
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def _deny_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(socket, "socket", _DeniedSocket)
 
 # Kiro C5 ruling: set to "ACCEPT-SUPERSEDE" or "REFUSE" before merging behavior change.
-C5_SECOND_RUN_RULING: str | None = None
+C5_SECOND_RUN_RULING: str | None = "REFUSE"
 
 
 def _coordinator(boundary, source, *, processed=None, fault=None):
@@ -371,7 +371,7 @@ def test_6_concurrent_foreign_processed_writer_survives(
                 lambda data: data.update({foreign_key: {"path": "/other", "chunks": 2}}),
             )
             mutate_processed(processed_path, lambda data: data.pop(foreign_key, None))
-        except BaseException as exc:  # pragma: no cover - surfaced below
+        except Exception as exc:  # pragma: no cover - surfaced below  # pylint: disable=broad-exception-caught
             thread_errors.append(exc)
 
     restore_thread = threading.Thread(
@@ -385,13 +385,13 @@ def test_6_concurrent_foreign_processed_writer_survives(
     foreign_thread = threading.Thread(target=_foreign_iud, name="foreign")
     foreign_thread.start()
     foreign_attempting.wait(timeout=5)
-    assert foreign_first_mutated.is_set() is False
+    assert not foreign_first_mutated.wait(timeout=0.3)
     restore_release.set()
     restore_thread.join(timeout=10)
     foreign_thread.join(timeout=10)
     assert not restore_thread.is_alive()
     assert not foreign_thread.is_alive()
-    assert thread_errors == []
+    assert not thread_errors
     after_unrelated = {
         k: v
         for k, v in load_processed(processed_path).items()
@@ -415,7 +415,7 @@ def test_6_concurrent_foreign_processed_writer_survives(
                 holder_release.wait(timeout=5)
 
             original_mutate(processed_path, block)
-        except BaseException as exc:  # pragma: no cover - surfaced below
+        except Exception as exc:  # pragma: no cover - surfaced below  # pylint: disable=broad-exception-caught
             thread_errors.append(exc)
 
     hold_thread = threading.Thread(target=_hold_and_mutate, name="holder")
@@ -435,7 +435,7 @@ def test_6_concurrent_foreign_processed_writer_survives(
     restore_thread2.join(timeout=10)
     assert not hold_thread.is_alive()
     assert not restore_thread2.is_alive()
-    assert thread_errors == []
+    assert not thread_errors
     after_unrelated2 = {
         k: v
         for k, v in load_processed(processed_path).items()
@@ -773,8 +773,92 @@ def test_c5_recovery_partial_after_late_processed_conflict(
     else:
         pytest.skip("awaiting Kiro C5 ruling (ACCEPT-SUPERSEDE vs REFUSE)")
 
+    third = _coordinator(boundary, _source)
+    third_result = third.run()
+    assert third_result.outcome == "recovery_partial"
+    assert third_result.counters.total == 0
+    assert third.paths["rollback"].read_bytes() == rollback_before
+    assert third.paths["transaction"].read_bytes() == tx_before
+    assert late_key in json.loads(processed_path.read_text(encoding="utf-8"))
 
 
+
+
+
+
+
+def test_refuse_tampered_rollback_semantics_with_late_same_source_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, _source, coordinator = _pending_apply_coordinator(tmp_path, monkeypatch)
+    processed_path = _ensure_processed_file(boundary)
+    late_key = "late-" + hashlib.sha256(b"late-tamper").hexdigest()
+    processed = json.loads(processed_path.read_text(encoding="utf-8"))
+    processed[late_key] = {"path": str(_source), "chunks": 2}
+    processed_path.write_text(json.dumps(processed), encoding="utf-8")
+
+    def _mutate(rb: dict) -> None:
+        rb["processed_preimage"] = {}
+        rb["state_files"] = {
+            "checkpoint": None,
+            "transaction": None,
+            "rollback": None,
+        }
+
+    _publish_tampered_rollback(coordinator, _mutate)
+    before = _byte_artifacts(boundary, coordinator)
+    _fail_forward_commit_once(monkeypatch)
+    with pytest.raises(
+        IncrementalJsonlError, match="empty processed preimage with prior rows"
+    ):
+        coordinator.run()
+    assert coordinator.counters.total == 0
+    after = _byte_artifacts(boundary, coordinator)
+    _assert_artifacts_unchanged(before, after)
+    assert late_key in json.loads(processed_path.read_text(encoding="utf-8"))
+
+
+def test_normal_commit_supersedes_stale_same_source_processed_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    coordinator = _coordinator(boundary, source)
+    coordinator.run()
+    processed_path = _ensure_processed_file(boundary)
+    stale_key = "stale-" + hashlib.sha256(b"stale").hexdigest()
+    processed = json.loads(processed_path.read_text(encoding="utf-8"))
+    processed[stale_key] = {"path": str(source), "chunks": 1}
+    processed_path.write_text(json.dumps(processed), encoding="utf-8")
+    source.write_bytes(source.read_bytes() + kiro_record(2))
+    replay = _coordinator(boundary, source)
+    result = replay.run()
+    assert result.outcome == "committed"
+    after = json.loads(processed_path.read_text(encoding="utf-8"))
+    assert stale_key not in after
+
+
+def test_roll_forward_commits_with_transaction_owned_processed_keys_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    boundary, source, coordinator = _pending_apply_coordinator(tmp_path, monkeypatch)
+    tx = json.loads(coordinator.paths["transaction"].read_text(encoding="utf-8"))
+    owned_key = tx.get("prefix_sha256")
+    assert owned_key
+    processed_path = _ensure_processed_file(boundary)
+    processed = json.loads(processed_path.read_text(encoding="utf-8"))
+    processed[owned_key] = {"path": str(source), "chunks": 1}
+    processed_path.write_text(json.dumps(processed), encoding="utf-8")
+    _fail_forward_commit_once(monkeypatch)
+    first = coordinator.run()
+    assert first.outcome == "rolled_back"
+    replay = _coordinator(boundary, source)
+    second = replay.run()
+    assert second.outcome == "committed"
+    assert second.counters.total == 0
 
 
 def test_refuse_empty_processed_preimage_with_prior_rows_c2(
