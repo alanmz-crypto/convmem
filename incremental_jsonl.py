@@ -2853,12 +2853,17 @@ class IncrementalJsonlCoordinator:
                             exact, semantic = self._reconcile_dedupe(transaction_id, events)
                     finally:
                         c1_hold_seconds = time.monotonic() - c1_started
-            with phase_span("processed"):
-                committed = self._publish_processed(
-                    snapshot["prefix_sha256"], chunks, units
-                )
-            with phase_span("cleanup"):
-                self._cleanup(snapshot["snapshot_dir"])
+                # Keep the source publication fence through the final processed
+                # projection and journal cleanup. Legacy/manual/index-file
+                # writers use commit_processed_index_entry_fenced, so no writer
+                # can publish a same-source row between this checkpoint and the
+                # roll-forward's processed publication.
+                with phase_span("processed"):
+                    committed = self._publish_processed(
+                        snapshot["prefix_sha256"], chunks, units
+                    )
+                with phase_span("cleanup"):
+                    self._cleanup(snapshot["snapshot_dir"])
             result = IncrementalRunResult(
                 outcome="committed" if committed else "excluded_after_checkpoint",
                 mode=mode,
@@ -3761,3 +3766,5 @@ def _raise_incremental_retry_refusal(
 
 # ref: ./incremental_jsonl_cohort_budget.py — durable paid cohort cap before dispatch
 # ref: ./adapters/kiro_session_jsonl.py — effective sidecar identity guards checkpoint reuse
+# ref: ./ingest.py — legacy and incremental processed publication helpers
+# ref: ./purge_locks.py — shared source publication fence

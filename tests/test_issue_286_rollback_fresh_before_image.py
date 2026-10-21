@@ -841,6 +841,73 @@ def test_normal_commit_supersedes_stale_same_source_processed_row(
     assert stale_key not in after
 
 
+def test_roll_forward_source_fence_covers_final_processed_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A later same-source writer cannot publish during roll-forward finalization."""
+    boundary, env = isolated_env(tmp_path)
+    apply_env(monkeypatch, env)
+    install_fakes(monkeypatch)
+    enable_incremental(boundary)
+    source = write_source(boundary.root, 2)
+    coordinator = _coordinator(boundary, source)
+    coordinator.run()
+    source.write_bytes(source.read_bytes() + kiro_record(2))
+
+    import ingest
+    import purge_locks
+
+    real_commit = ingest.commit_processed_index_entry
+    writer_started = threading.Event()
+    writer_acquired = threading.Event()
+    writer_publish = threading.Event()
+    writer_errors: list[BaseException] = []
+    writer_threads: list[threading.Thread] = []
+    late_key = "late-writer-" + hashlib.sha256(b"late-writer").hexdigest()
+    path_key = str(source.expanduser().resolve())
+    processed_path = str(coordinator.cfg["index"]["processed_log"])
+
+    def late_writer() -> None:
+        try:
+            writer_started.set()
+            with purge_locks.source_flock(coordinator.cfg, path_key):
+                writer_acquired.set()
+                if not writer_publish.wait(timeout=5):
+                    raise AssertionError("late writer was not released")
+                assert real_commit(
+                    processed_path,
+                    file_hash=late_key,
+                    path_key=path_key,
+                    chunks=99,
+                    units=99,
+                )
+        except BaseException as exc:  # noqa: BLE001 - report thread failures below
+            writer_errors.append(exc)
+
+    def intercepted_commit(*args, **kwargs):
+        thread = threading.Thread(target=late_writer, name="late-writer")
+        writer_threads.append(thread)
+        thread.start()
+        assert writer_started.wait(timeout=5)
+        # The source lock must still be held while the recovery writer publishes
+        # processed.json. On the old path this event becomes set immediately.
+        assert not writer_acquired.wait(timeout=0.5)
+        return real_commit(*args, **kwargs)
+
+    monkeypatch.setattr(ingest, "commit_processed_index_entry", intercepted_commit)
+    try:
+        result = coordinator.run()
+    finally:
+        writer_publish.set()
+        for thread in writer_threads:
+            thread.join(timeout=5)
+
+    assert not any(thread.is_alive() for thread in writer_threads)
+    assert writer_errors == []
+    assert result.outcome == "committed"
+    assert late_key in load_processed(processed_path)
+
+
 def test_roll_forward_commits_with_transaction_owned_processed_keys_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1058,3 +1125,7 @@ def test_transaction_owned_processed_restore_after_partial_apply_crash(
     assert result.outcome == "rolled_back"
     restored = json.loads(processed_path.read_text(encoding="utf-8"))
     assert owned_key not in restored
+
+
+# ref: ../incremental_jsonl.py — forward roll-forward publication fence under test
+# ref: ../ingest.py — legacy and incremental processed publication helpers
