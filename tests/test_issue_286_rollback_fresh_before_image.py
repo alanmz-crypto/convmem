@@ -881,9 +881,11 @@ def test_roll_forward_source_fence_covers_final_processed_publication(
                     chunks=99,
                     units=99,
                 )
+        # pylint: disable=broad-exception-caught
         except BaseException as exc:  # noqa: BLE001 - report thread failures below
             writer_errors.append(exc)
 
+    # pylint: enable=broad-exception-caught
     def intercepted_commit(*args, **kwargs):
         thread = threading.Thread(target=late_writer, name="late-writer")
         writer_threads.append(thread)
@@ -903,7 +905,7 @@ def test_roll_forward_source_fence_covers_final_processed_publication(
             thread.join(timeout=5)
 
     assert not any(thread.is_alive() for thread in writer_threads)
-    assert writer_errors == []
+    assert not writer_errors
     assert result.outcome == "committed"
     assert late_key in load_processed(processed_path)
 

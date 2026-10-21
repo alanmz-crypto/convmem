@@ -9023,7 +9023,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "2677344f034fa412899a13aad36bd71275ae7885da280c59e4615daeccb1edce",
+      "sha256": "5d1d7dfac184c617c3d8de09cab3226fa311455c321adbf7c33c10526de9c92e",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
