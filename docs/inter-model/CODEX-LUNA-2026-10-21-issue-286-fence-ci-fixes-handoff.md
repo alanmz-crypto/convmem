@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
+| **State** | `READY_FOR_PR` — Luna landed fixes at `1916a15`; Claude re-verified (see end of file) |
 | **Branch** | `fix/2026-10-21-issue-286-forward-publication-cas` (commit on top; do not rebase or force-push) |
 | **Tip SHA** | `e6ce3c46aaa250d69129f519eba97bc2be874265` |
 | **Push status** | branch pushed; this handoff is on `docs/2026-10-21-issue-286-fence-review-luna-fixes` |
@@ -75,5 +75,12 @@ The 26-file focused matrix ran on three trees:
 - **Not run:** the full suite through the Safe Harbor launcher.
 
 **Doc drift (info):** STATUS Update Log (2026-09-10) records the design choice to release the source lock before the processed publication. This fix reverses it on purpose; the arc brief should say so when it is next updated.
+
+## Claude re-verification of `1916a15` (2026-10-21): PASS
+
+- Diff `e6ce3c4..1916a15` touches only the new test (2 lint lines), the shadow and R2b inventories, and the `ingest.py` manifest hash. No production code changed; `origin/main` is an ancestor; `merge-tree` is clean.
+- Clean worktree (0 untracked files), 11 guard/test files: **125 passed, 0 skipped**. The skip in Luna's run did not occur in a clean tree.
+- Whole-repo pylint regression gate against `a5405ad`: **PASS** (no new or increased findings).
+- The optional recovery-path and special-branch tests were not added. They are proven by probes only; that is not a merge blocker.
 
 <!-- ref: ./CODEX-2026-10-21-issue-286-claude-review-handoff.md — review request this answers (on docs/2026-10-21-issue-286-claude-review) -->
