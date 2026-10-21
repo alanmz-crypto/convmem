@@ -71,7 +71,8 @@ The 26-file focused matrix ran on three trees:
 - **New regression:** 25/25 passes under load. On `ec7b8a5` it fails at the intended assertion.
 - **Probes:** 6/6 pass on the new tip and fail on the old tip. They cover recovery replay, a cross-process writer, no blocking of other sources, the C1 ordering guard, and the generic branch holding the lock.
 - **Static checks:** canary hashes recomputed and matching; undefined-name pylint clean; `git diff --check` clean; `merge-tree` against main clean.
-- **Not run:** the full suite through the Safe Harbor launcher. Changed-line coverage was still running at handoff.
+- **Changed-line coverage (26-file matrix):** every changed line runs except `ingest.py:1547` (inter-model publication) and `ingest.py:1592` (repository-knowledge publication). A probe drove both through the real `_index_one_file`, with only the format-specific indexer stubbed; the stub takes and releases the source lock the way the real helpers do. Both publish with `source_lock_depth() == 1` and return `processed`, with no deadlock. Optional test: cover these two branches in the suite as well.
+- **Not run:** the full suite through the Safe Harbor launcher.
 
 **Doc drift (info):** STATUS Update Log (2026-09-10) records the design choice to release the source lock before the processed publication. This fix reverses it on purpose; the arc brief should say so when it is next updated.
 
