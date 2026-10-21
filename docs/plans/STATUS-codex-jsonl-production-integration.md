@@ -243,6 +243,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | R1–R4 sequence-completeness corrective after Claude FAIL at preserved `a47f32b`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
+| 2026-10-21 | Claude | Independent review of #286 forward publication fence at `e6ce3c4`: PASS-WITH-CHANGES (fence logic correct; pylint, shadow/R2b inventories and repository manifest would fail CI); mechanical fixes handed to Codex Luna max via `CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md`. Fence intentionally reverses the 2026-09-10 note that released the source lock before processed publication |
 
 | 2026-10-05 | Codex | Opened PR #365; corrected the Pylint regression without changing the safety contract, obtained Copilot/Kiro PASS at 05197a7, and kept the watcher disabled while remaining CI waits for runners |
 | 2026-10-05 | Codex | Resolved the full-suite reload-order failure, brought PR #365 current with main, and obtained Copilot/Kiro exact-tip PASS plus six green checks at b17f47c; Ryan's merge and live grants remain separate |
