@@ -71,7 +71,7 @@ Key invariants:
 | Hermetic isolation | Tokenized, fake-provider test boundary; it cannot be a live switch. |
 | Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
-| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
+| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. The later rollback/forward-publication correction is pushed at `e6ce3c4` on `fix/2026-10-21-issue-286-forward-publication-cas`; Codex exact-tip audit PASSed, awaiting Kiro/Ryan PR disposition. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
 | Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
@@ -82,6 +82,7 @@ Key invariants:
 |---|---|---|
 | Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
+| Roll-forward publication fence | Implemented on `fix/2026-10-21-issue-286-forward-publication-cas` at `e6ce3c4`; Codex exact-tip independent audit PASSed with 116 focused tests | Kiro implementation review, then Ryan PR/merge decision |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
@@ -90,6 +91,12 @@ Key invariants:
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
+
+The issue-286 rollback/forward-publication correction is implemented and
+independently PASSed at exact tip `e6ce3c4`. The next model should preserve the
+source-fence invariant, route the implementation to Kiro for review, and leave
+PR creation, merge, and any production grant to Ryan. No live configuration,
+watcher restart, provider call, or activation is authorized by this milestone.
 
 The Kiro bootstrap remains stopped before grant materialization or paid calls.
 Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
@@ -146,6 +153,14 @@ Codex rollouts (separate track):
    recovery parity fix. Its design is on
    `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
    separate prerequisite.
+
+Issue #286 rollback correction handoff:
+
+- Kiro reviews `fix/2026-10-21-issue-286-forward-publication-cas` at `e6ce3c4`
+  against the exact-tip PASS report in
+  `docs/inter-model/CODEX-2026-10-21-issue-286-forward-publication-cas-audit.md`.
+- Ryan decides PR creation and merge. Production activation remains a separate
+  later grant.
 
 ## 7. Hard Stops
 
@@ -282,6 +297,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
+| 2026-10-21 | Codex | Implemented the issue-286 forward processed-publication source fence at `e6ce3c4`; the exact-tip independent audit PASSed with 116 focused tests, and Kiro/Ryan review is next. |
 
 ## TL;DR
 
@@ -302,3 +318,5 @@ Keep this document a current-state snapshot, not a session diary.
 - Codex track: rollout admission merged via PR #388, default off. The burn
   isn't reduced until Stage 1 and Stage 2 run under Ryan's grants. No live
   bootstrap, config change, or watcher promotion is authorized.
+
+<!-- ref: ../inter-model/CODEX-2026-10-21-issue-286-forward-publication-cas-audit.md — exact-tip safety gate and next lane -->
