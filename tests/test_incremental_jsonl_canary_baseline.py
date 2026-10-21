@@ -30,7 +30,11 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 bootstrap safety and Codex D8 lineage; refreshed
     # again for issue #268 D1 live-diagnosis phase marks on the merged branch.
     # Refreshed for issue #308 inter-model provenance rejection sidecar (2026-10-12).
-    "ingest.py": "6850a28ceb793d3820fe3df9f455d6b7dd08f5871072852cca5e68cc93b4ef1b",
+    # Refreshed for issue #286 rollback processed sidecar private lock (2026-10-20):
+# 6850a28ceb793d3820fe3df9f455d6b7dd08f5871072852cca5e68cc93b4ef1b ->
+# 2677344f034fa412899a13aad36bd71275ae7885da280c59e4615daeccb1edce
+# Refreshed for issue #286 forward processed-publication source fence (2026-10-21).
+    "ingest.py": "5d1d7dfac184c617c3d8de09cab3226fa311455c321adbf7c33c10526de9c92e",
     # Baseline refreshed for failed-bootstrap supersession/recovery authority
     # and lifetime attempt accounting; the canary remains unreachable from the
     # CLI and watcher.
@@ -46,9 +50,16 @@ BASELINE_HASHES = {
     # Refreshed for issue #286 commit digest reuse (slice 1).
     # Refreshed for issue #286 Kiro incremental v2 routing and policy guards.
     # Refreshed for issue #286 corrective 2: fail-closed paid cohort accounting.
-    # Refreshed for issue #286 corrective 4: checkpoint sidecar identity guard.
-    # Refreshed for issue #286 scoped proof shadow observer wiring.
-    "incremental_jsonl.py": "2ef62294b18de8dc0723b842e79c1625f48b026eb8b3b403e470b10a57680c95",
+# Refreshed for issue #286 corrective 4: checkpoint sidecar identity guard.
+# Refreshed for issue #286 scoped proof shadow observer wiring.
+# Refreshed for issue #286 rollback processed authority replay (2026-10-20):
+# Refreshed for issue #286 rollback corrective 3 (pylint W0613 transaction param drop):
+# Refreshed for issue #286 forward processed-publication source fence (2026-10-21).
+# 2ef62294b18de8dc0723b842e79c1625f48b026eb8b3b403e470b10a57680c95 ->
+# c6a0d555dcdd3243f26140437506c791a0d3729f55d9eb2daa37bd49dda22158 ->
+# b63fe717951081a33e6a0bf709fb47928b5df88991ca6fba7f4d634a901b5895 ->
+# 854d5882d297dcbb4c37c35bca7abccdc37fecf4b5c70ff271bd8a4139013409
+    "incremental_jsonl.py": "82eaa610f52887ba15acfa982e512323f52d4b12d4747b39aee6b315e3c6ec6f",
     "incremental_jsonl_isolation.py": "818325221d46b1501795895b82d2465151b12ab76f0f11f21f42d8438c0a6df1",
 }
 

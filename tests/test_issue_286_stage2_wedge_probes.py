@@ -112,18 +112,16 @@ def _tamper_export_line(export_path: Path, source: Path) -> None:
         handle.write(line)
 
 
-def test_s1_real_rollback_path_reports_tamper(
-    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_s1_real_rollback_path_reports_tamper(tmp_path, monkeypatch) -> None:
     replay, export_path, _foreign, source = _wedge_then_replay(
         tmp_path, monkeypatch, "after_summary_upsert"
     )
     _tamper_export_line(export_path, source)
-    result = replay.run()
-    assert result.outcome == "rolled_back", result.outcome
-    err = capsys.readouterr().err
-    assert "rollback dropped 1 unexpected export lines" in err, err
-    assert b"tampered-unit" not in export_path.read_bytes()
+    tampered = export_path.read_bytes()
+    with pytest.raises(incremental_jsonl.IncrementalJsonlError, match="unowned export"):
+        replay.run()
+    assert export_path.read_bytes() == tampered
+    assert replay.paths["rollback"].is_file()
 
 
 @pytest.mark.parametrize("point", ["after_summary_upsert", "before_dedupe_reconcile"])

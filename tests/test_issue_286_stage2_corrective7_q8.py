@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone  # pylint: disable=unused-import
-
-import pytest  # pylint: disable=unused-import
+from datetime import datetime, timedelta, timezone
 
 from doctor import _check_incremental_rollback_tamper
 
 
-def test_rollback_tamper_record_warns_within_seven_days(tmp_path, monkeypatch) -> None:  # pylint: disable=unused-argument
+def test_rollback_tamper_record_warns_within_seven_days(tmp_path) -> None:
     import doctor  # pylint: disable=unused-import
 
     state_dir = tmp_path / "incremental"
     state_dir.mkdir()
     tamper = state_dir / "rollback_export_tamper.jsonl"
+    recent = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
     tamper.write_text(
-        '{"recorded_at": "2026-10-13T12:00:00Z", "source_path": "/x", '
+        f'{{"recorded_at": "{recent}", "source_path": "/x", '
         '"transaction_id": "tx", "dropped_unexpected_export_lines": 1}\n',
         encoding="utf-8",
     )
@@ -26,9 +25,8 @@ def test_rollback_tamper_record_warns_within_seven_days(tmp_path, monkeypatch) -
     assert "rollback tamper" in check.detail
 
 
-def test_rollback_tamper_record_silent_after_seven_days(tmp_path, monkeypatch) -> None:  # pylint: disable=unused-argument
+def test_rollback_tamper_record_silent_after_seven_days(tmp_path) -> None:
     import doctor  # pylint: disable=unused-import
-    import os  # pylint: disable=unused-import
 
     state_dir = tmp_path / "incremental"
     state_dir.mkdir()

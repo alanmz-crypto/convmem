@@ -7267,6 +7267,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "class": "unrelated",
+      "path": "tests/test_issue_286_rollback_fresh_before_image.py",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_issue_286_scoped_proof_shadow.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -9018,7 +9023,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "6850a28ceb793d3820fe3df9f455d6b7dd08f5871072852cca5e68cc93b4ef1b",
+      "sha256": "5d1d7dfac184c617c3d8de09cab3226fa311455c321adbf7c33c10526de9c92e",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
