@@ -9,6 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
+- **[Arc Codex #286] Fence review: PASS-WITH-CHANGES, Luna fixes AUTHORIZED (not yet implemented) (2026-10-21, Claude):**
+  Safety logic at `e6ce3c4` is correct; CI would fail on pylint (new test), stale shadow/R2b writer inventories and the
+  repository manifest hash. See [handoff](CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md). **Next lane: Codex Luna max.**
+
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any
   unattributed native fault. Fix reclassifies the verdict (hardware → FAIL, userspace →
