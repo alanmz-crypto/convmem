@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up thirteen personal project roots with separate Restic repositories
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/lauer/.local/libexec/restic-personal-projects.py backup --quiesce-known-writers
+TimeoutStartSec=12h
+UMask=0077
+
+# ref: ./restic-personal-projects.timer — four machine-local backup times
+# src: ../scripts/restic-personal-projects.py — deploy this pinned script to the stable libexec path
