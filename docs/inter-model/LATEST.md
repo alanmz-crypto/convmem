@@ -21,7 +21,9 @@ cross-arc snapshot and the linked arc brief below.
   `timeshift`/CPU-13 tripwire report from `13:01:22 CDT`, so the handoff's
   doctor-exit-0 criterion remains unmet. The one-time grant is consumed.
   **Next lane: Ryan** for the existing health-check failure's disposition and
-  docs review. Stage 1/Stage 2 outcomes and residual burn remain
+  review of the open docs PR [#413](https://github.com/alanmz-crypto/convmem/pull/413).
+  Opening the PR does not accept the deployment or authorize further host work.
+  Stage 1/Stage 2 outcomes and residual burn remain
   **Ryan to confirm**. See the refreshed
   [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 

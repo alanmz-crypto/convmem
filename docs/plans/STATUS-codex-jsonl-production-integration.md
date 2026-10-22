@@ -116,6 +116,10 @@ the next lane must not repeat the deployment under it.
 The next lane is Ryan: review the measured deployment evidence and decide the
 disposition of the existing doctor failure. The fence is deployed and normal
 watcher activity has resumed, but full handoff acceptance is not claimed.
+At Ryan's request, Codex opened docs PR
+[#413](https://github.com/alanmz-crypto/convmem/pull/413) on 2026-10-22 for this
+brief and current routing. Ryan owns review and merge; opening the docs PR does
+not accept the deployment or authorize further host changes.
 The promotion leaves the four checkpoint-safety files in §3 unchanged. Do not
 repeat the deployment, run protocol deployment, edit live configuration,
 bootstrap, clear quarantines, or initiate provider calls. Ryan also retains
@@ -174,9 +178,12 @@ Codex admission and the same-source publication fence are live.
    Any service reset, retention retry, snapshot deletion, filesystem or hardware
    work needs separate authority. Do not repeat the consumed unmount or
    ConvMem watcher restart.
-3. Review this refreshed brief and `LATEST.md` on
-   `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
-   Ryan decisions; no code/config/source/transform change is part of this branch.
+3. Review the open docs PR
+   [#413](https://github.com/alanmz-crypto/convmem/pull/413), containing this
+   refreshed brief and `LATEST.md` on
+   `docs/2026-10-22-arc-codex-post-fence-status`. Ryan owns the merge decision
+   after hosted checks and review; no code/config/source/transform change is
+   part of this branch.
 4. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
    burn from authoritative records. Do not repeat canaries or assert acceptance
    from a running service alone.
@@ -330,6 +337,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Completed backup/disposition review: failed 13:00 snapshot absent, replacement reported successful at 13:07:24 with metadata, retention still fails on a stale disconnected-device mount, and original doctor acceptance remains unmet. |
 | 2026-10-22 | Ryan / Codex | Ryan granted exact stale-mount active-user check and normal unmount; mount/process checks completed, but root active-user inspection requires local sudo authentication, so no unmount was attempted. |
 | 2026-10-22 | Ryan / Codex | Ryan completed the root active-user check and normal unmount; Codex verified the stale mount absent, reconnected backup volume still read-write, and watcher unchanged. Scoped cleanup complete; historical retention and doctor failures remain recorded. |
+| 2026-10-22 | Codex | Opened docs PR #413 at Ryan's request and routed the brief and current handoff to review; merge remains Ryan-owned, doctor acceptance remains unmet, and no further host authority is implied. |
 
 ## TL;DR
 
