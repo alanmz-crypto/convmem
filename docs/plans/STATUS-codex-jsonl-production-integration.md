@@ -133,6 +133,20 @@ local/offsite backup checks passed. Ryan waived the session startup rules;
 that waiver does not establish the handoff's separate doctor-exit-0 acceptance
 check. Do not change the tripwire or repair unrelated runtime state in this task.
 
+**[Arc Codex] New-model handoff — requested failure clearance:** Ryan asked to
+clear the failure so doctor works. The deployed-runtime recheck completed
+before `15:36:46 CDT` on 2026-10-22 with exactly one failed check: the same
+Timeshift event; local/offsite backup, index, and native-crash checks passed.
+`cpu_tripwire.check()` rereads the current boot's kernel journal and coredumps
+since boot; it has no persisted failure flag or acknowledgment/reset command.
+An in-boot clearance therefore needs a gate change, so this model stopped under
+the post-fence handoff's redesign rule. No failure was cleared, logs deleted,
+CPU configuration changed, or reboot performed. A normal reboot starts a new
+evidence window but interrupts host work and does not prove the cause resolved
+or guarantee doctor exits 0. Ryan must choose a separately authorized reboot or
+a new-model gate-design review; no redesign, implementation, or live exception
+is authorized by this handoff.
+
 Host disposition: Ryan confirmed deliberate external-USB removal for testing
 while Timeshift was writing to its configured volume, UUID
 `b742a9e3-bc28-445b-b37f-e68fa959e70f` (`BIT-Brg-larch-7t`). USB loss at
@@ -172,7 +186,9 @@ Codex admission and the same-source publication fence are live.
 1. Ryan decides the disposition of the unmet doctor-exit-0 criterion using the
    completed deployment and backup review above. The original criterion still
    records FAIL; deliberate drive removal and normal replacement completion do
-   not authorize a silent PASS or a tripwire-policy change.
+   not authorize a silent PASS or a tripwire-policy change. For the requested
+   clearance, choose a separately authorized reboot or route the §5 new-model
+   handoff to gate-design review; there is no supported in-boot reset.
 2. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
    cleanup is complete; the retention unit still records its prior failed run.
    Any service reset, retention retry, snapshot deletion, filesystem or hardware
@@ -338,6 +354,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Ryan / Codex | Ryan granted exact stale-mount active-user check and normal unmount; mount/process checks completed, but root active-user inspection requires local sudo authentication, so no unmount was attempted. |
 | 2026-10-22 | Ryan / Codex | Ryan completed the root active-user check and normal unmount; Codex verified the stale mount absent, reconnected backup volume still read-write, and watcher unchanged. Scoped cleanup complete; historical retention and doctor failures remain recorded. |
 | 2026-10-22 | Codex | Opened docs PR #413 at Ryan's request and routed the brief and current handoff to review; merge remains Ryan-owned, doctor acceptance remains unmet, and no further host authority is implied. |
+| 2026-10-22 | Codex | Confirmed the requested doctor clearance has no existing reset mechanism and exactly one check still fails; stopped at the gate-redesign boundary and left a new-model handoff in §5 without live changes. |
 
 ## TL;DR
 
@@ -355,5 +372,6 @@ Keep this document a current-state snapshot, not a session diary.
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
 <!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
+<!-- src: ../../cpu_tripwire.py, ../../doctor.py — boot-scoped failure and absence of a reset mechanism -->
 <!-- src: /etc/timeshift/timeshift.json — configured backup-volume identity -->
 <!-- src: /run/media/lauer/BIT-Brg-larch-7t/timeshift/snapshots/2026-10-22_13-03-52/info.json, /usr/local/bin/timeshift-enforce-retention.sh — replacement metadata and observed stale-mount selection -->

@@ -22,6 +22,11 @@ cross-arc snapshot and the linked arc brief below.
   doctor-exit-0 criterion remains unmet. The one-time grant is consumed.
   **Next lane: Ryan** for the existing health-check failure's disposition and
   review of the open docs PR [#413](https://github.com/alanmz-crypto/convmem/pull/413).
+  Ryan requested failure clearance; deployed doctor still has exactly one
+  failure and the tripwire has no reset mechanism. Codex stopped at the
+  gate-redesign boundary; the
+  [new-model handoff](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role)
+  needs Ryan's reboot-or-design-lane decision. No reboot or live change occurred.
   Opening the PR does not accept the deployment or authorize further host work.
   Stage 1/Stage 2 outcomes and residual burn remain
   **Ryan to confirm**. See the refreshed
