@@ -99,7 +99,8 @@ from acceptance of the Stage 1 and Stage 2 measurements.
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
 | Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
-| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Backup completion recovered; retention cleanup is a separate unresolved host operation, and doctor's CPU-tripwire criterion remains failed |
+| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
+| Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -143,19 +144,18 @@ journal success at `13:07:24 CDT`. The `14:00` check recognized it as the latest
 hourly/daily snapshot. Normal backup completion is established; restore and
 filesystem integrity were not tested.
 
-Cleanup remains open: retention exited 1 at `13:11:44 CDT` after selecting
-`/run/timeshift/835726/backup/timeshift/snapshots`. That old mount still points
-to disconnected `/dev/sdb2` with `emergency_ro,shutdown`; the reconnected
-volume is `/dev/sde2`. The retention script takes the first existing Timeshift
-mount's snapshot directory, explaining its observed stale selection and I/O
-failure. The `14:00` Timeshift check also reported a directory removal error.
-Ryan has now granted an active-user check and normal unmount of exactly
-`/run/timeshift/835726/backup`. Revalidation found mount ID `327` still on
-disconnected `/dev/sdb2`, the reconnected UUID mounted separately at `/dev/sde2`,
-no Timeshift/rsync process, and retention inactive/failed with no main PID.
-The full host-root active-user check (`sudo -n fuser -vmM`) stopped because a
-local password is required. No unmount was attempted. This grant does not
-include force/lazy unmount, snapshot deletion, retention retry, or service reset.
+Stale-mount cleanup is complete. The retention script had selected the old
+`/run/timeshift/835726/backup` mount on disconnected `/dev/sdb2`, marked
+`emergency_ro,shutdown`, and exited 1 at `13:11:44 CDT`. Ryan's local root
+`fuser -v -m -M` check showed only the kernel mount entry, with no process PIDs;
+he then ran a normal `umount` of that exact path. Codex's `14:48:28 CDT`
+verification found the old mount absent and the same backup UUID still mounted
+read-write at `/run/media/lauer/BIT-Brg-larch-7t` on `/dev/sde2` (mount ID
+`1557`). The watcher remains active with PID `904311` and its original
+`13:52:35` activation timestamp. The one-time cleanup grant is consumed.
+Retention still records its earlier failed run; no retry, reset, snapshot
+deletion, or further watcher restart occurred. This cleanup does not change
+the recorded doctor failure or the tripwire policy.
 
 Stop and write a new-model handoff if further work requires a different lock
 order, transform contract, gate, or deployment model. Kiro bootstrap execution
@@ -169,12 +169,11 @@ Codex admission and the same-source publication fence are live.
    completed deployment and backup review above. The original criterion still
    records FAIL; deliberate drive removal and normal replacement completion do
    not authorize a silent PASS or a tripwire-policy change.
-2. Complete Ryan's granted host-root active-user check after local sudo
-   authentication. If no process uses the exact stale mount
-   `/run/timeshift/835726/backup`, perform only its normal unmount; stop if it
-   is busy or its identity changed. Service reset, retention retry, snapshot
-   deletion, filesystem or hardware work remains outside this grant. Do not
-   rerun the consumed ConvMem watcher restart.
+2. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
+   cleanup is complete; the retention unit still records its prior failed run.
+   Any service reset, retention retry, snapshot deletion, filesystem or hardware
+   work needs separate authority. Do not repeat the consumed unmount or
+   ConvMem watcher restart.
 3. Review this refreshed brief and `LATEST.md` on
    `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
    Ryan decisions; no code/config/source/transform change is part of this branch.
@@ -330,6 +329,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Ryan / Codex | Ryan confirmed deliberate external-USB drive removal for testing, explaining the disconnects; Timeshift crash mechanics, interrupted-backup validity, and doctor acceptance remain unresolved. |
 | 2026-10-22 | Codex | Completed backup/disposition review: failed 13:00 snapshot absent, replacement reported successful at 13:07:24 with metadata, retention still fails on a stale disconnected-device mount, and original doctor acceptance remains unmet. |
 | 2026-10-22 | Ryan / Codex | Ryan granted exact stale-mount active-user check and normal unmount; mount/process checks completed, but root active-user inspection requires local sudo authentication, so no unmount was attempted. |
+| 2026-10-22 | Ryan / Codex | Ryan completed the root active-user check and normal unmount; Codex verified the stale mount absent, reconnected backup volume still read-write, and watcher unchanged. Scoped cleanup complete; historical retention and doctor failures remain recorded. |
 
 ## TL;DR
 

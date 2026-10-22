@@ -37,12 +37,12 @@ cross-arc snapshot and the linked arc brief below.
   Timeshift's I/O errors and crash; the exact software failure remains unproven.
   Backup review found the failed `13:00:00` snapshot absent and replacement
   `13:03:52` saved successfully at `13:07:24 CDT`, with hourly/daily metadata.
-  Retention remains failed after selecting the old disconnected-device mount
-  `/run/timeshift/835726/backup`, still marked `emergency_ro,shutdown`.
-  Ryan granted an active-user check and normal unmount of that exact stale
-  mount. No Timeshift/rsync process is running, but the root active-user check
-  stopped because `sudo` requires local authentication; no unmount was attempted.
-  **Next lane: Ryan** for local authentication, then scoped cleanup and
+  Stale-mount cleanup is complete: Ryan's root active-user check showed only
+  the kernel mount entry, then his normal unmount succeeded. Codex verified
+  `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
+  backup volume remains mounted read-write and the watcher remains active.
+  Retention still records its previous failed run; no retry/reset occurred.
+  **Next lane: Ryan** for any separate retention-maintenance decision and
   doctor-acceptance disposition;
   see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
   Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
