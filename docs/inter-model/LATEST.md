@@ -35,7 +35,11 @@ cross-arc snapshot and the linked arc brief below.
   by the classification. Ryan confirmed he unplugged the external USB drives
   for testing. That explains the backup-volume disconnect four seconds before
   Timeshift's I/O errors and crash; the exact software failure remains unproven.
-  **Next lane: Ryan** for interrupted-backup and doctor-acceptance disposition;
+  Backup review found the failed `13:00:00` snapshot absent and replacement
+  `13:03:52` saved successfully at `13:07:24 CDT`, with hourly/daily metadata.
+  Retention remains failed after selecting the old disconnected-device mount
+  `/run/timeshift/835726/backup`, still marked `emergency_ro,shutdown`.
+  **Next lane: Ryan** for scoped stale-mount cleanup and doctor-acceptance disposition;
   see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
   Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
   is historical context, not current runtime instructions. Ad-hoc host work;

@@ -99,6 +99,7 @@ from acceptance of the Stage 1 and Stage 2 measurements.
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
 | Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
+| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Backup completion recovered; retention cleanup is a separate unresolved host operation, and doctor's CPU-tripwire criterion remains failed |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -127,22 +128,28 @@ local/offsite backup checks passed. Ryan waived the session startup rules;
 that waiver does not establish the handoff's separate doctor-exit-0 acceptance
 check. Do not change the tripwire or repair unrelated runtime state in this task.
 
-Read-only host triage identifies a probable storage-triggered Timeshift crash:
-the scheduled `timeshift --check --scripted` run was writing to its configured
-backup volume, UUID `b742a9e3-bc28-445b-b37f-e68fa959e70f`
-(`BIT-Brg-larch-7t`, then `/dev/sdb2`, now `/dev/sde2`). USB path `2-1.2`
-disconnected at `13:01:18 CDT`; the filesystem logged failed writes and a
-read-only remount, then Timeshift logged backup I/O failures and segfaulted at
-`13:01:22 CDT`. Ryan confirmed he unplugged the external USB drives for
-testing, explaining this event's disconnects. No machine-check event was found
-in the checked boot journal. The kernel reports
-a fault at address 0; core metadata confirms SIGSEGV, but its stack lacks
-function symbols and the core is inaccessible to this lane. Storage-loss error
-handling is the leading crash hypothesis; the exact Timeshift software failure
-and any CPU defect remain unproven. The volume has reappeared mounted
-read-write; this is not a filesystem-integrity
-test or validation of the interrupted Timeshift snapshot. The retained
+Host disposition: Ryan confirmed deliberate external-USB removal for testing
+while Timeshift was writing to its configured volume, UUID
+`b742a9e3-bc28-445b-b37f-e68fa959e70f` (`BIT-Brg-larch-7t`). USB loss at
+`13:01:18 CDT` preceded backup I/O failures and the `13:01:22` segfault.
+Storage-loss error handling is the leading crash hypothesis; the exact
+Timeshift software failure and any CPU defect remain unproven. No
+machine-check event was found in the checked boot journal. The retained
 CPU-attribution policy still classifies this event FAIL.
+
+Backup disposition: failed snapshot `2026-10-22_13-00-00` is absent;
+replacement `2026-10-22_13-03-52` has hourly/daily completion metadata and a
+journal success at `13:07:24 CDT`. The `14:00` check recognized it as the latest
+hourly/daily snapshot. Normal backup completion is established; restore and
+filesystem integrity were not tested.
+
+Cleanup remains open: retention exited 1 at `13:11:44 CDT` after selecting
+`/run/timeshift/835726/backup/timeshift/snapshots`. That old mount still points
+to disconnected `/dev/sdb2` with `emergency_ro,shutdown`; the reconnected
+volume is `/dev/sde2`. The retention script takes the first existing Timeshift
+mount's snapshot directory, explaining its observed stale selection and I/O
+failure. The `14:00` Timeshift check also reported a directory removal error.
+Host investigation was read-only; operational cleanup needs its own scope.
 
 Stop and write a new-model handoff if further work requires a different lock
 order, transform contract, gate, or deployment model. Kiro bootstrap execution
@@ -152,19 +159,22 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Ryan reviews the deployed state, the unmet doctor-exit-0 criterion, and the
-   interrupted Timeshift backup. The USB disconnect is explained by deliberate
-   drive removal for testing; no spontaneous USB failure is established by this
-   event. Runtime, hardware, filesystem, backup, or
-   tripwire-policy changes need separate authority; do not repeat the consumed
-   restart or infer acceptance from the probable crash explanation.
-2. Review this refreshed brief and `LATEST.md` on
+1. Ryan decides the disposition of the unmet doctor-exit-0 criterion using the
+   completed deployment and backup review above. The original criterion still
+   records FAIL; deliberate drive removal and normal replacement completion do
+   not authorize a silent PASS or a tripwire-policy change.
+2. Separately scope cleanup of the orphaned Timeshift mount
+   `/run/timeshift/835726/backup` after checking active users/writers. Any
+   unmount, service reset, retention retry, snapshot deletion, filesystem or
+   hardware operation needs an explicit maintenance scope. Do not rerun the
+   consumed ConvMem watcher restart.
+3. Review this refreshed brief and `LATEST.md` on
    `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
    Ryan decisions; no code/config/source/transform change is part of this branch.
-3. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
+4. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
    burn from authoritative records. Do not repeat canaries or assert acceptance
    from a running service alone.
-4. For any later Kiro bootstrap retry, prepare fresh mutation-state and
+5. For any later Kiro bootstrap retry, prepare fresh mutation-state and
    local/offsite backup evidence, exact proposal and review packet; revalidate
    runtime/config/source/binding/dimension and the writer window immediately
    before a separately granted operation. The merged isolation/recovery fixes
@@ -311,6 +321,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Executed Ryan's exact `1a68675` fast-forward and one restart: watcher active, config unchanged, 10-minute journal clean, and normal Codex commit observed; host-access doctor exited 1 on the pre-existing CPU-tripwire report, leaving that acceptance criterion unmet. |
 | 2026-10-22 | Codex | Corrected stale Kiro-only design and tripwire routing descriptions; read-only host triage identifies loss of Timeshift's active USB backup volume before its crash, with physical cause and CPU damage unproven and doctor acceptance still unmet. |
 | 2026-10-22 | Ryan / Codex | Ryan confirmed deliberate external-USB drive removal for testing, explaining the disconnects; Timeshift crash mechanics, interrupted-backup validity, and doctor acceptance remain unresolved. |
+| 2026-10-22 | Codex | Completed backup/disposition review: failed 13:00 snapshot absent, replacement reported successful at 13:07:24 with metadata, retention still fails on a stale disconnected-device mount, and original doctor acceptance remains unmet. |
 
 ## TL;DR
 
@@ -329,3 +340,4 @@ Keep this document a current-state snapshot, not a session diary.
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
 <!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
 <!-- src: /etc/timeshift/timeshift.json — configured backup-volume identity -->
+<!-- src: /run/media/lauer/BIT-Brg-larch-7t/timeshift/snapshots/2026-10-22_13-03-52/info.json, /usr/local/bin/timeshift-enforce-retention.sh — replacement metadata and observed stale-mount selection -->
