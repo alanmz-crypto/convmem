@@ -1,8 +1,11 @@
 # [Arc Codex] New-model handoff: reviewed acknowledgment of one boot-scoped crash
 
-**Date:** 2026-10-22  
-**Author:** Codex, deployment/verification/docs lane  
-**For:** a fresh Codex design model, then Kiro review; not Cursor Execute yet  
+**Date:** 2026-10-22
+
+**Author:** Codex, deployment/verification/docs lane
+
+**For:** a fresh Codex design model, then Kiro review; not Cursor Execute yet
+
 **Authorization:** Ryan prioritized acknowledgment of this specific crash while
 continuing to flag new faults, cannot reboot now, and requested a handoff when
 this session cannot appropriately finish the priority. His original stop rule
