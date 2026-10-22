@@ -32,10 +32,11 @@ cross-arc snapshot and the linked arc brief below.
   faults are WARN; CPU-attributed faults outside the configured known-bad set,
   machine checks, and known-bad CPUs returning online remain FAIL. The current
   Timeshift failure follows that retained policy; CPU damage is not established
-  by the classification. Read-only host triage found its active USB backup
-  volume disconnected four seconds before the crash and Timeshift reported
-  I/O errors; the USB cause remains unresolved. **Next lane: Ryan** for host
-  disposition; see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
+  by the classification. Ryan confirmed he unplugged the external USB drives
+  for testing. That explains the backup-volume disconnect four seconds before
+  Timeshift's I/O errors and crash; the exact software failure remains unproven.
+  **Next lane: Ryan** for interrupted-backup and doctor-acceptance disposition;
+  see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
   Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.

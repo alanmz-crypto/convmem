@@ -133,13 +133,14 @@ backup volume, UUID `b742a9e3-bc28-445b-b37f-e68fa959e70f`
 (`BIT-Brg-larch-7t`, then `/dev/sdb2`, now `/dev/sde2`). USB path `2-1.2`
 disconnected at `13:01:18 CDT`; the filesystem logged failed writes and a
 read-only remount, then Timeshift logged backup I/O failures and segfaulted at
-`13:01:22 CDT`. Other drives on the same USB hub also disconnected. No
-machine-check event was found in the checked boot journal. The kernel reports
+`13:01:22 CDT`. Ryan confirmed he unplugged the external USB drives for
+testing, explaining this event's disconnects. No machine-check event was found
+in the checked boot journal. The kernel reports
 a fault at address 0; core metadata confirms SIGSEGV, but its stack lacks
 function symbols and the core is inaccessible to this lane. Storage-loss error
-handling is the leading crash hypothesis; the physical USB cause and any CPU
-defect remain unproven. The
-volume has reappeared mounted read-write; this is not a filesystem-integrity
+handling is the leading crash hypothesis; the exact Timeshift software failure
+and any CPU defect remain unproven. The volume has reappeared mounted
+read-write; this is not a filesystem-integrity
 test or validation of the interrupted Timeshift snapshot. The retained
 CPU-attribution policy still classifies this event FAIL.
 
@@ -152,8 +153,9 @@ and unproven canary outcomes remain separate from this fence deployment.
 Codex admission and the same-source publication fence are live.
 
 1. Ryan reviews the deployed state, the unmet doctor-exit-0 criterion, and the
-   host triage above. Investigate the shared USB path and interrupted backup
-   before choosing any repair. Runtime, hardware, filesystem, backup, or
+   interrupted Timeshift backup. The USB disconnect is explained by deliberate
+   drive removal for testing; no spontaneous USB failure is established by this
+   event. Runtime, hardware, filesystem, backup, or
    tripwire-policy changes need separate authority; do not repeat the consumed
    restart or infer acceptance from the probable crash explanation.
 2. Review this refreshed brief and `LATEST.md` on
@@ -308,6 +310,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Refreshed Arc Codex §3–6 from merged #307–#412 and live read-only evidence: Codex admission is active at runtime `686d50e`, fence promotion awaits an exact SHA, effective limit is 8 GiB, and unproven Stage 1/Stage 2/residual-burn outcomes remain Ryan to confirm. |
 | 2026-10-22 | Codex | Executed Ryan's exact `1a68675` fast-forward and one restart: watcher active, config unchanged, 10-minute journal clean, and normal Codex commit observed; host-access doctor exited 1 on the pre-existing CPU-tripwire report, leaving that acceptance criterion unmet. |
 | 2026-10-22 | Codex | Corrected stale Kiro-only design and tripwire routing descriptions; read-only host triage identifies loss of Timeshift's active USB backup volume before its crash, with physical cause and CPU damage unproven and doctor acceptance still unmet. |
+| 2026-10-22 | Ryan / Codex | Ryan confirmed deliberate external-USB drive removal for testing, explaining the disconnects; Timeshift crash mechanics, interrupted-backup validity, and doctor acceptance remain unresolved. |
 
 ## TL;DR
 
