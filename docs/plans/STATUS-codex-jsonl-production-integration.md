@@ -149,7 +149,13 @@ to disconnected `/dev/sdb2` with `emergency_ro,shutdown`; the reconnected
 volume is `/dev/sde2`. The retention script takes the first existing Timeshift
 mount's snapshot directory, explaining its observed stale selection and I/O
 failure. The `14:00` Timeshift check also reported a directory removal error.
-Host investigation was read-only; operational cleanup needs its own scope.
+Ryan has now granted an active-user check and normal unmount of exactly
+`/run/timeshift/835726/backup`. Revalidation found mount ID `327` still on
+disconnected `/dev/sdb2`, the reconnected UUID mounted separately at `/dev/sde2`,
+no Timeshift/rsync process, and retention inactive/failed with no main PID.
+The full host-root active-user check (`sudo -n fuser -vmM`) stopped because a
+local password is required. No unmount was attempted. This grant does not
+include force/lazy unmount, snapshot deletion, retention retry, or service reset.
 
 Stop and write a new-model handoff if further work requires a different lock
 order, transform contract, gate, or deployment model. Kiro bootstrap execution
@@ -163,11 +169,12 @@ Codex admission and the same-source publication fence are live.
    completed deployment and backup review above. The original criterion still
    records FAIL; deliberate drive removal and normal replacement completion do
    not authorize a silent PASS or a tripwire-policy change.
-2. Separately scope cleanup of the orphaned Timeshift mount
-   `/run/timeshift/835726/backup` after checking active users/writers. Any
-   unmount, service reset, retention retry, snapshot deletion, filesystem or
-   hardware operation needs an explicit maintenance scope. Do not rerun the
-   consumed ConvMem watcher restart.
+2. Complete Ryan's granted host-root active-user check after local sudo
+   authentication. If no process uses the exact stale mount
+   `/run/timeshift/835726/backup`, perform only its normal unmount; stop if it
+   is busy or its identity changed. Service reset, retention retry, snapshot
+   deletion, filesystem or hardware work remains outside this grant. Do not
+   rerun the consumed ConvMem watcher restart.
 3. Review this refreshed brief and `LATEST.md` on
    `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
    Ryan decisions; no code/config/source/transform change is part of this branch.
@@ -322,6 +329,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Corrected stale Kiro-only design and tripwire routing descriptions; read-only host triage identifies loss of Timeshift's active USB backup volume before its crash, with physical cause and CPU damage unproven and doctor acceptance still unmet. |
 | 2026-10-22 | Ryan / Codex | Ryan confirmed deliberate external-USB drive removal for testing, explaining the disconnects; Timeshift crash mechanics, interrupted-backup validity, and doctor acceptance remain unresolved. |
 | 2026-10-22 | Codex | Completed backup/disposition review: failed 13:00 snapshot absent, replacement reported successful at 13:07:24 with metadata, retention still fails on a stale disconnected-device mount, and original doctor acceptance remains unmet. |
+| 2026-10-22 | Ryan / Codex | Ryan granted exact stale-mount active-user check and normal unmount; mount/process checks completed, but root active-user inspection requires local sudo authentication, so no unmount was attempted. |
 
 ## TL;DR
 
