@@ -1,4 +1,4 @@
-# Arc Brief — Kiro JSONL Incremental Production Integration
+# Arc Brief — Kiro and Codex JSONL Incremental Production Integration
 
 > **Arc: Codex. Every model working on this arc must read this file first.**
 > State the product goal, your role, current system state, and next action before
@@ -8,28 +8,31 @@
 
 ## 1. What This Is For (product goal)
 
-ConvMem currently reprocesses an entire Kiro session transcript whenever its
-append-heavy `messages.jsonl` changes. Arc Codex aims to make repeated indexing
-incremental and crash-replayable: reuse stable historical chunks, transform
-only the overlap frontier and new messages, and never pay twice for a completed
-transform after a crash.
+Arc Codex makes repeated Kiro and Codex transcript indexing incremental and
+crash-replayable: reuse stable historical chunks, transform only the overlap
+frontier and new messages, and never pay twice for a completed transform after
+a crash. The guarded production routes now cover selected Kiro session JSONL
+and admitted Codex rollout JSONL, with unselected sources staying on the legacy
+path. Current live selection and runtime evidence are in §3.
 
-**Done means:** disabled-by-default production code has passed hermetic
-real-Chroma fault/replay review, a one-shot exact-resource production canary
-has measured frontier reuse and the cross-collection visibility/recovery seam,
-and a separately authorized activation can later enable one controlled Kiro
-source without changing chunking, retrieval, or other adapters. Production
-activation is not part of the current phase.
+**Done means:** hermetic real-Chroma fault/replay review and authorized
+production measurements establish frontier reuse, durable paid-work reuse,
+and visibility/recovery behavior. Each adapter's source and activation grants
+remain distinct. Codex admission and the publication fence are live; Stage 1
+and Stage 2 acceptance remains Ryan to confirm, and the deployment's
+doctor-exit-0 criterion remains unmet (§4). No Kiro source is currently selected.
 
 ## 2. System Design (how the pieces connect)
 
 ```text
-Kiro sess_*/messages.jsonl (read-only source authority)
+Kiro session JSONL / Codex rollout JSONL (read-only source authority)
                    |
                    v
           normal adapter detection
                    |
-       flag off/non-Kiro ─────────> legacy whole-file ingest
+   feature off / unselected / other adapter ──> legacy whole-file ingest
+                   |
+     selected Kiro exact path + policy / admitted Codex rollout
                    |
                    v
       IncrementalJsonlCoordinator
@@ -54,14 +57,17 @@ Key invariants:
 - source JSONL is source authority; checkpoint is processing/recovery
   authority; Chroma and sidecars are derived projections;
 - absent/false feature configuration is the current path unchanged;
-- only `jsonl_kiro_session` is eligible;
+- production eligibility is exact-source `jsonl_kiro_session` or admitted
+  `jsonl_codex_rollout`, subject to their separate policies; Codex history is
+  supported only inside hermetic isolation, while Cursor JSONL and Crush SQLite
+  retain the legacy route;
 - a selected complete prefix may be followed by a pure append, but cannot be
   replaced, truncated, or mutated before commit;
 - expensive outputs are fsynced before any Chroma write;
 - both real Chroma collections converge or restore from exact before-images;
 - `processed.json` cannot advance before checkpoint authority; and
-- all implementation verification is temporary, local, network-denied, and
-  provider-free.
+- implementation fault/replay tests are temporary, local, network-denied, and
+  provider-free; live operations and measurements require their own grants.
 
 ## 3. What Exists Right Now (file map)
 
@@ -121,6 +127,22 @@ local/offsite backup checks passed. Ryan waived the session startup rules;
 that waiver does not establish the handoff's separate doctor-exit-0 acceptance
 check. Do not change the tripwire or repair unrelated runtime state in this task.
 
+Read-only host triage identifies a probable storage-triggered Timeshift crash:
+the scheduled `timeshift --check --scripted` run was writing to its configured
+backup volume, UUID `b742a9e3-bc28-445b-b37f-e68fa959e70f`
+(`BIT-Brg-larch-7t`, then `/dev/sdb2`, now `/dev/sde2`). USB path `2-1.2`
+disconnected at `13:01:18 CDT`; the filesystem logged failed writes and a
+read-only remount, then Timeshift logged backup I/O failures and segfaulted at
+`13:01:22 CDT`. Other drives on the same USB hub also disconnected. No
+machine-check event was found in the checked boot journal. The kernel reports
+a fault at address 0; core metadata confirms SIGSEGV, but its stack lacks
+function symbols and the core is inaccessible to this lane. Storage-loss error
+handling is the leading crash hypothesis; the physical USB cause and any CPU
+defect remain unproven. The
+volume has reappeared mounted read-write; this is not a filesystem-integrity
+test or validation of the interrupted Timeshift snapshot. The retained
+CPU-attribution policy still classifies this event FAIL.
+
 Stop and write a new-model handoff if further work requires a different lock
 order, transform contract, gate, or deployment model. Kiro bootstrap execution
 and unproven canary outcomes remain separate from this fence deployment.
@@ -129,9 +151,11 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Ryan reviews the deployed state and the unmet doctor-exit-0 criterion.
-   Any investigation or correction of the existing CPU-tripwire failure needs
-   its own scope; do not repeat the consumed restart or infer acceptance.
+1. Ryan reviews the deployed state, the unmet doctor-exit-0 criterion, and the
+   host triage above. Investigate the shared USB path and interrupted backup
+   before choosing any repair. Runtime, hardware, filesystem, backup, or
+   tripwire-policy changes need separate authority; do not repeat the consumed
+   restart or infer acceptance from the probable crash explanation.
 2. Review this refreshed brief and `LATEST.md` on
    `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
    Ryan decisions; no code/config/source/transform change is part of this branch.
@@ -161,8 +185,8 @@ or canary PASS does not enable production indexing.
 
 ## 8. Relationship to ConvMem
 
-Arc Codex changes the ingestion efficiency and recovery mechanism for one
-adapter. It does not change ConvMem's source/projection authority direction,
+Arc Codex changes ingestion efficiency and recovery for the selected JSONL
+adapters. It does not change ConvMem's source/projection authority direction,
 retrieval scoring, semantic calibration, or other active arcs.
 
 - The source transcript remains authoritative input.
@@ -283,6 +307,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
 | 2026-10-22 | Codex | Refreshed Arc Codex §3–6 from merged #307–#412 and live read-only evidence: Codex admission is active at runtime `686d50e`, fence promotion awaits an exact SHA, effective limit is 8 GiB, and unproven Stage 1/Stage 2/residual-burn outcomes remain Ryan to confirm. |
 | 2026-10-22 | Codex | Executed Ryan's exact `1a68675` fast-forward and one restart: watcher active, config unchanged, 10-minute journal clean, and normal Codex commit observed; host-access doctor exited 1 on the pre-existing CPU-tripwire report, leaving that acceptance criterion unmet. |
+| 2026-10-22 | Codex | Corrected stale Kiro-only design and tripwire routing descriptions; read-only host triage identifies loss of Timeshift's active USB backup volume before its crash, with physical cause and CPU damage unproven and doctor acceptance still unmet. |
 
 ## TL;DR
 
@@ -299,3 +324,5 @@ Keep this document a current-state snapshot, not a session diary.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
+<!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
+<!-- src: /etc/timeshift/timeshift.json — configured backup-volume identity -->
