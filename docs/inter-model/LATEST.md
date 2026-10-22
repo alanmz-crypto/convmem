@@ -9,27 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Publication fence deployed; doctor acceptance unmet
-  (2026-10-22, Codex):** Ryan's exact grant was executed after an idle-window
-  check: `.worktrees/runtime-main` advanced from `686d50e` to
-  `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, and the watcher restarted once at
-  `13:52:35 CDT`, active under PID `904311`. The #411 fence is now live;
-  promotion carried #410–#412 with unchanged transform-contract inputs and
-  live configuration. The `13:52:35–14:02:35 CDT` journal observation passed
-  without traceback/refusal or automatic restart; a normal admitted Codex run
-  committed at `14:03:31 CDT`. Host-access doctor exited **1** on the existing
-  `timeshift`/CPU-13 tripwire report from `13:01:22 CDT`, so the handoff's
-  doctor-exit-0 criterion remains unmet. The one-time grant is consumed.
-  **Next lane: Ryan** for the existing health-check failure's disposition and
-  review of the open docs PR [#413](https://github.com/alanmz-crypto/convmem/pull/413).
-  Ryan requested failure clearance; deployed doctor still has exactly one
-  failure and the tripwire has no reset mechanism. Codex stopped at the
-  gate-redesign boundary; the
-  [new-model handoff](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role)
-  needs Ryan's reboot-or-design-lane decision. No reboot or live change occurred.
-  Opening the PR does not accept the deployment or authorize further host work.
-  Stage 1/Stage 2 outcomes and residual burn remain
-  **Ryan to confirm**. See the refreshed
+- **[Arc Codex #286] Priority #1: new-model doctor-acknowledgment design
+  (2026-10-22, Codex):** Ryan cannot reboot now and prioritized acknowledgment
+  of the specific Timeshift crash while continuing to flag new faults. There
+  is no existing reset; this model stopped at the gate-redesign boundary.
+  **Next lane: a fresh Codex design model, dispatched by Ryan.** Read the
+  [standalone handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md);
+  its delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is
+  open under Ryan's PR Steward assignment, with merge remaining Ryan-owned.
+  Design and implementation are `NOT_STARTED`, and doctor acceptance remains
+  unmet. The fence is already live at runtime `1a68675`, with the watcher
+  active since `13:52:35 CDT`, PID `904311`, no automatic restarts. Ryan
+  squash-merged deployment/status docs PR #413 as `75d8e2a`; no runtime
+  promotion follows from that docs merge. Deployment and stale-mount cleanup
+  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
+  outcomes and residual burn remain **Ryan to confirm**. See the current
   [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
@@ -311,4 +305,5 @@ its existing archive/reference location. Use
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
 <!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
+<!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
 <!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->

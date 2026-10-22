@@ -75,6 +75,8 @@ Snapshot verified on 2026-10-22 against `origin/main` at `1a68675`, the clean
 runtime worktree, the effective watcher service, and the live incremental
 configuration. Merged implementation and observed live operation are distinct
 from acceptance of the Stage 1 and Stage 2 measurements.
+Ryan later squash-merged the refreshed docs through PR #413 as `75d8e2a`;
+runtime remains at the granted `1a68675`. That docs merge needs no deployment.
 
 | Surface | Current state |
 |---|---|
@@ -101,6 +103,7 @@ from acceptance of the Stage 1 and Stage 2 measurements.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
+| Doctor acknowledgment, priority #1 | Requested by Ryan; no existing reset, acknowledgment design or implementation. Ryan cannot reboot now. The standalone new-model handoff is in open delivery PR #414. | Ryan owns delivery-PR merge; fresh-model design and Kiro review remain next. No live acknowledgment or acceptance follows from this handoff |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -113,13 +116,18 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-The next lane is Ryan: review the measured deployment evidence and decide the
-disposition of the existing doctor failure. The fence is deployed and normal
-watcher activity has resumed, but full handoff acceptance is not claimed.
-At Ryan's request, Codex opened docs PR
-[#413](https://github.com/alanmz-crypto/convmem/pull/413) on 2026-10-22 for this
-brief and current routing. Ryan owns review and merge; opening the docs PR does
-not accept the deployment or authorize further host changes.
+The next lane is a fresh Codex design model, dispatched by Ryan, for priority
+#1: a reviewed acknowledgment of this specific crash that still flags new
+faults. Read the standalone
+[new-model handoff](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
+before choosing a mechanism. This model stopped at the gate-redesign boundary;
+priority #1 is not implemented or complete. Ryan cannot reboot now.
+Delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is open
+under Ryan's PR Steward assignment; Ryan owns its merge decision.
+The fence is deployed and normal watcher activity has resumed, but full
+handoff acceptance is not claimed. Ryan squash-merged docs PR
+[#413](https://github.com/alanmz-crypto/convmem/pull/413) as `75d8e2a` on
+2026-10-22; its merge authorizes no additional runtime or host changes.
 The promotion leaves the four checkpoint-safety files in §3 unchanged. Do not
 repeat the deployment, run protocol deployment, edit live configuration,
 bootstrap, clear quarantines, or initiate provider calls. Ryan also retains
@@ -133,19 +141,14 @@ local/offsite backup checks passed. Ryan waived the session startup rules;
 that waiver does not establish the handoff's separate doctor-exit-0 acceptance
 check. Do not change the tripwire or repair unrelated runtime state in this task.
 
-**[Arc Codex] New-model handoff — requested failure clearance:** Ryan asked to
-clear the failure so doctor works. The deployed-runtime recheck completed
-before `15:36:46 CDT` on 2026-10-22 with exactly one failed check: the same
-Timeshift event; local/offsite backup, index, and native-crash checks passed.
-`cpu_tripwire.check()` rereads the current boot's kernel journal and coredumps
-since boot; it has no persisted failure flag or acknowledgment/reset command.
-An in-boot clearance therefore needs a gate change, so this model stopped under
-the post-fence handoff's redesign rule. No failure was cleared, logs deleted,
-CPU configuration changed, or reboot performed. A normal reboot starts a new
-evidence window but interrupts host work and does not prove the cause resolved
-or guarantee doctor exits 0. Ryan must choose a separately authorized reboot or
-a new-model gate-design review; no redesign, implementation, or live exception
-is authorized by this handoff.
+The deployed-runtime recheck completed before `15:36:46 CDT` on 2026-10-22
+with exactly one failed check: the same Timeshift event; local/offsite backup,
+index, and native-crash checks passed. `cpu_tripwire.check()` rereads boot-scoped
+evidence rather than storing a failure latch. The standalone handoff pins the
+event's boot ID and journal timestamp, records the unresolved design questions,
+and preserves the later ingestion/retrieval queue. No acknowledgment mechanism
+has been designed or approved here; no failure was cleared, logs deleted,
+CPU configuration changed, or reboot performed.
 
 Host disposition: Ryan confirmed deliberate external-USB removal for testing
 while Timeshift was writing to its configured volume, UUID
@@ -183,27 +186,20 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Ryan decides the disposition of the unmet doctor-exit-0 criterion using the
-   completed deployment and backup review above. The original criterion still
-   records FAIL; deliberate drive removal and normal replacement completion do
-   not authorize a silent PASS or a tripwire-policy change. For the requested
-   clearance, choose a separately authorized reboot or route the §5 new-model
-   handoff to gate-design review; there is no supported in-boot reset.
-2. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
+1. A fresh model takes the §5 handoff for priority #1, designs a narrowly scoped
+   acknowledgment mechanism, and obtains Kiro review before a separate Ryan
+   Execute decision. Ryan cannot reboot now. The original doctor criterion
+   still records FAIL; this handoff does not change it or authorize live use.
+2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
+   records; keep unsupported outcomes **Ryan to confirm**. Review the reported
+   quarantines and old wedged transaction without clearing them. Do not repeat
+   paid canaries or assert acceptance from a running service alone.
+3. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
    cleanup is complete; the retention unit still records its prior failed run.
    Any service reset, retention retry, snapshot deletion, filesystem or hardware
    work needs separate authority. Do not repeat the consumed unmount or
    ConvMem watcher restart.
-3. Review the open docs PR
-   [#413](https://github.com/alanmz-crypto/convmem/pull/413), containing this
-   refreshed brief and `LATEST.md` on
-   `docs/2026-10-22-arc-codex-post-fence-status`. Ryan owns the merge decision
-   after hosted checks and review; no code/config/source/transform change is
-   part of this branch.
-4. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
-   burn from authoritative records. Do not repeat canaries or assert acceptance
-   from a running service alone.
-5. For any later Kiro bootstrap retry, prepare fresh mutation-state and
+4. For any later Kiro bootstrap retry, prepare fresh mutation-state and
    local/offsite backup evidence, exact proposal and review packet; revalidate
    runtime/config/source/binding/dimension and the writer window immediately
    before a separately granted operation. The merged isolation/recovery fixes
@@ -355,6 +351,8 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Ryan / Codex | Ryan completed the root active-user check and normal unmount; Codex verified the stale mount absent, reconnected backup volume still read-write, and watcher unchanged. Scoped cleanup complete; historical retention and doctor failures remain recorded. |
 | 2026-10-22 | Codex | Opened docs PR #413 at Ryan's request and routed the brief and current handoff to review; merge remains Ryan-owned, doctor acceptance remains unmet, and no further host authority is implied. |
 | 2026-10-22 | Codex | Confirmed the requested doctor clearance has no existing reset mechanism and exactly one check still fails; stopped at the gate-redesign boundary and left a new-model handoff in §5 without live changes. |
+| 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
+| 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 
 ## TL;DR
 
@@ -370,6 +368,7 @@ Keep this document a current-state snapshot, not a session diary.
   retry of stale proposal `c5fec18c…79c81`.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
+<!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
 <!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
 <!-- src: ../../cpu_tripwire.py, ../../doctor.py — boot-scoped failure and absence of a reset mechanism -->
