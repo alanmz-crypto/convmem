@@ -17,7 +17,7 @@ cross-arc snapshot and the linked arc brief below.
   [standalone handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md);
   its delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is
   open under Ryan's PR Steward assignment, with merge remaining Ryan-owned.
-  design and implementation are `NOT_STARTED`, and doctor acceptance remains
+  Design and implementation are `NOT_STARTED`, and doctor acceptance remains
   unmet. The fence is already live at runtime `1a68675`, with the watcher
   active since `13:52:35 CDT`, PID `904311`, no automatic restarts. Ryan
   squash-merged deployment/status docs PR #413 as `75d8e2a`; no runtime
