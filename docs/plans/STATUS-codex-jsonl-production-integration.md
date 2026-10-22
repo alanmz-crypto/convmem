@@ -80,8 +80,8 @@ from acceptance of the Stage 1 and Stage 2 measurements.
 | Transform compatibility | PR #399 (`9be0a4f`) binds reuse to semantic transform inputs rather than unrelated implementation changes. `distill.py`, `llm.py`, `incremental_transform_contract.py`, and `incremental_checkpoint_migration.py` are byte-identical between runtime `686d50e` and target `1a68675`; this promotion does not invalidate checkpoints or require a paid rebuild. |
 | Scoped-proof observer | PR #405 (`77a5e89`) added an off-by-default shadow observer. Live config sets `mutation_proof_observer = "shadow"`; this does not authorize replacing the existing integrity proof. |
 | Opt-in Kiro watch route | PR #406 (`adcf5b3`) added opt-in Kiro incremental indexing with a crash-safe paid-call budget. Live `live_sources = []` selects no exact Kiro source. |
-| Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. The running watcher at `686d50e` does not yet contain the fence. |
-| Effective watcher runtime | `convmem-watch.service` is active/running from `.worktrees/runtime-main`, clean on branch `main` at `686d50e` (PR #409), behind `origin/main` by #410–#412. Effective `MemoryMax` is `8589934592` bytes (8 GiB), not 4 GiB. No runtime promotion or restart has occurred in this docs session. |
+| Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. Ryan's exact-SHA grant was executed on 2026-10-22: the watcher now runs the fence. |
+| Effective watcher runtime | `.worktrees/runtime-main` is clean on branch `main` at granted SHA `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, fast-forwarded from `686d50e` after its indexing child completed. The watcher restarted once at `2026-10-22T13:52:35-05:00`, active under PID `904311`, invocation `db09e9881aa7454499a1ae117be5dac5`. Effective `MemoryMax` is `8589934592` bytes (8 GiB); live config SHA-256 remained `9719875a5906d0a708be2fc54640df74b9515c1be8e39e18401c8b25015db89c`. |
 
 ## 4. Completion State
 
@@ -91,32 +91,35 @@ from acceptance of the Stage 1 and Stage 2 measurements.
 | Kiro bootstrap prerequisites | Accounting #377, supersession #381, test isolation #384, and recovery parity #396 are merged | Fresh exact-source evidence, proposal, review, and Ryan grant for any later retry; do not reuse stale proposal `c5fec18c…79c81` |
 | Codex admission and watcher prerequisites | Admission #388, rejection-loop #390, wedge fixes #395, compatibility #399, and manifest cache #403 are merged; live Codex admission is observed | Preserve current settings; do not infer canary acceptance from live operation |
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
-| Same-source publication fence | #411 is merged on `main`; runtime `686d50e` still lacks it | Ryan must name the exact promotion SHA and authorize one restart; the chat grant still contains a SHA placeholder |
-| Runtime-promotion verification | Not run; target `1a68675` contains only #410–#412 beyond runtime | Clean/idle fast-forward, one restart, exact HEAD, active service, 10-minute journal observation, and doctor verification per the handoff |
+| Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
+| Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-Ryan owns the exact-SHA deployment grant and confirmation of Stage 1, Stage 2,
-and the residual-burn decision. The next operational lane may promote the
-existing runtime checkout and restart the watcher once only after that grant,
-following Part A of Claude's 2026-10-22 post-fence handoff on
+Ryan granted promotion to exact SHA
+`1a686753d8fd1b710883050e8a4f9c45b7ae1e26` and one watcher restart under
+Part A of Claude's 2026-10-22 post-fence handoff on
 `origin/docs/2026-10-22-2026-10-22-arc-codex-post-fence-next-model`.
-The expected target is `1a68675`; a placeholder is not an exact grant.
+Codex executed both after an idle-window check. That one-time grant is consumed;
+the next lane must not repeat the deployment under it.
 
-Codex's current task is deployment readiness, verification, review, and this
-documentation refresh. The runtime-promotion diff leaves the four
-checkpoint-safety files in §3 unchanged. Do not run protocol deployment, edit
-live configuration, bootstrap, clear quarantines, or initiate provider calls.
-If the target changes, re-list its contents and repeat the checkpoint-safety
-diff before any deployment.
+The next lane is Ryan: review the measured deployment evidence and decide the
+disposition of the existing doctor failure. The fence is deployed and normal
+watcher activity has resumed, but full handoff acceptance is not claimed.
+The promotion leaves the four checkpoint-safety files in §3 unchanged. Do not
+repeat the deployment, run protocol deployment, edit live configuration,
+bootstrap, clear quarantines, or initiate provider calls. Ryan also retains
+confirmation of Stage 1, Stage 2, and the residual-burn decision.
 
-Startup doctor exited 1 on a CPU-tripwire report for a `timeshift` segfault on
-CPU 13 at `2026-10-22T13:01:22-05:00`. Ryan waived the session startup rules;
-that waiver does not establish the handoff's separate post-deployment
-doctor-exit-0 acceptance check. Report any remaining failure without changing
-the tripwire or repairing unrelated runtime state.
+Post-deployment doctor, run from `1a68675` with host access, exited 1 on the
+same CPU-tripwire report seen before deployment: a `timeshift` segfault on
+CPU 13 at `2026-10-22T13:01:22-05:00`. The first sandboxed diagnostic was
+interrupted after its backup query stalled; the host retry completed and both
+local/offsite backup checks passed. Ryan waived the session startup rules;
+that waiver does not establish the handoff's separate doctor-exit-0 acceptance
+check. Do not change the tripwire or repair unrelated runtime state in this task.
 
 Stop and write a new-model handoff if further work requires a different lock
 order, transform contract, gate, or deployment model. Kiro bootstrap execution
@@ -124,24 +127,18 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 ## 6. What Remains Before Live (sequential)
 
-Codex admission is already live; the outstanding deployment is the fence.
+Codex admission and the same-source publication fence are live.
 
-1. Obtain Ryan's exact target SHA and one-time restart grant. With the current
-   placeholder, Part A stays pending and documentation can proceed.
-2. Recheck `.worktrees/runtime-main` is clean on `main`, and the journal shows
-   no in-progress indexing. Fetch and fast-forward only to the granted SHA;
-   do not run `deploy-agent-protocol.sh`.
-3. Restart `convmem-watch.service` once. Verify exact runtime HEAD and active
-   service, observe the journal for 10 minutes without traceback or refusal,
-   and run doctor. Report a nonzero doctor result as an unmet acceptance
-   criterion; the startup exemption is not a passing verification result.
-4. Report the measured deployment result, then refresh this snapshot and the
-   Arc Codex routing in `LATEST.md`. Keep code, config, source selection, and
-   transform settings unchanged.
-5. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
+1. Ryan reviews the deployed state and the unmet doctor-exit-0 criterion.
+   Any investigation or correction of the existing CPU-tripwire failure needs
+   its own scope; do not repeat the consumed restart or infer acceptance.
+2. Review this refreshed brief and `LATEST.md` on
+   `docs/2026-10-22-arc-codex-post-fence-status`. PR creation and merge remain
+   Ryan decisions; no code/config/source/transform change is part of this branch.
+3. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
    burn from authoritative records. Do not repeat canaries or assert acceptance
    from a running service alone.
-6. For any later Kiro bootstrap retry, prepare fresh mutation-state and
+4. For any later Kiro bootstrap retry, prepare fresh mutation-state and
    local/offsite backup evidence, exact proposal and review packet; revalidate
    runtime/config/source/binding/dimension and the writer window immediately
    before a separately granted operation. The merged isolation/recovery fixes
@@ -285,15 +282,17 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
 | 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
 | 2026-10-22 | Codex | Refreshed Arc Codex §3–6 from merged #307–#412 and live read-only evidence: Codex admission is active at runtime `686d50e`, fence promotion awaits an exact SHA, effective limit is 8 GiB, and unproven Stage 1/Stage 2/residual-burn outcomes remain Ryan to confirm. |
+| 2026-10-22 | Codex | Executed Ryan's exact `1a68675` fast-forward and one restart: watcher active, config unchanged, 10-minute journal clean, and normal Codex commit observed; host-access doctor exited 1 on the pre-existing CPU-tripwire report, leaving that acceptance criterion unmet. |
 
 ## TL;DR
 
-- [Arc Codex] Codex incremental admission is live; the watcher runs clean
-  runtime `686d50e` with an effective 8 GiB limit. The same-source publication
-  fence is merged through #411 but not deployed there.
-- Promotion to `1a68675` carries #410–#412 without changing the transform
-  contract. Deployment awaits Ryan's exact-SHA grant; doctor currently fails
-  its CPU tripwire, and the startup waiver is not deployment acceptance.
+- [Arc Codex] The publication fence is deployed at clean runtime `1a68675`;
+  the watcher restarted once under Ryan's exact grant and is active with an
+  effective 8 GiB limit. Live configuration is unchanged.
+- Promotion carried #410–#412 without changing the transform contract.
+  The ten-minute journal is clear, and a normal admitted Codex run committed
+  afterward. Host-access doctor exited **1** on the pre-existing CPU-tripwire
+  report; full handoff acceptance remains unmet despite the startup waiver.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.

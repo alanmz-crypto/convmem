@@ -9,18 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Live admission confirmed; fence deployment pending
-  (2026-10-22, Codex):** Ryan merged the publication fence through #411
-  (`6cacc1b`), documented by #412 (`1a68675`). Read-only verification finds
-  Codex admission enabled and the watcher active at clean runtime `686d50e`,
-  with an effective 8 GiB limit; that runtime still lacks #410–#412. The
-  `686d50e` → `1a68675` diff leaves the transform-contract inputs unchanged.
-  **Next lane: Ryan** to name the exact promotion SHA and authorize one
-  restart, then the operational lane follows the 2026-10-22 post-fence
-  handoff on `origin/docs/2026-10-22-2026-10-22-arc-codex-post-fence-next-model`.
-  The supplied grant contains a SHA placeholder. Doctor's CPU-tripwire
-  failure remains visible despite Ryan's startup exemption. Stage 1/Stage 2
-  outcomes and residual burn are **Ryan to confirm**. See the refreshed
+- **[Arc Codex #286] Publication fence deployed; doctor acceptance unmet
+  (2026-10-22, Codex):** Ryan's exact grant was executed after an idle-window
+  check: `.worktrees/runtime-main` advanced from `686d50e` to
+  `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, and the watcher restarted once at
+  `13:52:35 CDT`, active under PID `904311`. The #411 fence is now live;
+  promotion carried #410–#412 with unchanged transform-contract inputs and
+  live configuration. The `13:52:35–14:02:35 CDT` journal observation passed
+  without traceback/refusal or automatic restart; a normal admitted Codex run
+  committed at `14:03:31 CDT`. Host-access doctor exited **1** on the existing
+  `timeshift`/CPU-13 tripwire report from `13:01:22 CDT`, so the handoff's
+  doctor-exit-0 criterion remains unmet. The one-time grant is consumed.
+  **Next lane: Ryan** for the existing health-check failure's disposition and
+  docs review. Stage 1/Stage 2 outcomes and residual burn remain
+  **Ryan to confirm**. See the refreshed
   [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
