@@ -290,6 +290,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
 | 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
+| 2026-10-22 | Claude | Found the #411 fence merged but not on `runtime-main` (`686d50e`) while incremental indexing is live; §3–6 stale. Next-model handoff `CLAUDE-2026-10-22-arc-codex-post-fence-next-model-handoff.md` (Ryan promotion grant, then STATUS refresh) |
 
 ## TL;DR
 

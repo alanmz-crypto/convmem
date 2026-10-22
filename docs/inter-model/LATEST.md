@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-21
+**Updated:** 2026-10-22
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,8 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **[Arc Codex #286] Fence merged but not deployed (2026-10-22, Claude):** incremental Codex indexing is live (watcher running, `[index.incremental_jsonl] enabled = true`), but `.worktrees/runtime-main` is still at `686d50e` (#409), without the #411 fence. A promotion to `main` cannot change the transform-contract digest (no checkpoint invalidation or paid rebuild). The arc brief §3–6 is stale (#307, #384, #390, #395, #396, #399, #403, #405, #406 merged). Resume state: `BLOCKED_ON_RYAN` (runtime-promotion grant). [Handoff](CLAUDE-2026-10-22-arc-codex-post-fence-next-model-handoff.md). **Next lane: Ryan** (grant), then any model (deploy + verify, refresh STATUS). Redesign of any kind: stop and hand off.
 
 - **[Arc Codex #286] Fence fix merged (2026-10-21, Ryan):** PR #411 squash-merged as `6cacc1b` from reviewed tip `1916a15` after Claude/Luna verification and green CI. The same-source publication race is closed in code; no config/runtime activation or live indexing followed. **Next lane: Ryan** for separate rollout, canary, and activation gates.
 

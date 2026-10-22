@@ -2102,6 +2102,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-10-22-arc-codex-post-fence-next-model-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
