@@ -65,93 +65,87 @@ Key invariants:
 
 ## 3. What Exists Right Now (file map)
 
+Snapshot verified on 2026-10-22 against `origin/main` at `1a68675`, the clean
+runtime worktree, the effective watcher service, and the live incremental
+configuration. Merged implementation and observed live operation are distinct
+from acceptance of the Stage 1 and Stage 2 measurements.
+
 | Surface | Current state |
 |---|---|
-| Incremental coordinator | On main, default off. Enabled Kiro routing without the hermetic root returns skipped. Existing indexed sources without a checkpoint return bootstrap_required/skipped. |
-| Hermetic isolation | Tokenized, fake-provider test boundary; it cannot be a live switch. |
-| Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
-| Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
-| Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
-| Issue #286 forward-publication fence | Finding 1 is merged on `main` through PR #411 as `6cacc1b` (squash of reviewed tip `1916a15`); same-source processed publication remains fenced through row publication and journal cleanup. No production activation occurred. |
-| Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
-| Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
-| Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
+| Coordinator and isolated Codex integration | Kiro coordinator/canary work is on `main` through PR #301 (`8983a6f`). S0–S3 Codex integration merged through PR #307 (`d657767`); successor `19d34a5` is no longer pending integration. Hermetic tests retain their fake-provider boundary. Cursor JSONL and Crush SQLite remain legacy routes. |
+| Guarded Kiro production route | PR #365 (`f3171fc`) added the exact-source boundary and existing-source bootstrap. Paid accounting and failed-operation supersession landed through PR #377 (`d1c28f9`) and PR #381 (`e798bba`); exact-path recovery parity landed through PR #396 (`9ef4ecd`). These merges do not grant another bootstrap. |
+| Test isolation | The mocked-provider failure-log correction merged through PR #384 (`6a23aa9`); the `eaae6e9` fix no longer awaits a PR decision. |
+| Codex rollout admission | PR #388 supplies the guarded admission route. Live config has `enabled = true`, `live_sources = []`, `allow_full_rebuild = true`, and root `/home/lauer/.codex/sessions`, with `admitted_after = "2026-10-12T04:04:00Z"`, `max_transform_chunks_per_run = 10`, and `max_source_bytes = 268435456`. Journal entries show committed `incremental_codex_admitted_run` events. This proves operation, not Stage 1/Stage 2 acceptance. |
+| Watcher retry and wedge corrections | The inter-model rejection-loop fix merged through PR #390 (`8a7cdab`), resolving the #308 prerequisite. Stage 2 wedge fixes merged through PR #395 (`3e705e4`); manifest failure caching and inventory refresh merged through PR #403 (`395e523`). |
+| Transform compatibility | PR #399 (`9be0a4f`) binds reuse to semantic transform inputs rather than unrelated implementation changes. `distill.py`, `llm.py`, `incremental_transform_contract.py`, and `incremental_checkpoint_migration.py` are byte-identical between runtime `686d50e` and target `1a68675`; this promotion does not invalidate checkpoints or require a paid rebuild. |
+| Scoped-proof observer | PR #405 (`77a5e89`) added an off-by-default shadow observer. Live config sets `mutation_proof_observer = "shadow"`; this does not authorize replacing the existing integrity proof. |
+| Opt-in Kiro watch route | PR #406 (`adcf5b3`) added opt-in Kiro incremental indexing with a crash-safe paid-call budget. Live `live_sources = []` selects no exact Kiro source. |
+| Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. The running watcher at `686d50e` does not yet contain the fence. |
+| Effective watcher runtime | `convmem-watch.service` is active/running from `.worktrees/runtime-main`, clean on branch `main` at `686d50e` (PR #409), behind `origin/main` by #410–#412. Effective `MemoryMax` is `8589934592` bytes (8 GiB), not 4 GiB. No runtime promotion or restart has occurred in this docs session. |
 
 ## 4. Completion State
 
 | Milestone | State | Next gate |
 |---|---|---|
-| Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
-| S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
-| Same-source publication fence (Finding 1) | Merged on `main` through PR #411 as `6cacc1b`; final review and CI passed at reviewed tip `1916a15` | Preserve reviewed behavior; no production grant follows automatically |
-| Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
-| Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
-| Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
-| Failed-operation supersession | Merged on `main` through PR #381 as `e798bba`; predecessor-preserving supersession, paid-attempt enforcement, lineage publication, and retained predecessor evidence are present. The latest retry stopped before grant materialization because two mocked rows from `tests/test_index_loud_failures.py` changed live `synthesis_failures.jsonl`, making proposal `c5fec18c…79c81` stale. Cursor corrected the test at `eaae6e9` on `fix/2026-10-10-pytest-synthesis-failure-isolation` by redirecting the real failure logger to temporary test storage; production code is unchanged. Copilot's targeted safety/isolation audit PASSed exact code commit `eaae6e9` with no blockers. The two focused refusal tests pass, and the live ledger remained byte-for-byte and metadata-identical across the run. | Ryan decides PR creation and merge; fresh backup/proposal authority follows only after the fix lands |
-| Codex rollout admission | Merged on `main` via PR #388; default off, with no admission config. Design: `docs/plans/DESIGN-issue-286-codex-rollout-admission.md` (Kiro PASS at `9e91973`, §13 amended 2026-10-11). It admits new rollouts after an explicit, identity-checked `admitted_after` time; pre-activation rollouts stay legacy; refusals quarantine terminally by path. Copilot PASS and Kiro PASS at `78b9295`. | Ryan Stage 1 grant (`docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`) |
-| Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
+| Coordinator, S0–S3, and guarded production boundary | Merged through #301, #307, and #365 | Preserve reviewed behavior |
+| Kiro bootstrap prerequisites | Accounting #377, supersession #381, test isolation #384, and recovery parity #396 are merged | Fresh exact-source evidence, proposal, review, and Ryan grant for any later retry; do not reuse stale proposal `c5fec18c…79c81` |
+| Codex admission and watcher prerequisites | Admission #388, rejection-loop #390, wedge fixes #395, compatibility #399, and manifest cache #403 are merged; live Codex admission is observed | Preserve current settings; do not infer canary acceptance from live operation |
+| Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
+| Same-source publication fence | #411 is merged on `main`; runtime `686d50e` still lacks it | Ryan must name the exact promotion SHA and authorize one restart; the chat grant still contains a SHA placeholder |
+| Runtime-promotion verification | Not run; target `1a68675` contains only #410–#412 beyond runtime | Clean/idle fast-forward, one restart, exact HEAD, active service, 10-minute journal observation, and doctor verification per the handoff |
+| Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
+| Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-The #286 same-source processed-publication fence is complete on `main` through PR #411 (`6cacc1b`, squash of reviewed tip `1916a15`). It holds the per-source lock through processed-row publication and journal cleanup; no config/runtime activation, live indexing, or production canary followed the merge. Preserve the default-off boundary and do not infer a production grant from the merged code.
+Ryan owns the exact-SHA deployment grant and confirmation of Stage 1, Stage 2,
+and the residual-burn decision. The next operational lane may promote the
+existing runtime checkout and restart the watcher once only after that grant,
+following Part A of Claude's 2026-10-22 post-fence handoff on
+`origin/docs/2026-10-22-2026-10-22-arc-codex-post-fence-next-model`.
+The expected target is `1a68675`; a placeholder is not an exact grant.
 
-The Kiro bootstrap remains stopped before grant materialization or paid calls.
-Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
-inventory drift was two mocked 402/503 rows that
-`tests/test_index_loud_failures.py` appended to live
-`synthesis_failures.jsonl`; all other mutation surfaces, including the Kiro
-source's two summary rows and 17 knowledge units, remained exact.
+Codex's current task is deployment readiness, verification, review, and this
+documentation refresh. The runtime-promotion diff leaves the four
+checkpoint-safety files in §3 unchanged. Do not run protocol deployment, edit
+live configuration, bootstrap, clear quarantines, or initiate provider calls.
+If the target changes, re-list its contents and repeat the checkpoint-safety
+diff before any deployment.
 
-Cursor corrected the isolation leak at code commit `eaae6e9` on
-`fix/2026-10-10-pytest-synthesis-failure-isolation`. Each affected `_build`
-call now patches `ingest._SYNTHESIS_FAIL_LOG` to a temporary path while keeping
-the real failure-logging code under exercise. Production code is unchanged.
-Copilot's targeted safety/isolation audit PASSed that exact code commit with no
-blockers. The two focused refusal tests pass in 0.50 seconds. The live ledger's
-SHA-256 (`31e8d29e…9672`), 633839-byte size, and nanosecond mtime were identical
-before and after; all four paused timers were restored active. Ryan decides PR
-creation and merge. Fresh backups, proposal, packet review, and live execution
-remain later separate gates. No lane may promote config/runtime or restart the
-watcher without separate Ryan authority.
+Startup doctor exited 1 on a CPU-tripwire report for a `timeshift` segfault on
+CPU 13 at `2026-10-22T13:01:22-05:00`. Ryan waived the session startup rules;
+that waiver does not establish the handoff's separate post-deployment
+doctor-exit-0 acceptance check. Report any remaining failure without changing
+the tripwire or repairing unrelated runtime state.
 
-**Codex rollouts (separate track):** Codex rollout admission is on `main`
-(PR #388), default off. Its purpose is to stop the paid re-index burn for
-new Codex sessions; nothing in production is reduced until Stage 1 and
-Stage 2 run. Prepare or run Stage 1 only under Ryan's grant, following the
-Stage 1 packet. Active pre-activation rollouts, including a 590.7 MiB
-session started Sep 21, stay on the legacy route and need the packet's
-residual-burn decision before Stage 2. This track authorizes no live
-bootstrap, config, runtime, or watcher action.
+Stop and write a new-model handoff if further work requires a different lock
+order, transform contract, gate, or deployment model. Kiro bootstrap execution
+and unproven canary outcomes remain separate from this fence deployment.
 
 ## 6. What Remains Before Live (sequential)
 
-The #286 fence milestone is complete; the remaining sequence below covers separate bootstrap, rollout, canary, and activation gates.
+Codex admission is already live; the outstanding deployment is the fence.
 
-1. Ryan decides whether to create and merge the test-isolation PR.
-2. After the fix lands, capture current mutation state, refresh
-   backup coverage, and prepare a new exact proposal and review packet.
-3. Immediately before any later authorized retry, revalidate the exact
-   local/offsite pair, source/runtime/config/binding/dimension, and establish a
-   no-other-writer window through final evidence capture.
-4. If granted, execute only the exact source/runtime/config/budget operation and
-   return measured call, coverage, lineage, and isolation evidence.
-5. Obtain a later separate Ryan grant before any runtime/config/restart or
-   watcher promotion; measure calls and coverage by source class.
-
-Codex rollouts (separate track):
-
-1. Ryan grants Stage 1 (manual, watcher stopped), per
-   `docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md`.
-   Don't add the incremental table to the shared live config while
-   `runtime-main` is still on `a92a74e`.
-2. Before Stage 2, decide the residual burn (retire or exclude active
-   pre-activation rollouts), fix #308 (the inter-model rejection loop) and
-   reconcile the 4G watch drop-in. Then Ryan grants Stage 2 (a 24 h watcher
-   canary); activation is a separate grant.
-3. Before any Kiro exact-path live incremental run, land the exact-path
-   recovery parity fix. Its design is on
-   `docs/2026-10-11-issue-286-exact-path-recovery-parity`; Kiro ruled it a
-   separate prerequisite.
+1. Obtain Ryan's exact target SHA and one-time restart grant. With the current
+   placeholder, Part A stays pending and documentation can proceed.
+2. Recheck `.worktrees/runtime-main` is clean on `main`, and the journal shows
+   no in-progress indexing. Fetch and fast-forward only to the granted SHA;
+   do not run `deploy-agent-protocol.sh`.
+3. Restart `convmem-watch.service` once. Verify exact runtime HEAD and active
+   service, observe the journal for 10 minutes without traceback or refusal,
+   and run doctor. Report a nonzero doctor result as an unmet acceptance
+   criterion; the startup exemption is not a passing verification result.
+4. Report the measured deployment result, then refresh this snapshot and the
+   Arc Codex routing in `LATEST.md`. Keep code, config, source selection, and
+   transform settings unchanged.
+5. Resolve the **Ryan to confirm** items for Stage 1, Stage 2, and residual
+   burn from authoritative records. Do not repeat canaries or assert acceptance
+   from a running service alone.
+6. For any later Kiro bootstrap retry, prepare fresh mutation-state and
+   local/offsite backup evidence, exact proposal and review packet; revalidate
+   runtime/config/source/binding/dimension and the writer window immediately
+   before a separately granted operation. The merged isolation/recovery fixes
+   remove prerequisites, not the need for a fresh exact-source grant.
 
 ## 7. Hard Stops
 
@@ -290,23 +284,19 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
 | 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
+| 2026-10-22 | Codex | Refreshed Arc Codex §3–6 from merged #307–#412 and live read-only evidence: Codex admission is active at runtime `686d50e`, fence promotion awaits an exact SHA, effective limit is 8 GiB, and unproven Stage 1/Stage 2/residual-burn outcomes remain Ryan to confirm. |
 
 ## TL;DR
 
-- The Kiro JSONL coordinator and canary remain on `main`, default off; watcher stays
-  stopped and disabled with no restart authority.
-- Failed-operation supersession is on `main` through PR #381 (`e798bba`); the
-  first successor grant safely refused with zero new calls or corpus mutation;
-  Kiro and Copilot both PASS refreshed packet `2fa81eb`, digest
-  `5e29ae13…90bb`, with no blockers.
-- Fresh local/offsite backups share tree `eb4cd065…575a`; authorized proposal
-  `c5fec18c…79c81` is unconsumed but stale because the live predecessor
-  mutation inventory no longer matches its bound digest. The sole drift is two
-  mocked test failures appended to the live synthesis-failure ledger. The retry
-  stopped before grant materialization or paid calls. The isolation fix is
-  implemented and Copilot-audited at `eaae6e9`; its two focused tests pass with
-  the live failure ledger unchanged. Ryan's PR decision is next. Config and
-  watcher promotion remain separately gated.
-- Codex track: rollout admission merged via PR #388, default off. The burn
-  isn't reduced until Stage 1 and Stage 2 run under Ryan's grants. No live
-  bootstrap, config change, or watcher promotion is authorized.
+- [Arc Codex] Codex incremental admission is live; the watcher runs clean
+  runtime `686d50e` with an effective 8 GiB limit. The same-source publication
+  fence is merged through #411 but not deployed there.
+- Promotion to `1a68675` carries #410–#412 without changing the transform
+  contract. Deployment awaits Ryan's exact-SHA grant; doctor currently fails
+  its CPU tripwire, and the startup waiver is not deployment acceptance.
+- Stage 1/Stage 2 results and the pre-activation residual-burn decision are
+  **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
+  retry of stale proposal `c5fec18c…79c81`.
+
+<!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
+<!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
