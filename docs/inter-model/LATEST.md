@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-14
+**Updated:** 2026-10-21
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,8 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **[Arc Codex #286] Fence fix merged (2026-10-21, Ryan):** PR #411 squash-merged as `6cacc1b` from reviewed tip `1916a15` after Claude/Luna verification and green CI. The same-source publication race is closed in code; no config/runtime activation or live indexing followed. **Next lane: Ryan** for separate rollout, canary, and activation gates.
 
 - **cpu_tripwire fix live on runtime, PR #398 open (2026-10-17, Kiro):** `convmem doctor`
   was exiting 1 on a benign Typora userspace crash because the CPU tripwire FAILed on any

@@ -72,6 +72,7 @@ Key invariants:
 | Format registry | Kiro JSONL outside isolation; Codex history/rollout only inside isolation. Cursor JSONL and Crush SQLite are not eligible. |
 | Canary runtime | P2 readiness correction merged by PR #301 (8983a6f); no live P2 or activation grant. |
 | Issue #286 successor | S0-S3 branch 19d34a5 remains unmerged; Copilot and Kiro documentation-acceptance rechecks PASS at that exact tip, with whitespace independently checked by Codex. |
+| Issue #286 forward-publication fence | Finding 1 is merged on `main` through PR #411 as `6cacc1b` (squash of reviewed tip `1916a15`); same-source processed publication remains fenced through row publication and journal cleanup. No production activation occurred. |
 | Issue #286 guarded live route | Ryan squash-merged PR #365 onto `main` as f3171fc on 2026-10-09. The guarded production boundary, canonical exact-source gate, and one-shot existing-source bootstrap are present but default off; no live config, bootstrap, or runtime promotion occurred. Copilot and Kiro passed the final PR tip 7ed46c4; all six GitHub checks passed, including 2680 Python 3.12 tests. Crush SQLite and Cursor JSONL remain on the legacy route. |
 | Exact-source review packet | Sol corrected the issue #286 packet at commit 4aecb96 after adjudicating the first same-revision PASS/FAIL conflict in Copilot's favor. Kiro and Copilot then both passed the packet as an accurate `NO-GO`. The first implementation received exact-revision Kiro PASS and Copilot FAIL at b68daea; Sol-High accepted Copilot's replay/rollback finding. Cursor corrected it at b108ab6, and Kiro/Copilot both passed exact revision 318c2f9 with no blockers. |
 | Watcher | Stopped and disabled 2026-10-05 at Ryan's request; runtime pin a92a74e unchanged. |
@@ -82,6 +83,7 @@ Key invariants:
 |---|---|---|
 | Coordinator and canary | Merged on main through PR #301; disabled | Preserve reviewed behavior |
 | S0-S3 Codex route | Reviewed 506afc1, successor 19d34a5 unmerged; Copilot/Kiro docs rechecks PASS | Ryan PR decision for that separate branch |
+| Same-source publication fence (Finding 1) | Merged on `main` through PR #411 as `6cacc1b`; final review and CI passed at reviewed tip `1916a15` | Preserve reviewed behavior; no production grant follows automatically |
 | Live-activation design | Kiro PASS at e4fa954 with RC-1 through RC-3 | Preserved in reviewed implementation |
 | Production boundary and exact-source gate | Merged on `main` via PR #365 (f3171fc); default off, with no live source grant | Ryan exact-source/config/runtime grant before any production route |
 | Existing-source bootstrap paid accounting | Merged on `main` via PR #377 (`d1c28f9`); DeepSeek-only paid cap with Ollama observed but cap-exempt. | Preserve reviewed behavior |
@@ -90,6 +92,8 @@ Key invariants:
 | Watcher activation | Unauthorized; watcher disabled | Separate Ryan promotion/config/restart grant |
 
 ## 5. Your Role
+
+The #286 same-source processed-publication fence is complete on `main` through PR #411 (`6cacc1b`, squash of reviewed tip `1916a15`). It holds the per-source lock through processed-row publication and journal cleanup; no config/runtime activation, live indexing, or production canary followed the merge. Preserve the default-off boundary and do not infer a production grant from the merged code.
 
 The Kiro bootstrap remains stopped before grant materialization or paid calls.
 Proposal `c5fec18c…79c81` is unconsumed but stale and cannot be reused. The sole
@@ -120,6 +124,8 @@ residual-burn decision before Stage 2. This track authorizes no live
 bootstrap, config, runtime, or watcher action.
 
 ## 6. What Remains Before Live (sequential)
+
+The #286 fence milestone is complete; the remaining sequence below covers separate bootstrap, rollout, canary, and activation gates.
 
 1. Ryan decides whether to create and merge the test-isolation PR.
 2. After the fix lands, capture current mutation state, refresh
@@ -243,6 +249,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | R1–R4 sequence-completeness corrective after Claude FAIL at preserved `a47f32b`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
+| 2026-10-21 | Claude | Independent review of #286 forward publication fence at `e6ce3c4`: PASS-WITH-CHANGES (fence logic correct; pylint, shadow/R2b inventories and repository manifest would fail CI); mechanical fixes handed to Codex Luna max via `CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md`. Fence intentionally reverses the 2026-09-10 note that released the source lock before processed publication |
 
 | 2026-10-05 | Codex | Opened PR #365; corrected the Pylint regression without changing the safety contract, obtained Copilot/Kiro PASS at 05197a7, and kept the watcher disabled while remaining CI waits for runners |
 | 2026-10-05 | Codex | Resolved the full-suite reload-order failure, brought PR #365 current with main, and obtained Copilot/Kiro exact-tip PASS plus six green checks at b17f47c; Ryan's merge and live grants remain separate |
@@ -282,6 +289,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
+| 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
 
 ## TL;DR
 
