@@ -20,7 +20,8 @@ requires this model to stop at any gate redesign and hand off to a new model.
   Ryan's squash merge of deployment/status docs PR #413.
 - **Tip and push:** resolve with `git log -1 origin/docs/2026-10-22-doctor-ack-next-model`;
   push immediately after each commit. The final chat reports publication status.
-- **PR:** none opened for this handoff; #413 is already merged.
+- **PR:** #414 is open for this handoff under Ryan's PR Steward assignment;
+  #413 is already merged. Ryan owns the merge decision.
 - **Next lane:** Ryan dispatches a fresh design model with this brief. Kiro
   reviews the resulting design. Cursor implementation, live acknowledgment,
   runtime promotion and acceptance each retain their own required authority.

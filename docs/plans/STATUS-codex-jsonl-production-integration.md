@@ -103,7 +103,7 @@ runtime remains at the granted `1a68675`. That docs merge needs no deployment.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Requested by Ryan; no existing reset, acknowledgment design or implementation. Ryan cannot reboot now. A standalone new-model handoff is prepared. | Fresh-model design and Kiro review; no live acknowledgment or acceptance follows from this handoff |
+| Doctor acknowledgment, priority #1 | Requested by Ryan; no existing reset, acknowledgment design or implementation. Ryan cannot reboot now. The standalone new-model handoff is in open delivery PR #414. | Ryan owns delivery-PR merge; fresh-model design and Kiro review remain next. No live acknowledgment or acceptance follows from this handoff |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -122,6 +122,8 @@ faults. Read the standalone
 [new-model handoff](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 before choosing a mechanism. This model stopped at the gate-redesign boundary;
 priority #1 is not implemented or complete. Ryan cannot reboot now.
+Delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is open
+under Ryan's PR Steward assignment; Ryan owns its merge decision.
 The fence is deployed and normal watcher activity has resumed, but full
 handoff acceptance is not claimed. Ryan squash-merged docs PR
 [#413](https://github.com/alanmz-crypto/convmem/pull/413) as `75d8e2a` on
@@ -350,6 +352,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Opened docs PR #413 at Ryan's request and routed the brief and current handoff to review; merge remains Ryan-owned, doctor acceptance remains unmet, and no further host authority is implied. |
 | 2026-10-22 | Codex | Confirmed the requested doctor clearance has no existing reset mechanism and exactly one check still fails; stopped at the gate-redesign boundary and left a new-model handoff in §5 without live changes. |
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
+| 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 
 ## TL;DR
 

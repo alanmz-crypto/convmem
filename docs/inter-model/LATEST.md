@@ -15,6 +15,8 @@ cross-arc snapshot and the linked arc brief below.
   is no existing reset; this model stopped at the gate-redesign boundary.
   **Next lane: a fresh Codex design model, dispatched by Ryan.** Read the
   [standalone handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md);
+  its delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is
+  open under Ryan's PR Steward assignment, with merge remaining Ryan-owned.
   design and implementation are `NOT_STARTED`, and doctor acceptance remains
   unmet. The fence is already live at runtime `1a68675`, with the watcher
   active since `13:52:35 CDT`, PID `904311`, no automatic restarts. Ryan
