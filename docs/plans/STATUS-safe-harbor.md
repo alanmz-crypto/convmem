@@ -46,7 +46,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 4. Completion State
 
-- **Resumed 2026-10-22, not complete:** Ryan lifted the October 19 hold and granted §22's isolated implementation and evidence (EXECUTION §23). A static drift check found the initializer's two runtime files and named helpers unchanged on current main; one new lock from PR #395 awaits the supervisor's confirmation that §22's locking is unaffected. Implementation has not started and no live transition is underway.
+- **Resumed 2026-10-22, implementation returned for review:** Ryan granted §22 isolated implementation/evidence (EXECUTION §23). Codex-supervised Cursor delivered `initialize-legacy` on `feat/2026-10-22-safe-harbor-legacy-initializer` (tip `204f1c6`) with isolated pytest/readiness/lint/manifest evidence in [VERIFY](VERIFY-safe-harbor.md#legacy-initializer-isolated-evidence-codex-supervised-cursor-2026-10-22). Index-write-lock drift **confirmed refuted** (guard does not take `index_write_flock`). Independent Kiro review and Ryan acceptance are next; no live transition.
 - Approved direction/name, every-restore owner disposition, execution plan and B-E4.1 remain settled. Ownership and gate exemptions are unchanged.
 - **Implementation and integrated verification complete:** T1–T5 / V1–V6 accepted and merged. BugBot reviewed no accepted SHA; each owner exception remains bound to its own candidate.
 - **Latest hosted evidence:** PR #394 head `188184b`, run `38668689296`, all six checks passed; Python 3.12 pytest 3,283 passed / 18 skipped / 252 passing subtests; critical collector exit 0; lint regression gate PASS against unchanged `fdc8da7` baseline. Raw lint status 30 is not a lint-clean result.
@@ -59,9 +59,9 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Codex (supervisor) with Cursor (author):** implement and prove the initializer per the [Cursor handoff](../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md) and EXECUTION §22–§23. First confirm the index-write-lock drift note and re-establish the readiness baseline on the merged base. Return code, evidence, corrections and limitations for independent review. No PR, merge, deployment or production action.
+**Kiro:** independent review of tip `204f1c6` on `feat/2026-10-22-safe-harbor-legacy-initializer`, on Ryan's review grant ([VERIFY evidence](VERIFY-safe-harbor.md#legacy-initializer-isolated-evidence-codex-supervised-cursor-2026-10-22)).
 
-**Kiro:** independent review of the returned candidate, on Ryan's review grant.
+**Ryan:** review grant / acceptance; recovery inputs (§6 item 1) still required before any live apply.
 
 **Ryan:** in parallel, the recovery facts in §6 item 1 (acceptable lost-work interval; newest Rescuezilla image, its location, independent access and restore-test history). They are needed before any live apply, not for the isolated build.
 
@@ -109,6 +109,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-22 — Codex: returned isolated `initialize-legacy` implementation and evidence at `204f1c6`; index-write-lock drift refuted; Kiro review next.
 
 - 2026-10-22 — Claude: recorded Ryan's resume and §23 initializer grant, merged main `5c0a01b` (initializer surface unchanged; one new lock for supervisor confirmation), fixed the manifest guard and wrote the Cursor handoff; Codex-supervised implementation next.
 

@@ -2023,22 +2023,25 @@ implementation/evidence decision (EXECUTION §23). Recovery inputs remain pendin
 for eventual live apply. No unchanged-artifact review, PR or live action is
 authorized here.
 
-## Legacy initializer isolated evidence (Cursor, 2026-10-22)
+## Legacy initializer isolated evidence (Codex-supervised Cursor, 2026-10-22)
 
-**Subject:** worktree branch `feat/2026-10-22-safe-harbor-legacy-initializer` (implementation commit pending supervisor push). **Runtime surfaces:** `chroma_write_guard.py` (`initialize_legacy`, snapshot prepare/publish/prune factoring) and `scripts/chroma_guard.py` (`initialize-legacy` subcommand). **Interpreter:** `/home/lauer/miniforge3/envs/convmem/bin/python` 3.11.15.
+**Subject:** branch `feat/2026-10-22-safe-harbor-legacy-initializer` tip `204f1c673dd1b765d55cce5a1d36b082e7f4ab6c` (pinned implementation base `7505028e278ebb16903840a72cf3a9c2b3e903f1`). **Runtime surfaces:** `chroma_write_guard.py` (`initialize_legacy`; snapshot prepare/publish/prune factoring) and `scripts/chroma_guard.py` (`initialize-legacy`). **Runtime SHA-256:** guard `39565fdb0428890351c27016ec12b90ced9b9f7f13f8cd195a38b8f2be77748d`; CLI `9adf373713530f6ed4c2b45d56999c43318531fbe1985ad417ee0df3f7a98198`. **Interpreter:** `/home/lauer/miniforge3/envs/convmem/bin/python` 3.11.15. **Restic pin:** `/tmp/safe-harbor-restic-tool/restic` SHA-256 `ae7fe58ab3511f830fd31d157158620b209522ff1332b119199d2e938d72338c`.
 
-**Commands (isolated T3 launcher env — parent `-I -S -B`, pytest child `-s -B`):**
+**Authoring isolation:** disposable copy `/tmp/safe-harbor-authoring-2026-10-22` with `.AUTHORING_NO_SHELL` and Cursor rule denying Shell/MCP/WebFetch; implementation merged into worktree `.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer` (main checkout untouched).
 
-```bash
-/home/lauer/miniforge3/envs/convmem/bin/python -I -S -B tests/_safe_harbor_rollout_evidence.py legacy  # historical launcher
-# focused suite (same fixture env as handoff step 0):
-/home/lauer/miniforge3/envs/convmem/bin/python -s -B -m pytest tests/test_safe_harbor_legacy_initializer.py -q
-/home/lauer/miniforge3/envs/convmem/bin/python -s -B -m pytest tests/test_safe_harbor_rollout_legacy.py tests/test_chroma_write_guard.py -q
-```
+**Index-write-lock drift (handoff):** **Confirmed refuted for §22.** `chroma_write_guard.py` / `scripts/chroma_guard.py` do not import `purge_locks` or take `index_write_flock`; initializer admission uses the existing native guard lock only.
 
-**Results (Cursor authoring run):** `tests/test_safe_harbor_legacy_initializer.py` **18 passed** (re-run after final commit for exact count); regressions **5 + 24 passed** (`test_safe_harbor_rollout_legacy.py`, `test_chroma_write_guard.py`). Faulty controls exercised: preview calling preparation (guard tree mutation), omit-archive, publish-during-preparation (negative control), archive hash mismatch, second-segment preparation failure.
+**Readiness baseline (pinned base `7505028`, before edits):** launcher `interpreter` **83 passed / 0 skipped / exit 0** (`/tmp/safe-harbor-rollout-meczpxh5`, `source_unchanged: true`); launcher `legacy` **5 passed / 0 skipped / exit 0** (`/tmp/safe-harbor-rollout-l2rivmea`, `source_unchanged: true`).
 
-**Limitations:** Process-level fsync/interrupt evidence only (no power-loss claim). Not every §22 bullet has a dedicated named case yet (alias retarget, fsync-directory fault, post-first-publication interrupt, stale-vector replay) — supervisor may extend before Kiro review. No production paths, doctor, hosted CI, or live initializer run.
+**Readiness final (tip `204f1c6`):** launcher `interpreter` **83 / 0 / 0** (`/tmp/safe-harbor-rollout-814gpbsx`); launcher `legacy` **5 / 0 / 0** (`/tmp/safe-harbor-rollout-spmvege7`).
+
+**§22 evidence (T3 bootstrap env, parent `-I -S -B`, pytest `-s -B`):** `tests/test_safe_harbor_legacy_initializer.py` **18 passed**; affected regressions `test_safe_harbor_rollout_legacy.py` **5** + `test_chroma_write_guard.py` **24**; `tests/_safe_harbor_t3_worker.py run-suite` **exit 0** (t3 + matrix + guard + t1). Faulty controls: preview→prepare mutation probe, omit-archive, publish-during-preparation, archive short-write, second-segment prepare failure.
+
+**Repository gates (clean tip):** whole-repo pylint status **30**; `scripts/pylint_regression_gate.py ci --branch-baseline ci/pylint-baseline.json` **PASS** (453 findings, 231 fingerprints); `tests/test_repository_knowledge_committed_manifest.py` **1 passed**.
+
+**Supervisor corrections:** pylint regression fixes (line wraps, disables aligned with other Safe Harbor tests); minimal `test_safe_harbor_rollout_legacy.py` pylint header so whole-repo gate passes without baseline churn.
+
+**Limitations:** Process-level fsync/interrupt only (no power-loss claim). §22 bullets without dedicated named cases: alias retarget refusal, directory fsync fault, interrupt after first of two publications, explicit stale-vector/census-only replays. No production initializer run, doctor, hosted CI, PR, merge, or live action.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->
