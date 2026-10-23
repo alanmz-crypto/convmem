@@ -4,12 +4,12 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `IMPLEMENTING`. Ryan assigned Codex the takeover on 2026-10-22; Claude reviews the resulting exact revision. The earlier G0 FAIL remains recorded.
+**Resume state:** `READY_FOR_CLAUDE_REVIEW`. Ryan assigned Codex the takeover on 2026-10-22; Claude reviews the resulting exact revision. The earlier G0 FAIL remains recorded.
 
 ```
 Planning Status
 
-Phase:        Codex implementing the corrected design and hermetic tests
+Phase:        Codex implementation candidate complete; independent review pending
 Lanes:        Codex implementation -> Claude independent review -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
@@ -234,7 +234,7 @@ Group 9: review corrections beyond T45–T47.
 | ID | Case | Expected |
 |---|---|---|
 | T48 | Re-ack the same key after revocation, including CLI/show | Exit 1, file byte-identical and still valid, FAIL remains, no copyable re-ack command |
-| T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
+| T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Numeric conversion failures retain the other known fault fields; malformed coredumps do not erase kernel faults. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
 | T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 1 states durability uncertainty. Retry keeps identical bytes/attribution and returns success only after file and directory fsync. |
 | T51 | Journal unreadable and a known-bad CPU online, with or without acknowledgments | FAIL with `ONLINE again`; the independent check always runs |
 

@@ -10,7 +10,7 @@
 ```
 Planning Status
 
-Phase:        Implementation and review corrections in progress; Claude review next
+Phase:        Implementation candidate complete; Claude independent review next
 Lanes:        Codex implementation -> Claude independent review (Ryan's assignment)
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
@@ -180,6 +180,11 @@ Decoding rules (each an explicit test; corrected after G0):
 - A nonzero journalctl exit or timeout marks the read incomplete. Parse any
   captured stdout first, including complete lines before a truncated tail.
   These conditions never discard already available positive fault evidence.
+- If a numeric CPU/PID field cannot be converted, retain the fault kind and
+  other usable fields and mark the read incomplete. An unusable CPU number
+  cannot erase a machine-check classification. Malformed coredump rows make
+  that auxiliary signal unreadable; they never discard kernel evidence or
+  skip the independent online-CPU check.
 - Missing or invalid identity fields make that fault unacknowledgeable while
   preserving classification. Invalid timestamps render as `unknown time`.
   All observed entry boot IDs, including noise entries, participate in the

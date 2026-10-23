@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,30 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
-  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
-  the specific Timeshift crash while continuing to flag new faults. A fresh
-  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
-  - Each acknowledgment is keyed to one exact kernel journal entry and bound
-    to one boot.
-  - The matched fault becomes a visible WARN, never PASS.
-  - New faults, machine checks and known-bad CPUs coming back online still
-    FAIL.
-  **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-  under Ryan's PR Steward assignment; Ryan owns the merge.
-  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
-  Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The input
-  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
-  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
-  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
-  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
-  promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
-  outcomes and residual burn remain **Ryan to confirm**. See the current
-  [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **[Arc Codex #286] Priority #1: doctor acknowledgment ready for Claude review
+  (2026-10-23, Codex):** Ryan directly assigned Codex the implementation
+  takeover. The corrected design, exact-entry store, CLI and hermetic tests are
+  on `feat/2026-10-22-doctor-fault-ack-takeover`. The prior G0 FAIL at
+  `2a138be9b0a12ae8849665435ab7ba1674154853` remains recorded; this is not a
+  self-issued design PASS. **Next lane: Claude**, reviewing the corrected design
+  and implementation through the existing
+  [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md),
+  using the full SHA in Codex's accompanying completion message. Acknowledgments identify one entry
+  and boot, remain visible WARNs, and preserve independent hard failures.
+  Resume state: implementation candidate `READY_FOR_CLAUDE_REVIEW`.
+  No PR, merge, runtime promotion, live acknowledgment or acceptance follows
+  from this handoff. The recorded doctor criterion remains unmet. Runtime
+  evidence is the earlier `1a68675` deployment snapshot, not a fresh host check.
+  Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
+  See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
   Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`

@@ -598,7 +598,6 @@ def verify_command(
 ):
     """Record a verifier's check on an existing observation (metadata + ledger record)."""
     _guard_write()
-    import json
 
     from chroma_write_store import production_chroma_write_session
     from purge_locks import index_write_flock
@@ -783,8 +782,6 @@ def monitor_command(
     """HTTP security probes — observations or advisory verifications (F2b)."""
     if not dry_run:
         _guard_write()
-    import json
-    from pathlib import Path
 
     from config import load_config
     from chroma_readonly import open_readonly_unit_store
@@ -923,7 +920,6 @@ def doctor(
     json_out: bool = typer.Option(False, "--json", help="Emit JSON instead of text"),
 ):
     """Health checks (v0=core; --v1 adds watch/systemd/canary/locks; exit 0 = PASS)."""
-    import json
 
     from doctor import doctor_exit_code, doctor_payload, render_doctor_text, run_doctor
 
@@ -1761,7 +1757,6 @@ def unresolved_command(
     Shows every observation without a passing verification, plus any with a
     failed check. Filter by --site and/or --domain.
     """
-    import json
 
     from config import load_config
     from chroma_readonly import open_readonly_unit_store
@@ -1909,7 +1904,6 @@ def forget_command(
     distilled fact is wrong but its source conversation still holds good units. Reversible
     with --undo; history is retained (tombstone, not delete).
     """
-    from datetime import datetime, timezone
 
     from chroma_store import invalidate_superseded_cache, is_superseded
     from query import render_error

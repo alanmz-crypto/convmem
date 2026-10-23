@@ -508,9 +508,11 @@ def test_t39_lock_contention(stored):
 
 
 @pytest.mark.parametrize("operation", ["replace", "fsync"])
-@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize(
+    "action,existing", [("ack", False), ("ack", True), ("revoke", True)]
+)
 def test_t40_pre_replace_failure_keeps_old_document(
-    tmp_path, monkeypatch, operation, existing
+    tmp_path, monkeypatch, operation, action, existing
 ):
     path = tmp_path / "ack.json"
     if existing:
@@ -523,28 +525,12 @@ def test_t40_pre_replace_failure_keeps_old_document(
 
     monkeypatch.setattr(os, operation, fail)
     with pytest.raises(OSError):
-        write(path, ctx)
+        if action == "ack":
+            write(path, ctx)
+        else:
+            ack.revoke_ack(ACK_ID, OPERATOR, path=path, now=lambda: NOW)
     assert (path.read_bytes() if path.exists() else None) == original
     assert not list(tmp_path.glob("*.tmp-*"))
-
-
-def test_directory_fsync_failure_reports_complete_new_document(stored, monkeypatch):
-    real_sync = os.fsync
-    count = 0
-
-    def fail_directory(fd):
-        nonlocal count
-        count += 1
-        if count == 2:
-            raise OSError("directory fsync failure")
-        return real_sync(fd)
-
-    monkeypatch.setattr(os, "fsync", fail_directory)
-    with pytest.raises(ack.AckError, match="document replaced"):
-        ack.revoke_ack(ACK_ID, OPERATOR, path=stored, now=lambda: NOW)
-    assert ack.load_acks(stored).problem is None
-    assert evaluate(stored).status == "fail"
-    assert not list(stored.parent.glob("*.tmp-*"))
 
 
 def test_t41_doctor_warn_mapping_and_exit(stored, monkeypatch):
@@ -966,5 +952,48 @@ def test_cli_reports_uncertain_commit_without_claiming_refusal(monkeypatch, caps
     assert "Durability unconfirmed" in message and "Refused" not in message
 
 
+@pytest.mark.parametrize("dumps", [[None], [{"pid": 1, "sig": []}], {"pid": 1}])
+def test_malformed_coredump_rows_do_not_erase_kernel_failure(tmp_path, dumps):
+    result = tripwire.check(
+        CFG, runner=FakeRunner([entry()], dumps=dumps), **paths(tmp_path)
+    )
+    assert result.status == "fail" and "timeshift" in result.detail
+
+
+@pytest.mark.parametrize("kind", ["segfault", "machine_check"])
+def test_unclassifiable_numeric_field_preserves_known_fault_fields(
+    stored, tmp_path, kind
+):
+    huge = "9" * 5000
+    malformed = (
+        f"p[{huge}]: segfault at 0 likely on CPU 13"
+        if kind == "segfault"
+        else f"mce: [Hardware Error]: CPU {huge}: Machine Check"
+    )
+    result = tripwire.check(
+        CFG,
+        runner=FakeRunner([entry(), entry(malformed)]),
+        ack_path=stored,
+        **paths(tmp_path),
+    )
+    assert result.status == "fail" and "timeshift" in result.detail
+    assert "unclassifiable" in result.detail
+    assert "no acknowledgments applied" in result.detail
+    alone = tripwire.check(
+        CFG, runner=FakeRunner([entry(malformed)]), **paths(tmp_path)
+    )
+    assert alone.status == "fail" and kind in alone.detail
+
+
+def test_journal_oserror_still_checks_online_cpus(tmp_path):
+    def denied(argv):
+        if argv[0] == "journalctl":
+            raise OSError("journal unavailable")
+        return subprocess.CompletedProcess(argv, 0, "[]", "")
+
+    result = tripwire.check(CFG, runner=denied, **paths(tmp_path, online="0-23"))
+    assert result.status == "fail" and "ONLINE again" in result.detail
+
+
 # ref: ../cpu_tripwire.py, ../cpu_tripwire_ack.py, ../cpu_tripwire_cli.py — hermetic behavior coverage
-# src: ../docs/plans/EXECUTION-doctor-fault-acknowledgment.md — T0–T47 and review corrections
+# src: ../docs/plans/EXECUTION-doctor-fault-acknowledgment.md — T0–T51 and review corrections

@@ -153,9 +153,16 @@ def read_coredumps(
         return [] if "No coredumps found" in done.stderr + done.stdout else None
     try:
         rows = json.loads(done.stdout or "[]")
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
         return None
-    return rows if isinstance(rows, list) else None
+    if not isinstance(rows, list) or any(
+        not isinstance(row, dict)
+        or type(row.get("pid")) is not int  # pylint: disable=unidiomatic-typecheck
+        or type(row.get("sig")) is not int  # pylint: disable=unidiomatic-typecheck
+        for row in rows
+    ):
+        return None
+    return rows
 
 
 def _base_evaluate(

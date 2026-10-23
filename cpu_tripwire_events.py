@@ -111,7 +111,18 @@ def message_bytes(value: Any) -> bytes:
     raise ValueError("MESSAGE must be a string or an array of bytes")
 
 
-def classify_message(message: str, when: str = "unknown time") -> Fault | None:
+def _fault_number(value: str, problems: list[str] | None) -> int | None:
+    try:
+        return int(value)
+    except ValueError:
+        if problems is not None:
+            problems.append("unclassifiable numeric fault field")
+        return None
+
+
+def classify_message(
+    message: str, when: str = "unknown time", *, problems: list[str] | None = None
+) -> Fault | None:
     if _MCE_CPU.search(message):
         kind = "machine_check"
     elif (trap := _TRAP.search(message)) and "traps:" in message:
@@ -129,9 +140,9 @@ def classify_message(message: str, when: str = "unknown time") -> Fault | None:
     return Fault(
         when,
         kind,
-        int(cpu.group("cpu")) if cpu else None,
+        _fault_number(cpu.group("cpu"), problems) if cpu else None,
         proc.group("process") if proc else "kernel",
-        int(proc.group("pid")) if proc else None,
+        _fault_number(proc.group("pid"), problems) if proc else None,
     )
 
 
@@ -214,7 +225,9 @@ def parse_kernel_journal(lines: Iterable[str]) -> JournalRead:
         if not unambiguous:
             result.problems.append("missing, null, invalid or repeated MESSAGE")
         for raw in raw_messages:
-            fault = classify_message(raw.decode("utf-8", errors="replace"), when)
+            fault = classify_message(
+                raw.decode("utf-8", errors="replace"), when, problems=result.problems
+            )
             if fault is None:
                 continue
             cursor = row.get("__CURSOR")
