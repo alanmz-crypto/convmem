@@ -79,10 +79,10 @@ Ryan later squash-merged the refreshed docs through PR #413 as `75d8e2a` and
 the priority-#1 handoff through PR #414 as `5c0a01b`. Runtime remains at the
 granted `1a68675` in that host snapshot; neither docs merge needs a deployment.
 The acknowledgment design subsequently merged through PR #415 as `3d24c75`.
-The 2026-10-23 implementation candidate is on
-`feat/2026-10-22-doctor-fault-ack-takeover`, not `main` or the live runtime.
-Claude's static review of `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` is
-PASS-WITH-CHANGES: two reader defects require correction. A lane comparison
+The corrected 2026-10-23 implementation is `3eddaca92d15239209d56963d9441d9788be8bd7`
+on `fix/2026-10-23-doctor-ack-readers`, continuing takeover packet `705c4cb`.
+It is not on `main` or live. Claude's historical PASS-WITH-CHANGES at `4d1aedd`
+led to two reader fixes, now implemented with 13 regression cases. A lane comparison
 also exposed an unsupported reduction of G2; the original Claude coverage,
 Copilot safety-audit and Kiro implementation-review requirements remain open.
 The resumed session confirmed boot ID `4a99c57d-3478-4811-9218-6b681f64687c` on
@@ -114,7 +114,7 @@ made no runtime changes.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Branch-only candidate `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` received Claude PASS-WITH-CHANGES. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records two reader defects and the lane-comparison correction. The prior G0 FAIL is historical; G2 remains open. No promotion or live acknowledgment occurred. | Codex fixes readers; Claude rechecks and verifies coverage; Copilot performs the targeted safety audit; Kiro reviews implementation. Ryan owns G3–G6 |
+| Doctor acknowledgment, priority #1 | Claude C1/C2 reader corrections are implemented at `3eddaca` on `fix/2026-10-23-doctor-ack-readers`, with 236 passing focused tests and all four changed executable lines covered. The old parallel candidate is superseded. No promotion or live acknowledgment occurred. | Claude recheck and coverage verification; Copilot targeted safety audit; Kiro implementation review. All G2 requirements remain open; Ryan owns G3–G6 |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -127,7 +127,7 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-**The next lane is Codex, for scoped reader corrections.** Ryan
+**The next lanes are Claude, Copilot audit and Kiro, for the required G2 reviews.** Ryan
 explicitly directed Codex to take over implementation; this is a direct grant,
 not an inference from a review PASS. Codex's preceding design re-review was
 FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`. That verdict remains
@@ -139,9 +139,10 @@ Start with the existing [review packet](../inter-model/KIRO-2026-10-22-doctor-fa
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), the
 [execution plan and test evidence](EXECUTION-doctor-fault-acknowledgment.md),
 and self-contained reboot pickup. The packet preserves that immutable review
-result. Codex must correct journal LF record splitting and reader decoding-error
-handling, add the specified regression tests, and pin a new candidate for review.
-Later documentation does not change what Claude reviewed.
+result. The new review target is `3eddaca92d15239209d56963d9441d9788be8bd7`: LF-only
+journal splitting and reader decoding-error handling are implemented. The focused
+suite passes 236 tests, including all 13 new cases; author coverage reaches all
+four changed executable lines. Independent verification remains open.
 
 The takeover packet incorrectly narrowed G2 to Codex verification plus Claude
 review. Ryan's explicit implementation and Claude-review assignments do not
@@ -150,14 +151,14 @@ review. The original three-lane G2 requirements are restored, including Claude
 diff-coverage verification. Claude's static review did not independently verify
 coverage; author test results do not replace any of those requirements.
 
-The original implementation branch also received commits after the takeover
-and retains a different review route. Keep this takeover branch as this
-session's correction path and reconcile the duplicate delivery routing before
-either candidate advances. No stand-down by the other writer is established.
+The earlier parallel branch `feat/2026-10-22-cpu-tripwire-fault-ack` at `01e720e`
+is superseded; its writer has explicitly stood down from that delivery path.
+Continue the takeover ancestry through `fix/2026-10-23-doctor-ack-readers`.
+The worktree path retains its older name; the branch identity governs.
 
 Reboot completion is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
-The existing implementation is committed and pushed; reader fixes and the
-remaining G2 evidence/reviews are next. The
+The corrected implementation is committed and pushed; the remaining G2
+evidence/reviews are next. The
 live-state descriptions below are dated evidence, not current service or doctor
 results. The old Timeshift event's G5 is now moot; any future live use needs
 its own grant.
@@ -175,7 +176,7 @@ The implementation candidate:
 - Reports uncertain durability after replacement and confirms file/directory
   durability on an idempotent retry without changing attribution.
 
-The code and corrected design are on the takeover branch only. Claude's review
+The code and corrected design remain branch-only on the correction branch. Claude's review
 does not grant PR creation, merge, runtime promotion, live acknowledgment or
 acceptance. The reboot has made the investigated event's live-use gate moot.
 
@@ -202,7 +203,7 @@ index, and native-crash checks passed. `cpu_tripwire.check()` rereads boot-scope
 evidence rather than storing a failure latch. The standalone handoff pins the
 event's boot ID and journal timestamp, records the unresolved design questions,
 and preserves the later ingestion/retrieval queue. The acknowledgment candidate
-now requires reader corrections and completion of G2; no failure was cleared, logs deleted,
+now requires independent rechecks and completion of G2; no failure was cleared, logs deleted,
 CPU configuration changed, or reboot performed.
 
 Host disposition: Ryan confirmed deliberate external-USB removal for testing
@@ -241,10 +242,9 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Codex corrects Claude's two reader findings and pins the corrected candidate.
-   Complete Claude's recheck and diff-coverage verification, Copilot's targeted
-   safety audit, and Kiro's implementation review on that exact revision (G2).
-   Reconcile duplicate candidate routing before delivery. Codex's verification
+1. Complete Claude's recheck and diff-coverage verification, Copilot's targeted
+   safety audit, and Kiro's implementation review on corrected target `3eddaca` (G2).
+   The old parallel candidate is superseded. Codex's verification
    does not replace independent reviews. Ryan then decides PR/merge (G3), runtime
    promotion without a watcher restart (G4), and acceptance (G6). G5 for the
    old Timeshift event is moot after reboot; future live acknowledgments need
@@ -269,7 +269,7 @@ Codex admission and the same-source publication fence are live.
 
 | Stop | Owner | What it blocks |
 |---|---|---|
-| Architecture/plan review | Kiro by default; Claude assigned acknowledgment corrections review | Prior acknowledgment G0 FAIL remains historical; Claude PASS-WITH-CHANGES leaves two required reader fixes; Ryan directly granted takeover implementation |
+| Architecture/plan review | Kiro by default; Claude assigned acknowledgment corrections review | Prior acknowledgment G0 FAIL remains historical; Claude PASS-WITH-CHANGES led to reader fixes now awaiting independent recheck; Ryan directly granted takeover implementation |
 | Execute grant | Ryan | Any production-code implementation outside the explicit acknowledgment takeover grant |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
@@ -421,6 +421,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 | 2026-10-23 | Codex | Confirmed a changed boot ID; old-event G5 is moot, Claude review remains pending, and post-reboot doctor health is unverified |
 | 2026-10-23 | Codex | Recorded Claude PASS-WITH-CHANGES at `4d1aedd`; restored original G2 reviewers after lane comparison exposed an unsupported reduction; reader fixes and all remaining G2 requirements are open |
+| 2026-10-23 | Codex | Implemented Claude C1/C2 reader corrections at `3eddaca` with 13 regression cases; superseded the parallel candidate and returned the corrected target to all required G2 reviewers |
 
 ## TL;DR
 
@@ -434,8 +435,8 @@ Keep this document a current-state snapshot, not a session diary.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: Claude returned PASS-WITH-CHANGES at `4d1aedd`; Codex owns two
-  reader fixes. Original Claude/Copilot/Kiro G2 requirements are restored and
+- Priority #1: reader fixes are implemented and tested at `3eddaca`, on the
+  takeover ancestry; the old parallel branch is superseded. Claude/Copilot/Kiro G2 requirements
   remain open. No runtime promotion or live acknowledgment occurred, and doctor
   acceptance remains unmet.
 

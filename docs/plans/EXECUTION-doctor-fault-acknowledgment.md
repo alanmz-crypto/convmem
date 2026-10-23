@@ -4,13 +4,13 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_CHANGES_REQUIRED`. Claude returned PASS-WITH-CHANGES at `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; Codex corrects two reader defects under Ryan's takeover grant, then Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
+**Resume state:** `READER_CORRECTIONS_READY_FOR_RECHECK`. Codex implemented Claude C1/C2 at `3eddaca92d15239209d56963d9441d9788be8bd7` on `fix/2026-10-23-doctor-ack-readers`, continuing corrected packet `705c4cb`. Claude's PASS-WITH-CHANGES at `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` remains historical; all unwaived G2 reviews remain open.
 
 ```
 Planning Status
 
-Phase:        Claude review complete; required corrections and exact-SHA recheck pending
-Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
+Phase:        Reader corrections implemented and locally checked; G2 reviews pending
+Lanes:        Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -20,7 +20,7 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 
 | # | Gate | Owner | What it permits | What it does NOT permit |
 |---|---|---|---|---|
-| G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude reviewed corrections at `4d1aedd` and requires two remaining reader fixes under G2 | No self-issued PASS |
+| G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude's required reader fixes from `4d1aedd` are implemented at `3eddaca`, awaiting G2 recheck | No self-issued PASS |
 | G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
 | G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + Copilot audit lane (targeted safety audit) + Kiro (implementation review); Codex supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
@@ -42,7 +42,10 @@ diff-coverage verification or the Copilot/Kiro reviews. G2 is open.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
-Branch: `feat/2026-10-22-doctor-fault-ack-takeover`, created and pushed with
+Current correction branch: `fix/2026-10-23-doctor-ack-readers`, created with
+`convmem work start fix doctor-ack-readers` and advanced to `705c4cb` before
+editing. It continues the reviewed takeover candidate, preserving the other
+checkout. Original implementation branch: `feat/2026-10-22-doctor-fault-ack-takeover`, created and pushed with
 `convmem work start feat doctor-fault-ack-takeover --worktree`. The inherited
 implementation was copied into an isolated checkout without modifying its source.
 Push every commit with an explicit refspec. Do not open a PR unless Ryan asks.
@@ -127,8 +130,9 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
 
 ## T. Hermetic test specification
 
-Put the tests in `tests/test_cpu_tripwire.py` (extended) and a new
-`tests/test_cpu_tripwire_ack.py`. Every test must use:
+Put the tests in `tests/test_cpu_tripwire.py` (extended),
+`tests/test_cpu_tripwire_ack.py` and `tests/test_cpu_tripwire_readers.py`.
+The reader module shares the acknowledgment suite's hermetic fixture. Every test must use:
 
 - the existing `_FakeRunner` pattern, extended to serve JSON lines,
 - `tmp_path` for the acknowledgment file, `boot_id`, `online` and `stat`, and
@@ -246,6 +250,8 @@ Group 9: review corrections beyond T45–T47.
 | T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Numeric conversion failures retain the other known fault fields; malformed coredumps do not erase kernel faults. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
 | T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 1 states durability uncertainty. Retry keeps identical bytes/attribution and returns success only after file and directory fsync. |
 | T51 | Journal unreadable and a known-bad CPU online, with or without acknowledgments | FAIL with `ONLINE again`; the independent check always runs |
+| T52 | Raw U+0085/U+2028/U+2029 inside a JSON MESSAGE, with empty LF records, in complete and timeout text/byte stdout | Split only on LF, ignore empty records, retain the CPU-14 FAIL and exact MESSAGE bytes/hash; timeout alone marks incompleteness |
+| T53 | Unicode decoding error from either reader | A coredump error preserves the kernel Timeshift FAIL; a journal error preserves the known-bad-online FAIL. Without detected hard-failure evidence, the unreadable signal remains WARN |
 
 **Mutation sanity (verification lane, G2):** each of these mutations must make
 at least one test fail:
@@ -261,7 +267,7 @@ at least one test fail:
 
 ## A. Acceptance criteria (for G2)
 
-- [x] T0–T51 pass. Existing policy assertions remain unchanged; the fake
+- [x] T0–T53 pass in author verification. Existing policy assertions remain unchanged; the fake
       journal runner serves JSON to the new reader and fixtures isolate HOME.
       `tests/test_doctor.py` also passes.
 - [x] Every changed executable production line is covered by a test (diff
@@ -283,9 +289,10 @@ at least one test fail:
 
 Implementation and test code at `1768b4a94241853f12cb3fb19676178a9530ed14`
 was verified locally. The final review commit also carries documentation
-corrections and this evidence. Claude's fixed review candidate is
+corrections and this evidence. Claude's prior fixed review candidate was
 `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`, not a moving branch. Later reboot-checkpoint
-documentation leaves that review target unchanged.
+documentation left that historical review target unchanged. The reader
+corrections below establish a new target; no earlier verdict transfers to it.
 
 - Focused tests: **223 passed** across `tests/test_cpu_tripwire.py`,
   `tests/test_cpu_tripwire_ack.py` and `tests/test_doctor.py` (Python 3.13.12,
@@ -325,10 +332,34 @@ The prior G0 FAIL remains historical. Claude's static review of the fixed
 candidate returned PASS-WITH-CHANGES; it did not rerun these checks. G2 remains
 incomplete. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
 preserves Claude's two required reader corrections, nonblocking advisories,
-and the separately requested lane comparison. Add regression coverage for
-raw U+2028 within a journal JSON string, coredump decoding failure preserving
-a kernel FAIL, and journal decoding failure preserving a known-bad-online FAIL.
-These are required next checks, not completed test evidence.
+and the separately requested lane comparison. Regression coverage addresses
+raw Unicode separators, coredump decoding failure preserving a kernel FAIL,
+and journal decoding failure preserving a known-bad-online FAIL; those author
+checks are now recorded below. Independent rechecks remain required.
+
+### Reader correction evidence (Codex, 2026-10-23)
+
+Corrected code revision: `3eddaca92d15239209d56963d9441d9788be8bd7`.
+Only `cpu_tripwire.py`, new `tests/test_cpu_tripwire_readers.py`, and its required
+`unrelated` manifest classification change from `705c4cb`; subsequent updates
+record evidence and routing in the existing documents.
+
+- All **13 new cases failed before the fix**: nine JSON record-boundary
+  cases and four reader decoding-error cases. They now pass.
+- **236 passed** with `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -q
+  -p no:cacheprovider tests/test_cpu_tripwire.py tests/test_cpu_tripwire_ack.py
+  tests/test_cpu_tripwire_readers.py tests/test_doctor.py`. The new module
+  reuses the existing autouse hermetic guard; no host readers run.
+- Coverage 7.17.0 measured all **4/4 changed executable production lines**
+  versus `705c4cb`. This is author diff coverage; Claude's independent coverage
+  verification remains open. Strict subprocess text decoding and MESSAGE
+  hashing are unchanged; reader exceptions become unreadable-signal results.
+- Scoped Ruff and Pylint pass for `cpu_tripwire.py` and the new reader tests.
+  No lint-baseline or configuration changes. The full repository lint scan and
+  full pytest suite were not repeated for this correction.
+- The committed-manifest guard passed **1 test**, not skipped, on the clean
+  `3eddaca` tree. `git diff --check` and the staged secret scan pass.
+  No live changes occurred.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 

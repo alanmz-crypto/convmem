@@ -4,15 +4,15 @@
 **Date:** 2026-10-22
 **Updated:** 2026-10-23
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
-**Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
+**Branch:** `fix/2026-10-23-doctor-ack-readers` (continues takeover candidate `705c4cb`)
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 
 ```
 Planning Status
 
-Phase:        Claude PASS-WITH-CHANGES; two reader corrections and recheck pending
-Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
+Phase:        Reader corrections implemented at 3eddaca; independent G2 reviews open
+Lanes:        Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
@@ -23,8 +23,8 @@ Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
 Claude's static review of `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` found
 two remaining reader defects under §5.1: Unicode record splitting and uncaught
 decoding errors. The existing [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-records the required changes, advisories and lane comparison. Codex corrects
-the implementation; Claude rechecks the new exact revision. The original G2
+records the required changes, advisories and lane comparison. Codex implemented
+the reader corrections at `3eddaca`; Claude rechecks that new exact revision. The original G2
 diff-coverage, Copilot safety-audit and Kiro implementation-review requirements
 also remain open; the takeover grant did not explicitly waive them.
 
