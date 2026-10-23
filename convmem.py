@@ -29,6 +29,9 @@ Usage:
   convmem brief                    shared context block for all agents
   convmem brief --print            stdout only (paste into ChatGPT sessions)
   convmem doctor                   health checks (v0); --v1 for watch/systemd/canary
+  convmem tripwire show [--json]    inspect exact fault identities and acknowledgments
+  convmem tripwire ack ...          interactively acknowledge one exact fault (Ryan)
+  convmem tripwire revoke ID ...    restore a fault alarm while retaining its history
   convmem tldr                     one-page cheat sheet (cwd-aware)
   convmem doctor --verify          also run scripts/verify-continue.sh
   convmem record -i                record a durable fact (interactive)
@@ -52,7 +55,7 @@ app = typer.Typer(add_completion=False, help="Search your past AI conversations.
 _SUBCOMMANDS = {
     "index", "stats", "search", "expand", "ask", "open", "add", "verify", "related",
     "watch", "refine", "monitor", "exclude", "forget", "brief", "doctor", "propose_decision", "record",
-    "unresolved", "tldr", "work", "agent-run", "scope", "shadow-inventory", "shadow-activate",
+    "unresolved", "tldr", "work", "tripwire", "agent-run", "scope", "shadow-inventory", "shadow-activate",
     "shadow-rollback", "shadow-canary", "writer-census-start",
     "writer-census-status", "writer-census-report",
 }
@@ -938,6 +941,45 @@ def doctor(
 
         after_doctor(passed=doctor_exit_code(checks) == 0, v1=v1)
     raise typer.Exit(doctor_exit_code(checks))
+
+
+tripwire_app = typer.Typer(help="Inspect and acknowledge one exact CPU-attributed fault.")
+app.add_typer(tripwire_app, name="tripwire")
+
+
+@tripwire_app.command("show")
+def tripwire_show_command(json_output: bool = typer.Option(False, "--json")):
+    from cpu_tripwire_cli import run_show
+
+    raise typer.Exit(run_show(json_output))
+
+
+@tripwire_app.command("ack")
+def tripwire_ack_command(
+    *, boot_id: str = typer.Option(..., "--boot-id"),
+    realtime_us: int = typer.Option(..., "--realtime-us"),
+    source_monotonic_us: int = typer.Option(..., "--source-monotonic-us"),
+    message_sha256: str = typer.Option(..., "--message-sha256"),
+    cursor: str = typer.Option(..., "--cursor"), by: str = typer.Option(..., "--by"),
+    reason: str = typer.Option(..., "--reason"),
+    authority_ref: str = typer.Option(None, "--authority-ref"),
+):
+    from cpu_tripwire_ack import Operator
+    from cpu_tripwire_cli import run_ack
+    from cpu_tripwire_events import EventKey
+
+    key = EventKey(boot_id, realtime_us, source_monotonic_us, message_sha256, cursor)
+    raise typer.Exit(run_ack(key, Operator(by, reason, authority_ref)))
+
+
+@tripwire_app.command("revoke")
+def tripwire_revoke_command(
+    identifier: str, by: str = typer.Option(..., "--by"), reason: str = typer.Option(..., "--reason"),
+):
+    from cpu_tripwire_ack import Operator
+    from cpu_tripwire_cli import run_revoke
+
+    raise typer.Exit(run_revoke(identifier, Operator(by, reason)))
 
 
 work_app = typer.Typer(help="Always-GitHub-Fallback: start/resume task branches.")
@@ -2250,3 +2292,5 @@ if __name__ == "__main__":
 # fingerprint-pad-0
 # fingerprint-pad-1
 # fingerprint-pad-2
+
+# ref: ./cpu_tripwire_cli.py — tripwire operator command implementations

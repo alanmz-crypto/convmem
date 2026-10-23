@@ -2,16 +2,16 @@
 
 **Arc:** Codex (priority #1)
 **Date:** 2026-10-22
-**Author:** Claude (Opus 5.5), design lane
+**Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `NOT_STARTED`. Waiting for Kiro's design review. No Execute grant exists.
+**Resume state:** `IMPLEMENTING`. Ryan assigned Codex the takeover on 2026-10-22; Claude reviews the resulting exact revision. The earlier G0 FAIL remains recorded.
 
 ```
 Planning Status
 
-Phase:        Execution plan drafted; awaiting Kiro design review
-Lanes:        Kiro review -> Ryan Execute grant -> Cursor (hermetic implementation)
-Authority:    None granted. Every gate in §G is separate; none implies another.
+Phase:        Codex implementing the corrected design and hermetic tests
+Lanes:        Codex implementation -> Claude independent review -> Ryan decision
+Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
 ---
@@ -20,35 +20,40 @@ Authority:    None granted. Every gate in §G is separate; none implies another.
 
 | # | Gate | Owner | What it permits | What it does NOT permit |
 |---|---|---|---|---|
-| G0 | Design review of this packet at an exact commit | Kiro | Moving to an Execute decision | Any code |
-| G1 | Execute grant | Ryan | Cursor implements E1–E5 hermetically on a feature branch | Promotion, live use, a PR without a request, merge |
-| G2 | Exact-tip verification | Claude (diff coverage) + Copilot audit lane (targeted safety audit) + Kiro (implementation review) | A PR decision | Promotion |
+| G0 | Prior exact-revision design review | Codex, substituting for Kiro | FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; findings corrected in this branch for Claude to verify | No self-issued PASS |
+| G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
+| G2 | Exact-tip verification and independent review | Codex verifies; Claude reviews per Ryan | A PR decision after Claude checks design corrections and implementation | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
 | G4 | Runtime promotion grant at an exact SHA | Ryan | A fast-forward of `.worktrees/runtime-main`, **with no watcher restart** | Live acknowledgment |
-| G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `4c6debf6cee1` | Any other event; any acceptance claim |
+| G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `bab67b49aa4f` | Any other event; any acceptance claim |
 | G6 | Acceptance decision | Ryan | Deciding whether the deployment's doctor criterion is satisfied | n/a |
 
 If Ryan reboots before G5, G5 is moot (architecture §10.1, step 6). E1–E5
 remain valid for future events if Ryan still wants the mechanism.
 
-## E. Implementation steps (Cursor, after G1 only)
+## E. Implementation steps (Codex, under Ryan's takeover grant)
 
-Branch: `feat/YYYY-MM-DD-cpu-tripwire-fault-ack` from current `origin/main`,
-created with `convmem work start feat cpu-tripwire-fault-ack --worktree`.
+Branch: `feat/2026-10-22-doctor-fault-ack-takeover`, created and pushed with
+`convmem work start feat doctor-fault-ack-takeover --worktree`. The inherited
+implementation was copied into an isolated checkout without modifying its source.
 Push every commit with an explicit refspec. Do not open a PR unless Ryan asks.
 
-**E1. Identity-bearing journal read** in `cpu_tripwire.py`:
+**E1. Identity-bearing journal read** in `cpu_tripwire_events.py` and
+`cpu_tripwire.py` (the latter retains existing public imports):
 
 - Add optional fields to `Fault`, all defaulting to `None` so positional
   construction in the existing tests keeps working: `boot_id`, `realtime_us`,
-  `source_monotonic_us`, `message_sha256`, `message`, `cursor`.
+  `source_monotonic_us`, `message_sha256`, raw-byte `message`, `cursor`;
+  `hostname` defaults to `unknown`.
 - Factor the message classification in `parse_kernel_faults` into one helper.
   `parse_kernel_faults(lines)` (short-iso) keeps its exact behavior for the
   existing tests.
-- Add `parse_kernel_journal(lines) -> list[Fault] | None`. It parses
-  `-o json` lines through the same helper and returns `None` if any line is
-  malformed (architecture §5.1).
-- `read_kernel_faults()` switches to the JSON argv in §5.1.
+- Add `parse_kernel_journal(lines) -> JournalRead`: faults, observed boot IDs
+  and problems travel together. Parse every decodable MESSAGE, including
+  repeated fields, and retain faults before and after malformed input. Any
+  incomplete read disables acknowledgments; it never overrides a detected FAIL.
+- `read_kernel_faults()` switches to the JSON argv with `--all` in §5.1.
+  Nonzero exits and timeouts retain captured stdout and mark the read incomplete.
 - Add `read_boot_id(path=Path("/proc/sys/kernel/random/boot_id")) -> str | None`.
   It strips dashes, lowercases, and requires 32 hex characters.
 
@@ -57,42 +62,51 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
 
 - `ACK_SCHEMA`, `ACK_VERSION = 1`, `DEFAULT_ACK_PATH`. The default path is
   resolved at call time from `Path.home()`.
-- `ack_id(boot_id, realtime_us, source_monotonic_us, message_sha256) -> str`.
+- `EventKey.ack_id` hashes all five fields; the shared event module owns
+  classification and identity so the store and evaluator cannot form an import cycle.
 - `load_acks(path) -> AckSet`. An `AckSet` holds the records and a
   `problem: str | None` (`invalid: …` or `unreadable: …`). It never raises
   for file content. It enforces all seven checks in §6, rejecting the whole
   file on any failure.
 - `write_ack(...)` and `revoke_ack(...)`: flock, temp file, fsync, replace,
-  fsync of the directory (§8). They take `path`, `now`, `runner` and
-  `tty_check` parameters so they can be tested.
+  fsync of the directory (§8). Inject `path`, `now`, confirmation, TTY check
+  and a callable supplying an `AckContext` from one fresh evidence read.
+  Revoked keys refuse re-acknowledgment without rewriting the file. Idempotent
+  retries fsync the current file and directory, preserving attribution.
+  Post-replacement failures raise `DurabilityUnconfirmed`, not a no-change refusal.
 - `ackable(fault, known_bad) -> bool`: the rule in §7, step 3.
 
 **E3. Policy integration** in `cpu_tripwire.evaluate()` and `check()`:
 
 - Implement architecture §9.1 exactly.
-- Add the parameters `acks: AckSet | None = None` and
-  `current_boot_id: str | None = None`.
+- Add keyword-only `acks`, `current_boot_id` and `ack_problem`.
+- Share `read_signals()` and `evaluate_signals()` between doctor and the CLI.
+  Always evaluate online CPUs and retained faults, including incomplete reads.
 - `check()` gains the keyword parameters `ack_path` and `boot_id_path`, with
   production defaults. It loads acknowledgments only when the file exists.
 - The detail text follows §9.2.
 - `doctor._check_cpu_tripwire` does not change. If a test needs to inject
   paths, monkeypatching `cpu_tripwire.check` is enough.
 
-**E4. CLI**: a Typer sub-app `tripwire` in `convmem.py` with `show`, `ack` and
-`revoke` (§7):
+**E4. CLI**: thin Typer registration in `convmem.py` delegates to
+`cpu_tripwire_cli.py`, with `show`, `ack` and `revoke` (§7):
 
 - Handlers only delegate, with ≤ 15 lines of logic each.
 - `show` prints the copyable `ack` command.
 - `ack` enforces the TTY check, requires exactly one matching entry, refuses
   anything that cannot be acknowledged, and requires the operator to type the
   ID.
-- Exit codes: 0 when written or already present; 1 when refused or the lock is
-  busy; 2 for bad usage or no TTY.
+- Exit codes: 0 when durable or durably confirmed already present; 1 when
+  refused, the lock is busy, or durability is uncertain; 2 for bad usage or no
+  TTY. Uncertainty explicitly states that the visible document may have changed.
+- Copyable commands use shell quoting for the opaque cursor. Revoked records
+  do not receive an `ack` command. Mixed FAIL output includes the ack author.
 - Add the three commands to the usage block at the top of `convmem.py`.
 
 **E5. Repository hygiene**:
 
-- Classify `cpu_tripwire_ack.py` and any new test files in
+- Classify `cpu_tripwire_ack.py`, `cpu_tripwire_events.py`,
+  `cpu_tripwire_cli.py` and any new test files in
   `config/repository-knowledge/openclaw-watch-scope-v1.json`. Use
   `unrelated`, matching `cpu_tripwire.py`.
 - **Refresh the `include` sha256 for `convmem.py`.** It is an `include`
@@ -138,19 +152,22 @@ Group 2: the intended acknowledgment.
 
 | ID | Case | Expected |
 |---|---|---|
-| T4 | The Timeshift entry with a valid acknowledgment for the same boot | Status `warn` (never `pass`). The detail contains `acknowledged`, `4c6debf6cee1`, the `by` value, and `hardware health unproven`. `doctor_exit_code` is 0 when this is the only finding. |
+| T4 | The Timeshift entry with a valid acknowledgment for the same boot | Status `warn` (never `pass`). The detail contains `acknowledged`, `bab67b49aa4f`, the `by` value, and `hardware health unproven`. `doctor_exit_code` is 0 when this is the only finding. |
 | T5 | T4 plus the acknowledged event's coredump (PID 835726, signal 11) | No orphan-dump note (architecture §5.3) |
 
 Group 3: recurrence, and faults that must still FAIL.
 
 | ID | Case | Expected |
 |---|---|---|
-| T6 | T4 plus a second Timeshift segfault on CPU 13: new PID, later times | `fail`. The detail names the new fault and adds `plus 1 acknowledged fault (ack 4c6debf6cee1)`. |
+| T6 | T4 plus a second Timeshift segfault on CPU 13: new PID, later times | `fail`. Detail names the new fault and the acknowledgment ID, author, time and reason. |
 | T7 | A recurrence that reuses PID 835726 and the identical message text, with different `realtime_us` and `source_monotonic_us` | `fail` |
 | T8 | The same timestamps with a one-byte change to the message (the `ip`) | `fail` |
 | T9 | The acknowledged entry **and** an exact duplicate entry with the same key in one read | `fail` with an ambiguity note |
-| T10 | T4 plus a machine-check line | `fail` with the machine-check text |
-| T11 | T4 plus a known-bad CPU online (`online = 0-23`, known-bad `[4, 5, 8, 9]`) | `fail` with `ONLINE again` |
+| T45 | The acknowledged entry is gone (vacuumed) and a different entry with the same boot, `realtime_us`, `source_monotonic_us` and message remains, with a different `cursor` | `fail`; the survivor is not acknowledged and `show` reports `inert (entry not present)` (G0 finding 3) |
+| T46 | The acknowledged entry unchanged, same cursor, in a read where the original is the only match | `warn` (control for T45) |
+| T47 | An entry with no `__CURSOR` field that otherwise matches a record | `fail`; it can never be acknowledged |
+| T10 | T4 plus a machine-check line | `fail` with machine-check text and acknowledgment attribution |
+| T11 | T4 plus a known-bad CPU online (`online = 0-23`, known-bad `[4, 5, 8, 9]`) | `fail` with `ONLINE again` and acknowledgment attribution |
 | T12 | T4 plus a segfault pinned to CPU 14 (healthy, unrelated) | `fail` |
 | T13 | T4 plus the Typora GPF (no CPU) | `warn`, and the detail carries both the acknowledged note and the userspace advisory |
 
@@ -199,18 +216,27 @@ module function, with an injected runner, path and TTY check).
 | T35 | Key names an MCE, a fault pinned to a known-bad CPU, a fault with no CPU, or a `kernel_oops` | Exit 1, no file |
 | T36 | Wrong typed short ID | Exit 1, no file |
 | T37 | Success | Exit 0. The file has mode `0600`, passes `load_acks` with no problem, and `check()` then gives the T4 verdict. The coredump evidence is filled in when the fake coredump list has a match, and null otherwise. |
-| T38 | Run again for the same key | Exit 0, "already acknowledged", and the file is byte-identical |
+| T38 | Run again for the same active key | Fsync existing file and directory under lock; exit 0, "already acknowledged", with byte-identical content. Sync failure exits 1 with uncertainty. |
 | T39 | Lock held by another file descriptor | Exit 1, and the file is unchanged |
-| T40 | Interrupted write: `os.replace` (and separately `os.fsync`) patched to raise | The original file is byte-identical (or still absent), and the writer's temp file is removed |
+| T40 | Failure at file fsync or replacement, before replacement succeeds | The original file is byte-identical (or still absent), and the writer's temp file is removed; test ack and revoke. Post-replacement failures are T50. |
 
 Group 8: integration, decoding and the CLI.
 
 | ID | Case | Expected |
 |---|---|---|
 | T41 | `doctor._check_cpu_tripwire` with `check` patched to return the T4 verdict | `ok=True`, `status="warn"`; `doctor_exit_code([that check])` is 0 |
-| T42 | A `MESSAGE` given as a byte array with invalid UTF-8 | Classified from the replacement-decoded text; `message_sha256` taken over the raw bytes |
-| T43 | One malformed JSON line among valid ones | The blind WARN (`kernel log unreadable`); no acknowledgment applied |
-| T44 | `show --json` against the T4, T14 and T31 states | The states `applied`, `inert (previous boot)` and `revoked`, each with full keys. The copyable `ack` line appears only for an acknowledgeable fault with no active record. |
+| T42 | A `MESSAGE` byte array with invalid UTF-8, then ack/store/reload | Classified from replacement-decoded text; hash and persisted evidence preserve raw bytes; valid reload applies only to that exact entry. |
+| T43 | Malformed/non-object/null/invalid MESSAGE before or after valid new CPU-attributed faults or MCE, with an existing ack | Retain each hard-fault description and FAIL, disable acknowledgments, add incompleteness note. With no detected FAIL, incompleteness is WARN. |
+| T44 | `show --json` against the T4, T14 and T31 states | The states `applied`, `inert (previous boot)` and `revoked`, each with full keys. The copyable `ack` line appears only for an acknowledgeable fault with no stored same-key record and complete matching boot evidence. |
+
+Group 9: review corrections beyond T45–T47.
+
+| ID | Case | Expected |
+|---|---|---|
+| T48 | Re-ack the same key after revocation, including CLI/show | Exit 1, file byte-identical and still valid, FAIL remains, no copyable re-ack command |
+| T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
+| T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 1 states durability uncertainty. Retry keeps identical bytes/attribution and returns success only after file and directory fsync. |
+| T51 | Journal unreadable and a known-bad CPU online, with or without acknowledgments | FAIL with `ONLINE again`; the independent check always runs |
 
 **Mutation sanity (verification lane, G2):** each of these mutations must make
 at least one test fail:
@@ -218,19 +244,24 @@ at least one test fail:
 1. Removing `boot_id` from the key.
 2. Matching on `process` instead of the key.
 3. Letting acknowledged faults yield PASS.
-4. Skipping a bad JSON line instead of going blind.
+4. Clearing the incomplete-read condition so acknowledgments apply despite malformed input.
 5. Rejecting only the bad record instead of the whole file.
+6. Removing cursor equality from the key.
+7. Allowing a revoked key to become active again.
+8. Returning idempotent success without retrying durability.
 
 ## A. Acceptance criteria (for G2)
 
-- [ ] T0–T44 pass. The existing `tests/test_cpu_tripwire.py` and
-      `tests/test_doctor.py` pass unchanged, except for additions.
+- [ ] T0–T51 pass. Existing policy assertions remain unchanged; the fake
+      journal runner serves JSON to the new reader and fixtures isolate HOME.
+      `tests/test_doctor.py` also passes.
 - [ ] Every changed line is covered by a test (diff coverage), including the
       error branches in `load_acks`, `write_ack` and the boot cross-check.
 - [ ] With no acknowledgment file, doctor's `cpu_tripwire` detail is
       byte-identical to `main` for every T1 fixture.
 - [ ] The diff touches only `cpu_tripwire.py`, `cpu_tripwire_ack.py`,
-      `convmem.py`, the tests, and the manifest. It touches none of the
+      `cpu_tripwire_events.py`, `cpu_tripwire_cli.py`, `convmem.py`, the tests,
+      the manifest, and the existing architecture/plan/review/status/routing docs. It touches none of the
       §4 out-of-scope files.
 - [ ] ruff, the pylint gate, `git diff --check`, and the committed-manifest
       pytest pass on a clean committed tree.
@@ -248,7 +279,8 @@ G4 promotion, run by the lane Ryan names, with his exact SHA:
    `distill.py`, `llm.py`, `incremental_transform_contract.py`,
    `incremental_checkpoint_migration.py`.
 3. `git -C <runtime-main> grep -n "cpu_tripwire" -- '*.py' ':!tests/'`
-   lists only `cpu_tripwire.py`, `cpu_tripwire_ack.py`, `convmem.py` (CLI)
+   lists only `cpu_tripwire.py`, `cpu_tripwire_ack.py`, `cpu_tripwire_events.py`,
+   `cpu_tripwire_cli.py`, `convmem.py` (CLI)
    and the lazy import inside `doctor._check_cpu_tripwire`. Evidence at
    `5c0a01b`: `watch.py` reaches `doctor` only through the opt-in
    `live_diagnosis` path, and the MCP `brief` imports only
@@ -268,7 +300,7 @@ G5, Ryan in his own terminal:
    - no other FAIL contributor exists.
    If any of these is wrong, stop.
 3. Paste the printed `ack` command with `--by ryan`, a reason, and
-   `--authority-ref` pointing at the G5 grant. Type the ID `4c6debf6cee1`.
+   `--authority-ref` pointing at the G5 grant. Type the ID `bab67b49aa4f`.
 4. Run `convmem doctor` and record the result.
 
 Any lane may then verify, read-only: architecture §10.2.
