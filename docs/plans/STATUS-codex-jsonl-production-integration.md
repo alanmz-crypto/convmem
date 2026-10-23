@@ -104,11 +104,11 @@ runtime remains at the granted `1a68675`. That docs merge needs no deployment.
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
 | Doctor acknowledgment, priority #1 | Requested by Ryan; no existing reset, acknowledgment design or implementation. Ryan cannot reboot now. The standalone new-model handoff is in open delivery PR #414. | Ryan owns delivery-PR merge; fresh-model design and Kiro review remain next. No live acknowledgment or acceptance follows from this handoff |
-| Stage 1 outcome | **Recorded PASS, Ryan to confirm.** Run record landed from the Stage 1 branch: [Stage 1 packet](../inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md) §"Stage 1 result". Run 2 transformed 1 chunk, run 3 made 0 provider calls, checkpoint/Chroma/processed/export agreed, the pre-activation rollout routed legacy; 4 paid calls against the 40-call ceiling (2026-10-12). It proves the route is correct and bounded, not savings. | Ryan confirms acceptance |
-| Stage 2 outcome | **No formal PASS recorded.** Canary 1 (2026-10-12) stopped at the paid ceiling after 12.8 h (about 410 of 400 calls; 398 were legacy re-indexes, about 12 were new Codex sessions) and exposed the wedge, self-indexing and plain-open defects now fixed by #390, #395, #399 and #403 ([report](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md), [run log](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-run.md)). Canary 2 hit its 200-call ceiling on 2026-10-17. The guarded 24 h windows ending 2026-10-21 10:49 CDT ran without a STOP (about 650 of 3,000 estimated calls). Claude scored the 2026-10-20 10:49 → 2026-10-21 10:49 CDT window against design §9 (read-only, from the watcher journal): **refusal loops PASS** (1 terminal quarantine, 9 later skips, no respawn); **paid calls bounded to the frontier PASS** (78 admitted runs, all committed; paid calls were exactly 2 × chunks transformed in every run, at most 3 chunks, 65 runs transformed 1); **service OOM PASS** (none; watcher main process about 110 MB); **child scopes under 80% of cap FAIL** (live `subprocess_memory_max` is 12G; of 78 admitted Codex children, 22 peaked at or above 9.6G and 9 at or above 11.5G, median 7.3G, max 12.0G, none OOM-killed; the 77 other children had a 2.0G median); **doctor index and crash gates UNSCORED** for the window (no doctor run is recorded inside it; the only fault today is the Timeshift `cpu_tripwire`). Peaks are high even for 1-chunk commits, consistent with the full-corpus digest and verify passes inside each commit (see `Issues/units-export-whole-file-reads-16gib.md` and `incremental-commit-holds-global-write-lock.md`, local, untracked). | Ryan accepts the memory criterion as scored, waives it with a reason, or authorizes a fix to commit-phase memory; Stage 2 is not accepted until then |
+| Stage 1 outcome | **PASS, confirmed by Ryan 2026-10-22.** Run record landed from the Stage 1 branch: [Stage 1 packet](../inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md) §"Stage 1 result". Run 2 transformed 1 chunk, run 3 made 0 provider calls, checkpoint/Chroma/processed/export agreed, the pre-activation rollout routed legacy; 4 paid calls against the 40-call ceiling (2026-10-12). It proves the route is correct and bounded, not savings. | None |
+| Stage 2 outcome | **No formal PASS recorded.** Canary 1 (2026-10-12) stopped at the paid ceiling after 12.8 h (about 410 of 400 calls; 398 were legacy re-indexes, about 12 were new Codex sessions) and exposed the wedge, self-indexing and plain-open defects now fixed by #390, #395, #399 and #403 ([report](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md), [run log](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-run.md)). Canary 2 hit its 200-call ceiling on 2026-10-17. The guarded 24 h windows ending 2026-10-21 10:49 CDT ran without a STOP (about 650 of 3,000 estimated calls). Claude scored the 2026-10-20 10:49 → 2026-10-21 10:49 CDT window against design §9 (read-only, from the watcher journal): **refusal loops PASS** (1 terminal quarantine, 9 later skips, no respawn); **paid calls bounded to the frontier PASS** (78 admitted runs, all committed; paid calls were exactly 2 × chunks transformed in every run, at most 3 chunks, 65 runs transformed 1); **service OOM PASS** (none; watcher main process about 110 MB); **child scopes under 80% of cap FAIL** (live `subprocess_memory_max` is 12G; of 78 admitted Codex children, 22 peaked at or above 9.6G and 9 at or above 11.5G, median 7.3G, max 12.0G, none OOM-killed; the 77 other children had a 2.0G median); **doctor index and crash gates UNSCORED** for the window (no doctor run is recorded inside it; the only fault today is the Timeshift `cpu_tripwire`). Peaks are high even for 1-chunk commits, consistent with the full-corpus digest and verify passes inside each commit (see `Issues/units-export-whole-file-reads-16gib.md` and `incremental-commit-holds-global-write-lock.md`, local, untracked). | **Ryan chose to fund a fix (2026-10-22).** Codex designs a commit-phase memory fix, Kiro reviews it, and Ryan grants Cursor implementation separately. Stage 2 stays unaccepted until the fix is deployed and a fresh 24 h window re-scores the memory criterion; the design must re-measure peaks first. |
 | Paid burn, last 24 h | Read-only journal measurement 2026-10-22 22:35 CDT: about 269 estimated paid calls, 233 on the new Codex route (exact) and about 36 legacy (2 calls per chunk); 0 errors, 0 timeouts, watcher at 94 MB. Oct 20–21 was about 650 calls, about 474 legacy. The prior 24 h guard ended 2026-10-21. A new one started 2026-10-22 22:52:57 CDT as `convmem-burn-guard.service` (ceiling 1,000 estimated paid calls, 24 h; on any STOP it runs `disable --now convmem-watch.service`; stop it with `systemctl --user stop convmem-burn-guard`). | Ryan may stop or retune it |
 | Pre-activation rollout residual-burn decision | **Partly recorded, Ryan to confirm.** Under Ryan's 2026-10-17 exposure policy, dormant full-re-index sessions were soft-excluded (reversible, index kept): three high-cost Codex rollouts and, in a bulk one-shot, 1,993 sessions (649 Codex, 672 Cursor, 574 Kiro, 98 Copilot). Backups: `~/.config/convmem/backups/processed.json.pre-exclude-2026-10-17`, `…pre-bulk-exclude-2026-10-17`, `…pre-oct9-exclude-2026-10-17`. The Oct 10 23:16 thread was still held as active. | Ryan confirms the disposition; no exclusion, retirement or rebuild is authorized here |
-| `allow_full_rebuild` flag | Live config still has `allow_full_rebuild = true` (added 2026-10-17 while DeepSeek was free). It is load-bearing: removing it would quarantine about 49 of 139 active Codex sessions on their next append, and a model, effort or prompt change with it set triggers full paid re-transforms. See `Issues/allow-full-rebuild-is-load-bearing-not-temporary.md` (local, untracked). | Ryan decides the policy before any model or prompt change |
+| `allow_full_rebuild` flag | Live config still has `allow_full_rebuild = true` (added 2026-10-17 while DeepSeek was free). It is load-bearing: removing it would quarantine about 49 of 139 active Codex sessions on their next append, and a model, effort or prompt change with it set triggers full paid re-transforms. See `Issues/allow-full-rebuild-is-load-bearing-not-temporary.md` (local, untracked). | **Policy (Ryan, 2026-10-22): keep it on.** No model, effort or prompt change without a written plan that prices the rebuild of every active session. |
 
 ## 5. Your Role
 
@@ -193,9 +193,8 @@ Codex admission and the same-source publication fence are live.
    acknowledgment mechanism, and obtains Kiro review before a separate Ryan
    Execute decision. Ryan cannot reboot now. The original doctor criterion
    still records FAIL; this handoff does not change it or authorize live use.
-2. Ryan confirms the Stage 1 PASS, rules on the failed Stage 2 memory
-   criterion (§4: accept, waive with a reason, or fund a commit-phase memory
-   fix), and confirms the residual-burn disposition. Review the
+2. Stage 1 is confirmed (§4). The failed Stage 2 memory criterion is being
+   fixed (item 5b below); Ryan still confirms the residual-burn disposition. Review the
    reported quarantines and old wedged transaction without clearing them. Do
    not repeat paid canaries or assert acceptance from a running service alone.
 3. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
@@ -210,22 +209,30 @@ Codex admission and the same-source publication fence are live.
    remove prerequisites, not the need for a fresh exact-source grant.
 5. Path to Done, in scope (Codex rollouts and Kiro only; Cursor, Copilot and
    Crush stay legacy routes by design and are separate work):
-   a. Protect the gain: restart a burn guard and decide the
-      `allow_full_rebuild` policy (§4). Provider key outside the watcher
-      (`OPENAI_API_KEY` is only in `env.systemd`) leaves manual `index --file`
-      paying for summaries that get no knowledge units.
-   b. Kiro Stage 1: the Astra packet (`docs/2026-10-20-issue-286-kiro-stage1-packet`,
+   a. Protect the gain: the burn guard is running and `allow_full_rebuild`
+      stays on (§4). Key setup, accepted by Ryan 2026-10-22: the watcher uses
+      the `OPENAI_API_KEY` in `env.systemd`; interactive shells load a separate
+      key from `~/.zshrc` (private secrets file). Non-interactive jobs get only
+      the watcher's key. Revisit only if such a job needs OpenAI.
+   b. Commit-phase memory fix (funded 2026-10-22): Codex designs it (re-measure
+      peaks first; the cost is the per-commit full-corpus digest and verify
+      passes), Kiro reviews, Ryan grants Cursor implementation, then deploy and
+      re-score a 24 h window against design §9. Do this before item c.
+   c. Kiro Stage 1 (held until b lands, since enabling Kiro incremental adds
+      commits through the same memory-heavy step): the Astra packet (`docs/2026-10-20-issue-286-kiro-stage1-packet`,
       `0b00e6a`, unmerged) has Kiro PASS-with-conditions C1/C2 and a spending
       NO-GO until the listed sessions, a cohort ledger, the Oct 13 wedge and a
       no-other-writer window are resolved. The unattributed Oct 17 00:24:44
       writer was a hard blocker; whether #411 clears it is unproven.
-   c. Stuck Codex sources (refused or quarantined, no cost, index gaps):
+   d. Stuck Codex sources (refused or quarantined, no cost, index gaps):
       two `projection_checkpoint_mismatch`, two `frontier_violation`, three
       `bootstrap_required`, the wedged Oct 13 transaction, and three
       timeout quarantines. Clearing may only re-quarantine; read the
       `transient-provider-errors-quarantine-sources-permanently` issue first.
-   d. Doctor acceptance via the #415 acknowledgment design (item 1).
-   e. Close the arc only after a, b and d, with Ryan's confirmations in item 2.
+   e. Doctor acceptance via the #415 acknowledgment design (item 1); Kiro's
+      review of #415 can run in parallel with b.
+   f. Close the arc only after a, b, c and e, with the residual-burn
+      confirmation in item 2.
 
 ## 7. Hard Stops
 
@@ -376,6 +383,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | Landed the Stage 1 result and Stage 2 run/report from the unmerged Stage 1 branch, recorded Stage 1 as PASS (Ryan to confirm), scored the Oct 20–21 window against design §9 (memory criterion FAIL: 22 of 78 Codex children at or above 80% of the 12G cap), added the measured 24 h burn and the `allow_full_rebuild` risk, wrote the §6 path to Done, and started a new 24 h burn guard (ceiling 1,000). No code or config change. |
+| 2026-10-22 | Ryan / Claude | Ryan confirmed Stage 1, kept `allow_full_rebuild` on as policy, accepted the two-key OpenAI setup, and funded a commit-phase memory fix (Codex design, Kiro review, Cursor after a separate grant); Kiro Stage 1 is held until that fix lands. |
 
 ## TL;DR
 
