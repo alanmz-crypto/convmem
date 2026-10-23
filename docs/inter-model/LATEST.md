@@ -9,19 +9,27 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: new-model doctor-acknowledgment design
-  (2026-10-22, Codex):** Ryan cannot reboot now and prioritized acknowledgment
-  of the specific Timeshift crash while continuing to flag new faults. There
-  is no existing reset; this model stopped at the gate-redesign boundary.
-  **Next lane: a fresh Codex design model, dispatched by Ryan.** Read the
-  [standalone handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md);
-  its delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is
-  open under Ryan's PR Steward assignment, with merge remaining Ryan-owned.
-  Design and implementation are `NOT_STARTED`, and doctor acceptance remains
-  unmet. The fence is already live at runtime `1a68675`, with the watcher
-  active since `13:52:35 CDT`, PID `904311`, no automatic restarts. Ryan
-  squash-merged deployment/status docs PR #413 as `75d8e2a`; no runtime
-  promotion follows from that docs merge. Deployment and stale-mount cleanup
+- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
+  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
+  the specific Timeshift crash while continuing to flag new faults. A fresh
+  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
+  - Each acknowledgment is keyed to one exact kernel journal entry and bound
+    to one boot.
+  - The matched fault becomes a visible WARN, never PASS.
+  - New faults, machine checks and known-bad CPUs coming back online still
+    FAIL.
+  **Next lane: Kiro design review (G0)**, via the
+  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
+  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
+  under Ryan's PR Steward assignment; Ryan owns the merge.
+  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
+  Execute, promotion, live acknowledgment and acceptance are separate Ryan
+  gates (G1–G6), and doctor acceptance remains unmet. The input
+  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
+  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
+  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
+  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
+  promotion follows from those docs merges. Deployment and stale-mount cleanup
   grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
   outcomes and residual burn remain **Ryan to confirm**. See the current
   [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
@@ -306,4 +314,5 @@ its existing archive/reference location. Use
 
 <!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
 <!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
+<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design review pickup -->
 <!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->
