@@ -105,7 +105,7 @@ restore evidence, not a new Timeshift/Restic test.
 | Opt-in Kiro watch route | PR #406 (`adcf5b3`) added opt-in Kiro incremental indexing with a crash-safe paid-call budget. Live `live_sources = []` selects no exact Kiro source. |
 | Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. Ryan's exact-SHA grant was executed on 2026-10-22: the watcher now runs the fence. |
 | Effective watcher runtime | `.worktrees/runtime-main` is clean on branch `main` at granted SHA `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, fast-forwarded from `686d50e` after its indexing child completed. The watcher restarted once at `2026-10-22T13:52:35-05:00`, active under PID `904311`, invocation `db09e9881aa7454499a1ae117be5dac5`. Effective `MemoryMax` is `8589934592` bytes (8 GiB); live config SHA-256 remained `9719875a5906d0a708be2fc54640df74b9515c1be8e39e18401c8b25015db89c`. |
-| Crush cost follow-up, issue #393 | [Scope proposal](SCOPE-crush-indexing-cost-reuse.md) on `plan/2026-10-23-issue-393-crush-indexing-scope`. Source inspection confirms the legacy whole-file route and global cross-session chunks. No Crush implementation exists; the next design must define logical SQLite capture, session-local chunks, durable provider-result reuse and adoption. |
+| Crush cost follow-up, issue #393 | [Scope proposal](SCOPE-crush-indexing-cost-reuse.md) on `plan/2026-10-23-issue-393-crush-indexing-scope`; Claude scope PASS at `89b5c2bca0f7f6c2e1f8d645e61169715783f458`. No Crush implementation exists; the recommended next design must define logical SQLite capture, session-local chunks, durable provider-result reuse and adoption. |
 
 ## 4. Completion State
 
@@ -120,15 +120,17 @@ restore evidence, not a new Timeshift/Restic test.
 | Interrupted Timeshift backup | The 2026-10-22 replacement snapshot completed normally. On 2026-10-23 Ryan separately reported a Clonezilla image successfully restored onto another computer. | User-reported Clonezilla recovery test passed; it is not evidence of a Timeshift/Restic restore test |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
 | Doctor acknowledgment | **PARKED by Ryan, 2026-10-23.** The original Timeshift event is absent from the current boot. Design #415 merged as `3d24c75`; cursor revision `2a138be` closes identity finding 3, but Codex/Claude G0 remains FAIL for malformed-read FAIL preservation and undefined re-ack after revocation. Nothing is implemented. | No active execution step; a future resume requires corrected design and review. The original one-event G5 is moot |
-| Crush indexing cost, issue #393 | **SCOPING authorized.** The scope compares global-chunk caching, direct JSONL reuse and a session-aware Crush path; it proposes the latter. | Claude scope review, then a binding architecture and execution plan. No code, warm-up, paid canary or live configuration grant |
+| Crush indexing cost, issue #393 | **SCOPING COMPLETE; Claude scope PASS** at `89b5c2b`. The proposed next design is a session-aware Crush path; cache-only remains partial. Scope readiness is not architecture approval. | Codex drafts the proposed binding architecture and execution plan; Claude reviews that revision before Ryan's Execute decision. No code, warm-up, paid canary or live configuration grant |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-**The active task is issue #393 scoping, not doctor acknowledgment.** Ryan
-explicitly directed Codex to park acknowledgment and scope the Crush paid-work
-problem on 2026-10-23. Codex owns planning and future implementation; Claude
+**Scoping is complete; the recommended next planning task is the #393
+architecture and execution plan.** Ryan directed Codex to park acknowledgment
+and scope the Crush paid-work problem on 2026-10-23. Claude independently
+PASSed the corrected scope at exact revision
+`89b5c2bca0f7f6c2e1f8d645e61169715783f458`. Codex owns planning and future implementation; Claude
 handles independent reviews for this follow-up at Ryan's direction. Start
 with [the scope proposal](SCOPE-crush-indexing-cost-reuse.md).
 
@@ -139,8 +141,9 @@ approach needs session-local chunks, a consistent logical SQLite capture,
 and durable provider-result reuse. Snapshot identity, provider binding,
 projection/read compatibility, corruption/spending and existing-data adoption
 must be resolved in a binding architecture and execution plan before Execute.
-Claude independently reviews the scope and then the exact design revision.
-Ryan retains the implementation and live-operation decisions.
+Claude has completed scope review; its PASS covers scope readiness, not the
+future design. Claude reviews that exact design revision before any Execute
+decision. Ryan retains the implementation and live-operation decisions.
 
 The source inspection reused Claude's recorded #393 fake-provider probe rather
 than repeating a paid run. No host Crush database, production Chroma, source
@@ -167,9 +170,9 @@ initiate paid canaries. Stage 1, Stage 2 and residual-burn acceptance remain
 
 ## 6. What Remains Before Live (sequential)
 
-1. Claude reviews the #393 scope. Codex then authors a binding architecture
-   and execution plan for the chosen direction, resolving the questions in
-   the scope before seeking a design verdict and Ryan's Execute grant.
+1. Codex authors a binding architecture and execution plan for the proposed
+   direction (or Ryan's steer), resolving the scope's open questions. Claude
+   then reviews that exact design revision before Ryan's Execute decision.
 2. After design PASS and a bounded grant, Codex implements hermetically;
    Claude independently reviews the exact revision. Implementation evidence,
    PR/merge, promotion and any source-specific warm-up/model cost remain
@@ -279,8 +282,6 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-09-12 | Cursor | R1–R4 sequence-completeness corrective after Claude FAIL at preserved `a47f32b`; next lane is local Claude re-review. No Kiro, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | C1–C4 after Kiro CONDITIONAL PASS at preserved `4acb4c5`; next lane is exact-tip Kiro recheck. No Claude, PR, live Gate 0/P2, or replacement grant |
 | 2026-09-12 | Cursor | CI overlay-digest and writer-inventory corrective after repo-wide pytest failure on preserved `6cb0107`; next lane is Kiro exact-tip recheck of the new tip. Existing PR #301. No Claude, live Gate 0/P2, or replacement grant |
-| 2026-10-21 | Claude | Independent review of #286 forward publication fence at `e6ce3c4`: PASS-WITH-CHANGES (fence logic correct; pylint, shadow/R2b inventories and repository manifest would fail CI); mechanical fixes handed to Codex Luna max via `CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md`. Fence intentionally reverses the 2026-09-10 note that released the source lock before processed publication |
-
 | 2026-10-05 | Codex | Opened PR #365; corrected the Pylint regression without changing the safety contract, obtained Copilot/Kiro PASS at 05197a7, and kept the watcher disabled while remaining CI waits for runners |
 | 2026-10-05 | Codex | Resolved the full-suite reload-order failure, brought PR #365 current with main, and obtained Copilot/Kiro exact-tip PASS plus six green checks at b17f47c; Ryan's merge and live grants remain separate |
 | 2026-10-09 | Ryan | Squash-merged guarded Kiro live-route implementation via PR #365 as f3171fc; production bootstrap, activation, watcher restart, and broader source coverage remain ungranted |
@@ -319,6 +320,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-11 | Cursor | Corrective 5 (C5b, C1b, C6b, D1) applied; Copilot and Kiro recheck of the new tip next |
 | 2026-10-11 | Copilot / Kiro / Claude | Copilot PASS and Kiro PASS at `78b9295`; PR #388 opened; next gate Ryan Stage 1 grant |
 | 2026-10-17 | Cursor | Implemented the Stage 2 prerequisite failure-cache and repository-knowledge inventory refresh on `fix/2026-10-17-repository-manifest-failure-cache`. Live config and watcher remain untouched. |
+| 2026-10-21 | Claude | Independent review of #286 forward publication fence at `e6ce3c4`: PASS-WITH-CHANGES (fence logic correct; pylint, shadow/R2b inventories and repository manifest would fail CI); mechanical fixes handed to Codex Luna max via `CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md`. Fence intentionally reverses the 2026-09-10 note that released the source lock before processed publication |
 | 2026-10-21 | Ryan | Squash-merged the #286 same-source processed-publication fence via PR #411 as `6cacc1b` (reviewed tip `1916a15`); no production activation or live indexing followed |
 | 2026-10-22 | Codex | Refreshed Arc Codex §3–6 from merged #307–#412 and live read-only evidence: Codex admission is active at runtime `686d50e`, fence promotion awaits an exact SHA, effective limit is 8 GiB, and unproven Stage 1/Stage 2/residual-burn outcomes remain Ryan to confirm. |
 | 2026-10-22 | Codex | Executed Ryan's exact `1a68675` fast-forward and one restart: watcher active, config unchanged, 10-minute journal clean, and normal Codex commit observed; host-access doctor exited 1 on the pre-existing CPU-tripwire report, leaving that acceptance criterion unmet. |
@@ -332,15 +334,15 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
-| 2026-10-23 | Codex | Parked acknowledgment after the original event left the current boot; scoped #393 with Codex implementation/Claude review ownership and separate design/Execute gates |
+| 2026-10-23 | Codex / Claude | Parked acknowledgment after reboot; #393 scope PASS at `89b5c2b`, routing next to Codex design with independent Claude review and separate Execute/live gates |
 
 ## TL;DR
 
 - **[Arc Codex] Doctor acknowledgment is parked by Ryan.** Its original
   Timeshift event is absent after reboot; the separate CPU-7 startup waiver
   changes no tripwire policy or deployment acceptance criterion.
-- **#393 is the current scoped follow-up.** Proposed direction: session-local
-  Crush chunks with durable provider-result reuse. Codex plans and implements;
+- **#393 scope is complete; Claude PASS at `89b5c2b`.** Proposed direction:
+  session-local Crush chunks with durable provider-result reuse. Codex plans and implements;
   Claude independently reviews. Binding design/review and Ryan's Execute
   decision remain before code; no live operation or model-cost grant exists.
 - Codex admission and the publication fence were verified live at `1a68675`.

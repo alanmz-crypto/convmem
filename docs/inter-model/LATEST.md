@@ -17,8 +17,10 @@ cross-arc snapshot and the linked arc brief below.
   compares a global-chunk cache, direct JSONL reuse and a session-aware Crush
   path. It proposes session-local chunks plus durable provider-result reuse;
   source capture, identity, read/projection compatibility and adoption still
-  need a binding architecture and execution plan. **Next lane: Claude scope
-  review, then Codex design.** No implementation, migration, warm-up, paid
+  need a binding architecture and execution plan. **Claude scope PASS** at
+  `89b5c2bca0f7f6c2e1f8d645e61169715783f458`; this is scope readiness, not
+  approval of the future design. **Next lane: Codex design, then Claude
+  review.** No implementation, migration, warm-up, paid
   canary, PR, runtime promotion or live configuration grant follows from the
   scoping instruction. [Arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
