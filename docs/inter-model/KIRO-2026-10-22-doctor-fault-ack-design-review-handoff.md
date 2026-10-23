@@ -28,13 +28,16 @@ pinned revision. This updated packet supplies restart routing, not a new design.
 
 ## Reboot checkpoint — 2026-10-23
 
-Ryan has requested preparation for shutdown/reboot; completion of the reboot
-has not been observed. All implementation, tests and verification summaries
+Reboot completion is confirmed by the current boot ID
+`4a99c57d-3478-4811-9218-6b681f64687c`, read from `/proc/sys/kernel/random/boot_id`
+on 2026-10-23. It differs from the investigated event's boot, so that event's
+G5 is now moot. This observation does not establish doctor or hardware health.
+All implementation, tests and verification summaries
 are committed and pushed on the branch above. There is no unfinished command
 or temporary-file dependency required to continue the review. Detailed local
 test results and reproduction instructions are in execution-plan §A.
 
-After restart:
+Resume from here:
 
 1. Resume **Claude's independent review** of the pinned SHA above. The local
    worktree remains at the path above; GitHub holds the same task branch as

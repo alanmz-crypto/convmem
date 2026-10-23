@@ -81,7 +81,9 @@ granted `1a68675` in that host snapshot; neither docs merge needs a deployment.
 The acknowledgment design subsequently merged through PR #415 as `3d24c75`.
 The 2026-10-23 implementation candidate is on
 `feat/2026-10-22-doctor-fault-ack-takeover`, not `main` or the live runtime.
-This implementation session has not rechecked or changed live state.
+The resumed session confirmed boot ID `4a99c57d-3478-4811-9218-6b681f64687c` on
+2026-10-23. It has not checked post-reboot service or doctor health and has
+made no runtime changes.
 
 | Surface | Current state |
 |---|---|
@@ -135,11 +137,11 @@ and self-contained reboot pickup. The fixed review target is
 `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; verify the review checkout matches it.
 Later checkpoint documentation does not advance that candidate revision.
 
-Ryan has requested a shutdown/reboot checkpoint. No reboot completion has been
-observed in this session. All work is committed and pushed; resume with Claude's
-review after restart. The live-state descriptions below are dated evidence,
-not a guarantee about services or doctor results after reboot. Once the boot
-changes, skip the old Timeshift event's G5; any future live use needs its own grant.
+Reboot completion is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
+All implementation work is committed and pushed; Claude review is next. The
+live-state descriptions below are dated evidence, not current service or doctor
+results. The old Timeshift event's G5 is now moot; any future live use needs
+its own grant.
 
 The implementation candidate:
 
@@ -156,7 +158,7 @@ The implementation candidate:
 
 The code and corrected design are on the takeover branch only. Claude's review
 does not grant PR creation, merge, runtime promotion, live acknowledgment or
-acceptance. If Ryan reboots, the investigated event's live-use gate is moot.
+acceptance. The reboot has made the investigated event's live-use gate moot.
 
 The fence is deployed and normal watcher activity has resumed, but full
 handoff acceptance is not claimed. The docs merges #413 (`75d8e2a`) and #414
@@ -223,9 +225,10 @@ Codex admission and the same-source publication fence are live.
 1. Claude reviews the corrected priority-#1 design and implementation at the
    exact revision in the review packet (G2). Codex's verification does not
    self-clear the earlier G0 FAIL. Ryan then decides PR/merge (G3), runtime
-   promotion without a watcher restart (G4), his own one-event acknowledgment
-   (G5), and acceptance (G6). The recorded doctor criterion remains FAIL.
-   Accepting the known FAIL until a reboot remains Ryan's option.
+   promotion without a watcher restart (G4), and acceptance (G6). G5 for the
+   old Timeshift event is moot after reboot; future live acknowledgments need
+   separate grants. The recorded pre-reboot doctor result remains FAIL;
+   post-reboot doctor health and acceptance have not been established.
 2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
    records; keep unsupported outcomes **Ryan to confirm**. Review the reported
    quarantines and old wedged transaction without clearing them. Do not repeat
@@ -394,6 +397,8 @@ Keep this document a current-state snapshot, not a session diary.
 
 | 2026-10-23 | Codex | Completed the branch-only doctor acknowledgment candidate under Ryan's takeover grant; Claude reviews design corrections and implementation; prior G0 FAIL and all live gates remain distinct |
 | 2026-10-23 | Codex | Saved Ryan's reboot checkpoint with the immutable review target and self-contained restart instructions; old-event G5 becomes moot when the boot changes |
+
+| 2026-10-23 | Codex | Confirmed a changed boot ID; old-event G5 is moot, Claude review remains pending, and post-reboot doctor health is unverified |
 
 ## TL;DR
 

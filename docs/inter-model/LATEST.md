@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: reboot checkpoint saved; Claude review next
+- **[Arc Codex #286] Priority #1: reboot confirmed; Claude review next
   (2026-10-23, Codex):** Ryan directly assigned Codex the implementation
   takeover. The corrected design, exact-entry store, CLI and hermetic tests are
   on `feat/2026-10-22-doctor-fault-ack-takeover`. The prior G0 FAIL at
@@ -21,8 +21,9 @@ cross-arc snapshot and the linked arc brief below.
   The packet now contains self-contained restart instructions. Later checkpoint
   documentation does not advance that review target. Acknowledgments identify
   one entry and boot, remain visible WARNs, and preserve hard failures.
-  Ryan plans a reboot; after the boot changes, the old Timeshift event's G5 is
-  moot and its acknowledgment command must not be replayed.
+  Reboot is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
+  The old Timeshift event's G5 is now moot; its acknowledgment command must
+  not be replayed. Current doctor and hardware health have not been checked.
   Resume state: implementation candidate `READY_FOR_CLAUDE_REVIEW`.
   No PR, merge, runtime promotion, live acknowledgment or acceptance follows
   from this handoff. The recorded doctor criterion remains unmet. Runtime
