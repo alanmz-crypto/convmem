@@ -1,10 +1,9 @@
 """Isolated evidence for EXECUTION §22 initialize-legacy."""
-# pylint: disable=protected-access,redefined-outer-name,wrong-import-position
+# pylint: disable=protected-access,redefined-outer-name,wrong-import-position,wrong-import-order,ungrouped-imports,unused-argument,inconsistent-return-statements,use-implicit-booleaness-not-comparison,unused-variable
 from __future__ import annotations
 
 import hashlib
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +15,7 @@ require_t3_bootstrap()
 import pytest
 
 import chroma_write_guard as guard_module
-from chroma_store import UNITS, ChromaStore
+from chroma_store import ChromaStore
 from chroma_write_guard import (
     ChromaWriteGuard,
     ChromaWriteGuardError,
@@ -26,7 +25,7 @@ from chroma_write_guard import (
     segment_signature,
 )
 from tests._chroma_write_guard_worker import embedding
-from tests.test_chroma_write_guard import ROOT, WORKER, _make_store, _segment, _set_header_count, _worker
+from tests.test_chroma_write_guard import ROOT, _make_store, _segment, _set_header_count, _worker
 
 
 def _digests(root: Path) -> dict[str, str]:
@@ -174,8 +173,9 @@ def test_mixed_legacy_and_initialized_refuses_before_current_changes(tmp_path: P
     seg_ids = sorted(segment_dirs(chroma))
     kept = guard.current_snapshot(seg_ids[0])
     assert kept is not None
+    seg0 = segment_dirs(chroma)[seg_ids[0]]
     with guard_module._exclusive_flock(guard.lock_path, guard.lock_timeout_seconds):
-        guard._refresh_snapshot(seg_ids[0], segment_dirs(chroma)[seg_ids[0]], segment_signature(segment_dirs(chroma)[seg_ids[0]]))
+        guard._refresh_snapshot(seg_ids[0], seg0, segment_signature(seg0))
     archive = tmp_path / "archive-mixed"
     code, preview = _run_cli(chroma, archive)
     assert preview["status"] == "refused"

@@ -2946,7 +2946,11 @@ def _require_absolute_path(path: str | Path, label: str) -> Path:
 def _paths_overlap(left: Path, right: Path) -> bool:
     left_resolved = left.resolve(strict=False)
     right_resolved = right.resolve(strict=False)
-    return left_resolved == right_resolved or left_resolved in right_resolved.parents or right_resolved in left_resolved.parents
+    return (
+        left_resolved == right_resolved
+        or left_resolved in right_resolved.parents
+        or right_resolved in left_resolved.parents
+    )
 
 
 def _snapshot_meta_digest(meta: Mapping[str, Any]) -> str:
@@ -3010,7 +3014,7 @@ def _snapshot_is_legacy(meta: Mapping[str, Any]) -> bool:
     return False
 
 
-def _legacy_initializer_segment_row(
+def _legacy_initializer_segment_row(  # pylint: disable=protected-access
     guard: ChromaWriteGuard,
     seg_id: str,
     seg: Path,
@@ -3030,7 +3034,11 @@ def _legacy_initializer_segment_row(
     }
     base = guard.snapshots / seg_id
     _assert_guard_relative_path(base, guard.root)
-    partials = [entry.name for entry in base.iterdir() if entry.is_dir() and ".partial" in entry.name] if base.is_dir() else []
+    partials = (
+        [entry.name for entry in base.iterdir() if entry.is_dir() and ".partial" in entry.name]
+        if base.is_dir()
+        else []
+    )
     if partials:
         row["staging"] = partials
         row["classification"] = "unexpected"
@@ -3077,8 +3085,10 @@ def _legacy_initializer_segment_row(
     return row
 
 
-def _legacy_initializer_inspect(guard: ChromaWriteGuard, archive_dir: Path) -> dict[str, Any]:
-    guard._reject_identity_conflict()
+def _legacy_initializer_inspect(
+    guard: ChromaWriteGuard, archive_dir: Path
+) -> dict[str, Any]:  # pylint: disable=protected-access
+    guard._reject_identity_conflict()  # pylint: disable=protected-access
     _reject_symlink_path(archive_dir)
     target = str(guard.chroma_dir)
     archive = str(canonical_target(archive_dir))
@@ -3194,7 +3204,7 @@ def _legacy_initializer_inspect(guard: ChromaWriteGuard, archive_dir: Path) -> d
     }
 
 
-def _legacy_initializer_require_bound_facts(
+def _legacy_initializer_require_bound_facts(  # pylint: disable=protected-access
     guard: ChromaWriteGuard,
     seg_id: str,
     seg: Path,
@@ -3301,6 +3311,7 @@ def initialize_legacy(
     expect_state: str | None = None,
 ) -> tuple[dict[str, Any], int]:
     """Preview or apply bounded legacy-source initialization (read-only preview by default)."""
+    # pylint: disable=too-many-return-statements,too-many-branches,too-many-locals,too-many-statements,protected-access
     if (apply and not expect_state) or (expect_state and not apply):
         return (
             {

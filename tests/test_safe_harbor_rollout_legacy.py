@@ -1,5 +1,5 @@
 """Synthetic legacy saves only; private refresh access is not a deployment command."""
-# pylint: disable=wrong-import-position,protected-access,redefined-outer-name
+# pylint: disable=wrong-import-position,protected-access,redefined-outer-name,wrong-import-order,ungrouped-imports,use-implicit-booleaness-not-comparison
 from __future__ import annotations
 
 import hashlib
