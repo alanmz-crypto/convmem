@@ -2023,5 +2023,22 @@ implementation/evidence decision (EXECUTION §23). Recovery inputs remain pendin
 for eventual live apply. No unchanged-artifact review, PR or live action is
 authorized here.
 
+## Legacy initializer isolated evidence (Cursor, 2026-10-22)
+
+**Subject:** worktree branch `feat/2026-10-22-safe-harbor-legacy-initializer` (implementation commit pending supervisor push). **Runtime surfaces:** `chroma_write_guard.py` (`initialize_legacy`, snapshot prepare/publish/prune factoring) and `scripts/chroma_guard.py` (`initialize-legacy` subcommand). **Interpreter:** `/home/lauer/miniforge3/envs/convmem/bin/python` 3.11.15.
+
+**Commands (isolated T3 launcher env — parent `-I -S -B`, pytest child `-s -B`):**
+
+```bash
+/home/lauer/miniforge3/envs/convmem/bin/python -I -S -B tests/_safe_harbor_rollout_evidence.py legacy  # historical launcher
+# focused suite (same fixture env as handoff step 0):
+/home/lauer/miniforge3/envs/convmem/bin/python -s -B -m pytest tests/test_safe_harbor_legacy_initializer.py -q
+/home/lauer/miniforge3/envs/convmem/bin/python -s -B -m pytest tests/test_safe_harbor_rollout_legacy.py tests/test_chroma_write_guard.py -q
+```
+
+**Results (Cursor authoring run):** `tests/test_safe_harbor_legacy_initializer.py` **18 passed** (re-run after final commit for exact count); regressions **5 + 24 passed** (`test_safe_harbor_rollout_legacy.py`, `test_chroma_write_guard.py`). Faulty controls exercised: preview calling preparation (guard tree mutation), omit-archive, publish-during-preparation (negative control), archive hash mismatch, second-segment preparation failure.
+
+**Limitations:** Process-level fsync/interrupt evidence only (no power-loss claim). Not every §22 bullet has a dedicated named case yet (alias retarget, fsync-directory fault, post-first-publication interrupt, stale-vector replay) — supervisor may extend before Kiro review. No production paths, doctor, hosted CI, or live initializer run.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md, ../../tests/_safe_harbor_rollout_evidence.py, ../../tests/test_safe_harbor_rollout_legacy.py — operational readiness evidence and current routing -->
 <!-- src: EXECUTION-safe-harbor.md — grants and retained limits -->

@@ -226,6 +226,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Cursor: merged main `db8aebb`, made T1 tests self-isolating under standard pytest, and regenerated the writer-coverage inventory to `43a3944d`; BugBot was not re-triggered.
 - 2026-10-11 — Codex: recorded green CI and Copilot static PASS at `677c8a0`, both quota-blocked BugBot attempts, and Ryan's two-test correction grant; Cursor correction and successor evidence/review are next.
 - 2026-10-11 — Cursor: implemented the isolation-cleanup and audit/writer-contention test corrections at `8b41044` (runtime unchanged) and recorded isolated evidence with failing controls; successor CI/delta review, BugBot gate and T1 acceptance remain pending.
+- 2026-10-22 — Cursor: implemented `initialize-legacy` and isolated evidence in the legacy-initializer worktree; Codex supervisor push and Kiro review are next.
 
 ## TL;DR
 

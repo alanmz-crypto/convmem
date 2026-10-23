@@ -8,6 +8,8 @@
                     (exit 1 on a finding; run daily by convmem-chroma-audit.timer)
   reconcile         refresh restore points / restore torn segments; optional
                     --incident-id + --authority-digest for bounded resume only
+  initialize-legacy create evidence-bearing saves for unchanged legacy snapshots;
+                    preview by default; apply needs --apply and preview --expect-state
   clear-quarantine  refuse ordinary clear; validated release needs disposition + authority digest
 
 status, validate, census and audit never modify the store: no Chroma client is opened and SQLite is
@@ -30,6 +32,7 @@ from chroma_write_guard import (  # pylint: disable=wrong-import-position
     ChromaWriteGuard,
     ChromaWriteGuardError,
     authority_submission_digest,
+    initialize_legacy,
     recover,
     segment_dirs,
     segment_signature,
@@ -44,6 +47,32 @@ def _chroma_dir(explicit: str | None) -> Path:
     from config import load_config  # pylint: disable=import-outside-toplevel
 
     return Path(load_config()["index"]["chroma_dir"]).expanduser()
+
+
+def _initialize_legacy(argv_chroma: str | None, argv_archive: str | None, apply: bool, expect_state: str | None) -> int:
+    if not argv_chroma or not argv_archive:
+        print(
+            "initialize-legacy requires --chroma-dir and --archive-dir (absolute paths)",
+            file=sys.stderr,
+        )
+        result = {
+            "status": "unavailable",
+            "reason": "missing required --chroma-dir or --archive-dir",
+            "target": None,
+            "archive": None,
+            "state_digest": None,
+            "segments": [],
+        }
+        print(json.dumps(result, sort_keys=True))
+        return 2
+    result, code = initialize_legacy(
+        argv_chroma,
+        argv_archive,
+        apply=apply,
+        expect_state=expect_state,
+    )
+    print(json.dumps(result, sort_keys=True))
+    return code
 
 
 def _status(guard: ChromaWriteGuard) -> int:
@@ -125,9 +154,30 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "command",
-        choices=("status", "validate", "census", "audit", "reconcile", "clear-quarantine"),
+        choices=(
+            "status",
+            "validate",
+            "census",
+            "audit",
+            "reconcile",
+            "initialize-legacy",
+            "clear-quarantine",
+        ),
     )
     parser.add_argument("--chroma-dir", help="defaults to [index] chroma_dir from the convmem config")
+    parser.add_argument(
+        "--archive-dir",
+        help="absolute fresh archive destination (initialize-legacy only)",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="apply initialize-legacy after preview binding (requires --expect-state)",
+    )
+    parser.add_argument(
+        "--expect-state",
+        help="64-char preview state digest for initialize-legacy apply",
+    )
     parser.add_argument(
         "--disposition",
         help="owner disposition reference (required for validated clear-quarantine)",
@@ -141,6 +191,8 @@ def main(argv: list[str] | None = None) -> int:
         help="incident id for bounded reconcile resume (requires --authority-digest)",
     )
     args = parser.parse_args(argv)
+    if args.command == "initialize-legacy":
+        return _initialize_legacy(args.chroma_dir, args.archive_dir, args.apply, args.expect_state)
     chroma_dir = _chroma_dir(args.chroma_dir)
     if not chroma_dir.is_dir():
         print(f"no Chroma store at {chroma_dir}", file=sys.stderr)

@@ -65,6 +65,9 @@ INCIDENT_SCHEMA = "convmem.safe_harbor.incident_set"
 INCIDENT_VERSION = 2
 PRESERVATION_MANIFEST_SCHEMA = "convmem.safe_harbor.preservation_manifest"
 PRESERVATION_MANIFEST_VERSION = 1
+LEGACY_INITIALIZER_STATE_SCHEMA = "convmem.safe_harbor.legacy_initializer_state"
+LEGACY_INITIALIZER_ARCHIVE_SCHEMA = "convmem.safe_harbor.legacy_initializer_archive"
+LEGACY_INITIALIZER_ARCHIVE_VERSION = 1
 _SUPPORTED_INCIDENT_VERSIONS = frozenset({1, 2})
 _SUPPORTED_CHROMADB_VERSIONS = frozenset({"1.5.9"})
 _RESTORE_REQUIRED_REASON = "segment failed validation; bounded restore required before further writes"
@@ -2630,8 +2633,10 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
             )
         return snap_dir, meta
 
-    def _refresh_snapshot(self, seg_id: str, seg: Path, live_sig: Signature) -> dict[str, Any] | None:
-        """Copy the live save as the segment's restore point; returns the event for a first copy."""
+    def _prepare_snapshot_generation(
+        self, seg_id: str, seg: Path, live_sig: Signature
+    ) -> tuple[str, Path, dict[str, Any], bool]:
+        """Stage a new generation directory without publishing CURRENT or pruning."""
         base = self.snapshots / seg_id
         first = not (base / "CURRENT").exists()
         base.mkdir(parents=True, exist_ok=True)
@@ -2682,16 +2687,27 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                     con.close()
             _write_json_durable(staging / "SNAPSHOT.json", meta)
             _fsync(staging, directory=True)
-            os.rename(staging, base / generation)
-            _fsync(base, directory=True)
-            current_tmp = base / f".CURRENT.{os.getpid()}.tmp"
-            current_tmp.write_text(generation, encoding="utf-8")
-            _fsync(current_tmp)
-            os.replace(current_tmp, base / "CURRENT")
+            generation_dir = base / generation
+            os.rename(staging, generation_dir)
             _fsync(base, directory=True)
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise
+        return generation, generation_dir, meta, first
+
+    def _publish_snapshot_current(self, seg_id: str, generation: str) -> None:
+        base = self.snapshots / seg_id
+        self._validate_snapshot_generation_name(generation)
+        generation_dir = base / generation
+        self._assert_snapshot_generation_dir(generation_dir)
+        current_tmp = base / f".CURRENT.{os.getpid()}.tmp"
+        current_tmp.write_text(generation, encoding="utf-8")
+        _fsync(current_tmp)
+        os.replace(current_tmp, base / "CURRENT")
+        _fsync(base, directory=True)
+
+    def _prune_unpinned_snapshot_generations(self, seg_id: str, generation: str) -> None:
+        base = self.snapshots / seg_id
         pinned = self._pinned_generations()
         for old in base.iterdir():
             if old.is_dir() and old.name != generation:
@@ -2700,6 +2716,12 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
                 shutil.rmtree(old, ignore_errors=True)
             elif old.name.startswith(".CURRENT."):
                 old.unlink(missing_ok=True)  # left by a writer killed mid-refresh
+
+    def _refresh_snapshot(self, seg_id: str, seg: Path, live_sig: Signature) -> dict[str, Any] | None:
+        """Copy the live save as the segment's restore point; returns the event for a first copy."""
+        generation, _generation_dir, _meta, first = self._prepare_snapshot_generation(seg_id, seg, live_sig)
+        self._publish_snapshot_current(seg_id, generation)
+        self._prune_unpinned_snapshot_generations(seg_id, generation)
         return self._event("snapshot_created", segment=seg_id) if first else None
 
     def _restore(
@@ -2907,6 +2929,604 @@ class ChromaWriteGuard:  # pylint: disable=too-many-instance-attributes
         except (OSError, json.JSONDecodeError) as exc:
             return {"status": "error", "reason": f"unreadable audit record: {exc}"}
         return data if isinstance(data, dict) else {"status": "error", "reason": "audit record is not an object"}
+
+
+# --------------------------------------------------------------------------------------
+# Bounded legacy-source initializer (EXECUTION §22)
+# --------------------------------------------------------------------------------------
+
+
+def _require_absolute_path(path: str | Path, label: str) -> Path:
+    expanded = Path(path).expanduser()
+    if not expanded.is_absolute():
+        raise ValueError(f"{label} must be an absolute path")
+    return expanded
+
+
+def _paths_overlap(left: Path, right: Path) -> bool:
+    left_resolved = left.resolve(strict=False)
+    right_resolved = right.resolve(strict=False)
+    return left_resolved == right_resolved or left_resolved in right_resolved.parents or right_resolved in left_resolved.parents
+
+
+def _snapshot_meta_digest(meta: Mapping[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(dict(meta), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _snapshot_current_facts(base: Path) -> dict[str, Any]:
+    current = base / "CURRENT"
+    _reject_symlink_path(current)
+    if not current.is_file():
+        raise ChromaWriteGuardError("missing snapshot CURRENT for binding")
+    raw = current.read_bytes()
+    return {
+        "current_sha256": hashlib.sha256(raw).hexdigest(),
+        "current_text": raw.decode("utf-8").strip(),
+    }
+
+
+def _snapshot_generation_binding_facts(snap_dir: Path, meta: Mapping[str, Any]) -> dict[str, Any]:
+    meta_path = snap_dir / "SNAPSHOT.json"
+    meta_raw = meta_path.read_bytes()
+    return {
+        "generation": snap_dir.name,
+        "segment_digests": segment_file_digests(snap_dir),
+        "meta_digest": hashlib.sha256(meta_raw).hexdigest(),
+        "live_signature": meta.get("live_signature"),
+    }
+
+
+def _pending_operations_digest(chroma_dir: Path, con: sqlite3.Connection) -> str:
+    applied = {
+        sid: _seq_id_strict(raw)
+        for sid, raw in con.execute("select segment_id, seq_id from max_seq_id").fetchall()
+    }
+    collections: list[dict[str, Any]] = []
+    for name, row in vector_census(chroma_dir).items():
+        collections.append(
+            {
+                "collection": name,
+                "vector_segment": row.get("vector_segment"),
+                "pending": row.get("pending"),
+                "lost": row.get("lost"),
+                "extra": row.get("extra"),
+            }
+        )
+    collections.sort(key=lambda item: str(item.get("collection")))
+    payload = {"max_seq_id": applied, "collections": collections}
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _snapshot_is_legacy(meta: Mapping[str, Any]) -> bool:
+    evidence = meta.get("release_evidence")
+    if evidence is None:
+        return True
+    if isinstance(evidence, dict) and evidence.get("status") == "unavailable":
+        return True
+    return False
+
+
+def _legacy_initializer_segment_row(
+    guard: ChromaWriteGuard,
+    seg_id: str,
+    seg: Path,
+    *,
+    con: sqlite3.Connection,
+) -> dict[str, Any]:
+    live_sig = segment_signature(seg)
+    live_report = validate_segment(seg)
+    census = guard._census_for_segment(seg_id)
+    row: dict[str, Any] = {
+        "segment": seg_id,
+        "live_signature": live_sig,
+        "live_source_facts": guard._segment_source_file_facts(seg),
+        "census": census,
+        "structural_ok": live_report.ok,
+        "structural_failures": list(live_report.failures),
+    }
+    base = guard.snapshots / seg_id
+    _assert_guard_relative_path(base, guard.root)
+    partials = [entry.name for entry in base.iterdir() if entry.is_dir() and ".partial" in entry.name] if base.is_dir() else []
+    if partials:
+        row["staging"] = partials
+        row["classification"] = "unexpected"
+        return row
+    snapshot = guard.current_snapshot(seg_id)
+    if snapshot is None:
+        row["classification"] = "missing"
+        return row
+    snap_dir, meta = snapshot
+    snap_report = validate_segment(snap_dir)
+    row["original"] = {
+        "generation": snap_dir.name,
+        "current": _snapshot_current_facts(base),
+        "generation_facts": _snapshot_generation_binding_facts(snap_dir, meta),
+        "meta_digest": _snapshot_meta_digest(meta),
+    }
+    row["snapshot_structural_ok"] = snap_report.ok
+    row["snapshot_structural_failures"] = list(snap_report.failures)
+    if meta.get("live_signature") != live_sig:
+        row["classification"] = "stale"
+        return row
+    if not live_report.ok or not snap_report.ok:
+        row["classification"] = "ineligible"
+        return row
+    if _snapshot_is_legacy(meta):
+        evidence = meta.get("release_evidence")
+        if isinstance(evidence, dict) and evidence.get("status") == "unavailable":
+            row["classification"] = "unavailable"
+            row["unavailable_reason"] = evidence.get("reason")
+            return row
+        row["classification"] = "legacy"
+        return row
+    evidence = meta.get("release_evidence")
+    if isinstance(evidence, dict):
+        ok, reason = evaluate_release_evidence(guard.chroma_dir, evidence, con=con)
+        if ok:
+            row["classification"] = "initialized"
+            return row
+        if "watermark_drift" in reason or "queue_pending" in reason:
+            row["classification"] = "ineligible"
+            row["ineligible_reason"] = reason
+            return row
+    row["classification"] = "initialized"
+    return row
+
+
+def _legacy_initializer_inspect(guard: ChromaWriteGuard, archive_dir: Path) -> dict[str, Any]:
+    guard._reject_identity_conflict()
+    _reject_symlink_path(archive_dir)
+    target = str(guard.chroma_dir)
+    archive = str(canonical_target(archive_dir))
+    if _paths_overlap(archive_dir, guard.chroma_dir) or _paths_overlap(archive_dir, guard.root):
+        return {
+            "status": "refused",
+            "reason": "archive destination overlaps the Chroma store or guard tree",
+            "target": target,
+            "archive": archive,
+            "state_digest": None,
+            "segments": [],
+        }
+    if archive_dir.exists():
+        if any(archive_dir.iterdir()):
+            return {
+                "status": "refused",
+                "reason": "archive destination is not fresh",
+                "target": target,
+                "archive": archive,
+                "state_digest": None,
+                "segments": [],
+            }
+    view = guard.read_authority()
+    if view.blocking:
+        return {
+            "status": "refused",
+            "reason": f"quarantine blocks legacy initialization: {view.summary}",
+            "target": target,
+            "archive": archive,
+            "state_digest": None,
+            "segments": [],
+        }
+    try:
+        backend = _normalize_backend_identity(live_backend_identity(guard.chroma_dir))
+        _assert_supported_backend_identity(backend)
+    except (ChromaWriteGuardError, OSError, ImportError, FileNotFoundError) as exc:
+        return {
+            "status": "unavailable",
+            "reason": str(exc),
+            "target": target,
+            "archive": archive,
+            "state_digest": None,
+            "segments": [],
+        }
+    live_segments = segment_dirs(guard.chroma_dir)
+    if not live_segments:
+        return {
+            "status": "refused",
+            "reason": "no live vector segments to inspect",
+            "target": target,
+            "archive": archive,
+            "state_digest": None,
+            "segments": [],
+        }
+    con = sqlite3.connect(f"file:{guard.chroma_dir / 'chroma.sqlite3'}?mode=ro", uri=True)
+    segments: list[dict[str, Any]] = []
+    try:
+        _sqlite_reader_lock(con)
+        pending_digest = _pending_operations_digest(guard.chroma_dir, con)
+        for seg_id in sorted(live_segments):
+            segments.append(
+                _legacy_initializer_segment_row(guard, seg_id, live_segments[seg_id], con=con)
+            )
+        snapshot_roots = (
+            {entry.name for entry in guard.snapshots.iterdir() if entry.is_dir()}
+            if guard.snapshots.is_dir()
+            else set()
+        )
+        unexpected_snapshot = sorted(snapshot_roots - set(live_segments.keys()))
+        payload = {
+            "schema": LEGACY_INITIALIZER_STATE_SCHEMA,
+            "target": target,
+            "archive": archive,
+            "backend_identity": _backend_identity_for_storage(backend),
+            "pending_operations_digest": pending_digest,
+            "segments": segments,
+            "unexpected_snapshot_segments": unexpected_snapshot,
+        }
+        state_digest = hashlib.sha256(
+            json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        ).hexdigest()
+    finally:
+        if con.in_transaction:
+            con.execute("ROLLBACK")
+        con.close()
+    classifications = {row["classification"] for row in segments}
+    if unexpected_snapshot:
+        status, reason = "refused", f"unexpected guard snapshot segments: {unexpected_snapshot}"
+    elif classifications == {"legacy"}:
+        status, reason = "preview_ready", "complete legacy set ready for apply"
+    elif "initialized" in classifications and "legacy" in classifications:
+        status, reason = "refused", "mixed legacy and initialized segments"
+    elif classifications == {"initialized"}:
+        status, reason = "refused", "store snapshots are already initialized"
+    elif "unavailable" in classifications:
+        status, reason = "unavailable", "legacy snapshot evidence unavailable for one or more segments"
+    elif "missing" in classifications:
+        status, reason = "refused", "incomplete snapshot coverage for live segments"
+    elif "unexpected" in classifications or "stale" in classifications:
+        status, reason = "refused", "unexpected or stale snapshot staging state"
+    else:
+        status, reason = "refused", "one or more segments are ineligible for legacy initialization"
+    return {
+        "status": status,
+        "reason": reason,
+        "target": target,
+        "archive": archive,
+        "state_digest": state_digest,
+        "backend_identity": _backend_identity_for_storage(backend),
+        "pending_operations_digest": pending_digest,
+        "unexpected_snapshot_segments": unexpected_snapshot,
+        "segments": segments,
+    }
+
+
+def _legacy_initializer_require_bound_facts(
+    guard: ChromaWriteGuard,
+    seg_id: str,
+    seg: Path,
+    bound: Mapping[str, Any],
+) -> None:
+    original = bound.get("original")
+    if not isinstance(original, dict):
+        raise ChromaWriteGuardError(f"missing bound original facts for {seg_id}")
+    generation_facts = original.get("generation_facts")
+    current = original.get("current")
+    if not isinstance(generation_facts, dict) or not isinstance(current, dict):
+        raise ChromaWriteGuardError(f"incomplete bound snapshot facts for {seg_id}")
+    base = guard.snapshots / seg_id
+    live_facts = guard._segment_source_file_facts(seg)
+    bound_live = bound.get("live_source_facts")
+    if not isinstance(bound_live, dict) or not _source_facts_equal(live_facts, bound_live):
+        raise ChromaWriteGuardError("live segment source facts changed since preview binding")
+    current_facts = _snapshot_current_facts(base)
+    if current_facts != current:
+        raise ChromaWriteGuardError("snapshot CURRENT changed since preview binding")
+    snap_dir = base / str(generation_facts.get("generation"))
+    if not snap_dir.is_dir():
+        raise ChromaWriteGuardError("bound snapshot generation is missing")
+    meta_path = snap_dir / "SNAPSHOT.json"
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if _snapshot_generation_binding_facts(snap_dir, meta) != generation_facts:
+        raise ChromaWriteGuardError("snapshot generation facts changed since preview binding")
+
+
+def _legacy_initializer_archive_manifest_digest(manifest: Mapping[str, Any]) -> str:
+    body = {key: value for key, value in manifest.items() if key != "manifest_digest"}
+    return hashlib.sha256(
+        json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _legacy_initializer_archive_originals(
+    guard: ChromaWriteGuard,
+    archive_dir: Path,
+    segments: list[dict[str, Any]],
+) -> str:
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    _fsync(archive_dir, directory=True)
+    manifest_path = archive_dir / "MANIFEST.json"
+    if manifest_path.exists():
+        raise ChromaWriteGuardError("archive destination already contains a completion manifest")
+    archived: dict[str, Any] = {}
+    for row in segments:
+        seg_id = str(row["segment"])
+        original = row["original"]
+        if not isinstance(original, dict):
+            raise ChromaWriteGuardError(f"missing original snapshot reference for {seg_id}")
+        generation = str(original["generation"])
+        base = guard.snapshots / seg_id
+        snap_dir = base / generation
+        dest_root = archive_dir / "segments" / seg_id
+        dest_generation = dest_root / "generation" / generation
+        dest_generation.mkdir(parents=True, exist_ok=True)
+        _fsync_directory_chain(dest_generation, stop=archive_dir)
+        for name in SEGMENT_FILES:
+            src = snap_dir / name
+            if src.is_file():
+                dst = dest_generation / name
+                _copy_durable(src, dst)
+                src_digest = hashlib.sha256(src.read_bytes()).hexdigest()
+                if hashlib.sha256(dst.read_bytes()).hexdigest() != src_digest:
+                    raise ChromaWriteGuardError(f"archive copy hash mismatch for {seg_id}/{name}")
+        current_src = base / "CURRENT"
+        current_dst = dest_root / "CURRENT"
+        _copy_durable(current_src, current_dst)
+        if current_dst.read_bytes() != current_src.read_bytes():
+            raise ChromaWriteGuardError(f"archive CURRENT copy mismatch for {seg_id}")
+        archived[seg_id] = {
+            "generation": generation,
+            "current": original["current"],
+            "generation_facts": original["generation_facts"],
+            "live_source_facts": row["live_source_facts"],
+        }
+    manifest: dict[str, Any] = {
+        "schema": LEGACY_INITIALIZER_ARCHIVE_SCHEMA,
+        "version": LEGACY_INITIALIZER_ARCHIVE_VERSION,
+        "status": "complete",
+        "target": str(guard.chroma_dir),
+        "archive": str(canonical_target(archive_dir)),
+        "completed_at": _utc_now(),
+        "segments": archived,
+    }
+    raw = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    tmp = manifest_path.with_name(f".MANIFEST.{os.getpid()}.tmp")
+    tmp.write_bytes(raw)
+    _fsync(tmp)
+    if tmp.read_bytes() != raw:
+        raise OSError("short write of legacy initializer archive manifest")
+    os.replace(tmp, manifest_path)
+    _fsync_directory_chain(archive_dir, stop=archive_dir)
+    return _legacy_initializer_archive_manifest_digest(manifest)
+
+
+def initialize_legacy(
+    chroma_dir: str | Path,
+    archive_dir: str | Path,
+    *,
+    apply: bool = False,
+    expect_state: str | None = None,
+) -> tuple[dict[str, Any], int]:
+    """Preview or apply bounded legacy-source initialization (read-only preview by default)."""
+    if (apply and not expect_state) or (expect_state and not apply):
+        return (
+            {
+                "status": "unavailable",
+                "reason": "apply requires --expect-state and --expect-state requires --apply",
+                "target": None,
+                "archive": None,
+                "state_digest": None,
+                "segments": [],
+            },
+            2,
+        )
+    try:
+        chroma_abs = _require_absolute_path(chroma_dir, "chroma-dir")
+        archive_abs = _require_absolute_path(archive_dir, "archive-dir")
+    except ValueError as exc:
+        return (
+            {
+                "status": "unavailable",
+                "reason": str(exc),
+                "target": None,
+                "archive": None,
+                "state_digest": None,
+                "segments": [],
+            },
+            2,
+        )
+    if not chroma_abs.is_dir():
+        return (
+            {
+                "status": "unavailable",
+                "reason": f"no Chroma store at {chroma_abs}",
+                "target": str(canonical_target(chroma_abs)),
+                "archive": str(canonical_target(archive_abs)),
+                "state_digest": None,
+                "segments": [],
+            },
+            2,
+        )
+    guard = ChromaWriteGuard(chroma_abs)
+    preview = _legacy_initializer_inspect(guard, archive_abs)
+    if not apply:
+        exit_code = {"preview_ready": 0, "refused": 1, "unavailable": 2}.get(preview["status"], 2)
+        return preview, exit_code
+    if preview["status"] != "preview_ready":
+        exit_code = {"refused": 1, "unavailable": 2}.get(preview["status"], 2)
+        return preview, exit_code
+    if expect_state != preview.get("state_digest"):
+        refused = dict(preview)
+        refused["status"] = "refused"
+        refused["reason"] = "state digest mismatch"
+        return refused, 1
+    preview_backend = preview.get("backend_identity")
+    if not isinstance(preview_backend, dict):
+        refused = dict(preview)
+        refused["status"] = "refused"
+        refused["reason"] = "preview lacks backend identity binding"
+        return refused, 1
+    bound_backend_identity = _normalize_backend_identity(preview_backend)
+    try:
+        with _exclusive_flock(guard.lock_path, guard.lock_timeout_seconds):
+            recheck = _legacy_initializer_inspect(guard, archive_abs)
+            if recheck.get("state_digest") != expect_state:
+                refused = dict(recheck)
+                refused["status"] = "refused"
+                refused["reason"] = "state changed under lock before apply"
+                return refused, 1
+            live_identity = _normalize_backend_identity(live_backend_identity(guard.chroma_dir))
+            _assert_supported_backend_identity(live_identity)
+            if live_identity != bound_backend_identity:
+                refused = dict(recheck)
+                refused["status"] = "refused"
+                refused["reason"] = "backend identity changed since preview binding"
+                return refused, 1
+            guard.require_not_quarantined()
+            segments = list(preview["segments"])
+            live_segments = segment_dirs(guard.chroma_dir)
+            for row in segments:
+                seg_id = str(row["segment"])
+                seg = live_segments.get(seg_id)
+                if seg is None:
+                    refused = dict(recheck)
+                    refused["status"] = "refused"
+                    refused["reason"] = f"segment {seg_id} missing under lock"
+                    return refused, 1
+                _legacy_initializer_require_bound_facts(guard, seg_id, seg, row)
+                evidence = row.get("original", {}).get("generation_facts")
+                if not isinstance(evidence, dict):
+                    refused = dict(recheck)
+                    refused["status"] = "refused"
+                    refused["reason"] = "incomplete preview segment binding"
+                    return refused, 1
+            con = sqlite3.connect(f"file:{guard.chroma_dir / 'chroma.sqlite3'}?mode=ro", uri=True)
+            try:
+                _sqlite_reader_lock(con)
+                for row in segments:
+                    seg_id = str(row["segment"])
+                    census = guard._census_for_segment(seg_id)
+                    collection = census.get("collection")
+                    if not isinstance(collection, str) or not collection:
+                        refused = dict(recheck)
+                        refused["status"] = "refused"
+                        refused["reason"] = f"segment {seg_id} census unavailable"
+                        return refused, 1
+                    try:
+                        probe = build_release_evidence_for_collection(
+                            guard.chroma_dir, collection, con=con
+                        )
+                    except ReleaseEvidenceCaptureUnavailable as exc:
+                        refused = dict(recheck)
+                        refused["status"] = "refused"
+                        refused["reason"] = f"strict precheck unavailable for {seg_id}: {exc.reason}"
+                        return refused, 1
+                    ok, reason = evaluate_release_evidence(guard.chroma_dir, probe, con=con)
+                    if not ok:
+                        refused = dict(recheck)
+                        refused["status"] = "refused"
+                        refused["reason"] = f"strict precheck failed for {seg_id}: {reason}"
+                        return refused, 1
+            finally:
+                if con.in_transaction:
+                    con.execute("ROLLBACK")
+                con.close()
+            try:
+                archive_digest = _legacy_initializer_archive_originals(guard, archive_abs, segments)
+            except (OSError, ChromaWriteGuardError) as exc:
+                partial = dict(recheck)
+                partial["status"] = "partial_or_uncertain"
+                partial["reason"] = f"archival failed before publication: {exc}"
+                partial["archive"] = str(canonical_target(archive_abs))
+                return partial, 2
+            prepared: list[tuple[str, Path, Signature, str, Path, dict[str, Any]]] = []
+            try:
+                for row in segments:
+                    seg_id = str(row["segment"])
+                    seg = live_segments[seg_id]
+                    live_sig = segment_signature(seg)
+                    _legacy_initializer_require_bound_facts(guard, seg_id, seg, row)
+                    generation, generation_dir, meta, _first = guard._prepare_snapshot_generation(
+                        seg_id, seg, live_sig
+                    )
+                    evidence = meta.get("release_evidence")
+                    if not isinstance(evidence, dict):
+                        raise ChromaWriteGuardError(f"missing release evidence for prepared {seg_id}")
+                    ok, reason = evaluate_release_evidence(guard.chroma_dir, evidence)
+                    if not ok:
+                        raise ChromaWriteGuardError(
+                            f"prepared generation for {seg_id} failed strict evidence: {reason}"
+                        )
+                    prepared.append((seg_id, seg, live_sig, generation, generation_dir, meta))
+            except (OSError, ChromaWriteGuardError) as exc:
+                partial = dict(recheck)
+                partial["status"] = "partial_or_uncertain"
+                partial["reason"] = f"preparation failed before publication: {exc}"
+                partial["archive"] = str(canonical_target(archive_abs))
+                partial["archive_manifest_digest"] = archive_digest
+                return partial, 2
+            observed: list[dict[str, Any]] = []
+            published_segments: list[str] = []
+            try:
+                for seg_id, seg, live_sig, generation, generation_dir, meta in prepared:
+                    _legacy_initializer_require_bound_facts(
+                        guard, seg_id, seg, next(item for item in segments if item["segment"] == seg_id)
+                    )
+                    guard._publish_snapshot_current(seg_id, generation)
+                    published_segments.append(seg_id)
+                    observed.append(
+                        {
+                            "segment": seg_id,
+                            "original": next(item["original"] for item in segments if item["segment"] == seg_id),
+                            "prepared": {"generation": generation, "meta_digest": _snapshot_meta_digest(meta)},
+                            "observed_current": _snapshot_current_facts(guard.snapshots / seg_id),
+                        }
+                    )
+            except (OSError, ChromaWriteGuardError) as exc:
+                partial = dict(recheck)
+                partial["status"] = "partial_or_uncertain"
+                partial["reason"] = f"publication incomplete: {exc}"
+                partial["archive"] = str(canonical_target(archive_abs))
+                partial["archive_manifest_digest"] = archive_digest
+                partial["segments"] = observed
+                partial["published_segments"] = published_segments
+                return partial, 2
+            try:
+                guard._event(
+                    "legacy_initializer_complete",
+                    archive=str(canonical_target(archive_abs)),
+                    archive_manifest_digest=archive_digest,
+                    segments=published_segments,
+                )
+            except OSError as exc:
+                partial = dict(recheck)
+                partial["status"] = "partial_or_uncertain"
+                partial["reason"] = f"publication succeeded but event append failed: {exc}"
+                partial["archive"] = str(canonical_target(archive_abs))
+                partial["archive_manifest_digest"] = archive_digest
+                partial["segments"] = observed
+                return partial, 2
+            complete = dict(recheck)
+            complete["status"] = "complete"
+            complete["reason"] = "legacy initialization complete"
+            complete["archive_manifest_digest"] = archive_digest
+            complete["segments"] = observed
+            return complete, 0
+    except TimeoutError as exc:
+        return (
+            {
+                "status": "unavailable",
+                "reason": str(exc),
+                "target": str(guard.chroma_dir),
+                "archive": str(canonical_target(archive_abs)),
+                "state_digest": preview.get("state_digest"),
+                "segments": preview.get("segments") or [],
+            },
+            2,
+        )
+    except ChromaWriteQuarantinedError as exc:
+        refused = dict(preview)
+        refused["status"] = "refused"
+        refused["reason"] = str(exc)
+        return refused, 1
+    except ChromaWriteGuardError as exc:
+        refused = dict(preview)
+        refused["status"] = "refused"
+        refused["reason"] = str(exc)
+        return refused, 1
 
 
 def recover(
