@@ -415,6 +415,8 @@ def confirm_ack(fault: Fault, short_id: str) -> str:
 
 def _dump_evidence(context: AckContext, fault: Fault) -> dict[str, Any] | None:
     for dump in context.dumps:
+        if not isinstance(dump, dict):
+            continue
         timestamp = dump.get("time")
         valid_time = (
             type(timestamp) is int

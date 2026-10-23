@@ -1,5 +1,7 @@
 """Hermetic acknowledgment contract: exact identity, FAIL preservation and durable writes."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import copy
@@ -8,6 +10,7 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import socket
 import stat
 import subprocess
@@ -22,7 +25,7 @@ from typer.testing import CliRunner
 import cpu_tripwire as tripwire
 import cpu_tripwire_ack as ack
 import cpu_tripwire_cli as cli
-from cpu_tripwire_events import ackable, parse_kernel_journal
+from cpu_tripwire_events import Fault, ackable, parse_kernel_journal
 from tests.test_cpu_tripwire import (
     GP_NO_CPU,
     INVALID_OPCODE,
@@ -658,6 +661,18 @@ def test_t44_show_json_states_and_shell_quoted_command(monkeypatch):
     assert response.exit_code == 0 and "revoked" in response.output
 
 
+@pytest.mark.parametrize("shell", ["bash", "zsh"])
+def test_printed_ack_command_survives_real_shell_parsing(shell):
+    shell_path = shutil.which(shell)
+    assert shell_path is not None, f"{shell} is required for this CLI contract"
+    command = cli._ack_command(parsed().faults[0].key)  # pylint: disable=protected-access
+    script = "convmem() { printf '%s\\0' \"$@\"; }\n" + command
+    done = subprocess.run([shell_path, "-c", script], capture_output=True, check=True)
+    args = done.stdout.decode().rstrip("\0").split("\0")
+    assert args[args.index("--cursor") + 1] == CURSOR
+    assert args[args.index("--reason") + 1] == "<reason>"
+
+
 def test_acknowledgment_is_inert_if_fault_becomes_known_bad(stored):
     result = tripwire.evaluate(
         parsed().faults,
@@ -758,6 +773,18 @@ def test_dump_evidence_only_records_matching_hardware_dump(tmp_path):
     assert ack.load_acks(path).records[0]["evidence"]["coredump"] is None
 
 
+def test_non_dict_coredump_does_not_interrupt_ack_write(tmp_path):
+    ctx = context()
+    ctx.dumps = [
+        None,
+        "bad row",
+        {"pid": 835726, "sig": 11, "time": REALTIME + 1, "exe": "/bin/timeshift"},
+    ]
+    path = tmp_path / "ack.json"
+    assert write(path, ctx)[1]
+    assert ack.load_acks(path).records[0]["evidence"]["coredump"]["pid"] == 835726
+
+
 def test_missing_time_retains_classification():
     fault = parsed([entry(__REALTIME_TIMESTAMP="99999999999999999999")]).faults[0]
     assert fault.when == "unknown time" and fault.key is None
@@ -767,6 +794,19 @@ def test_missing_time_retains_classification():
 def test_partial_read_without_detected_fault_warns(tmp_path):
     result = tripwire.check(CFG, runner=FakeRunner(["{"]), **paths(tmp_path))
     assert result.status == "warn" and "blind" in result.detail
+    assert not result.detail.startswith("0 native faults this boot")
+
+
+def test_unreadable_journal_does_not_claim_zero_faults(tmp_path):
+    def denied(argv):
+        if argv[0] == "journalctl":
+            raise OSError("journal unavailable")
+        return subprocess.CompletedProcess(argv, 0, "[]", "")
+
+    result = tripwire.check(CFG, runner=denied, **paths(tmp_path))
+    assert result.status == "warn" and result.detail.startswith(
+        "kernel fault count unknown"
+    )
 
 
 def test_journal_timeout_and_partial_nonzero_exit_preserve_other_evidence(tmp_path):
@@ -942,14 +982,76 @@ def test_timed_out_journal_retains_partial_fault_output(stored, tmp_path, as_byt
     assert "no acknowledgments applied" in result.detail
 
 
+def test_timed_out_journal_retains_cpu_fault_and_machine_check(tmp_path):
+    mce = MCE.partition(" kernel: ")[2]
+    output = "\n".join(json.dumps(entry(message)) for message in (MESSAGE, mce))
+
+    def timed_out(argv):
+        if argv[0] == "journalctl":
+            raise subprocess.TimeoutExpired(argv, 30, output=output.encode())
+        return subprocess.CompletedProcess(argv, 0, "[]", "")
+
+    result = tripwire.check(CFG, runner=timed_out, **paths(tmp_path))
+    assert result.status == "fail"
+    assert "timeshift" in result.detail and "machine_check" in result.detail
+    assert "timed out" in result.detail
+
+
+@pytest.mark.parametrize("separator", ["\u2028", "\u2029", "\u0085"])
+def test_unicode_separator_inside_json_message_is_not_a_record_boundary(
+    tmp_path, separator
+):
+    row = json.dumps(entry(MESSAGE + separator + "more context"), ensure_ascii=False)
+    result = tripwire.check(CFG, runner=FakeRunner([row]), **paths(tmp_path))
+    assert result.status == "fail" and "timeshift" in result.detail
+    assert "malformed JSON line" not in result.detail
+
+
+def test_fault_description_escapes_control_characters():
+    description = Fault(
+        "time\nnext", "segfault", 13, "name\x1b[31m\u2028", 4
+    ).describe()
+    assert (
+        "\n" not in description
+        and "\x1b" not in description
+        and "\u2028" not in description
+    )
+    assert (
+        "\\u000a" in description
+        and "\\u001b" in description
+        and "\\u2028" in description
+    )
+
+
 def test_cli_reports_uncertain_commit_without_claiming_refusal(monkeypatch, capsys):
     def uncertain(*_args):
         raise ack.DurabilityUnconfirmed("document replaced; retry the same command")
 
     monkeypatch.setattr(cli, "revoke_ack", uncertain)
-    assert cli.run_revoke(ACK_ID, OPERATOR) == 1
+    assert cli.run_revoke(ACK_ID, OPERATOR) == 3
     message = capsys.readouterr().err
-    assert "Durability unconfirmed" in message and "Refused" not in message
+    assert "Document was written, but durability is unconfirmed" in message
+    assert "Refused" not in message
+
+
+def test_cli_post_replace_failure_has_distinct_exit_and_applied_ack(monkeypatch):
+    import convmem
+
+    signals = tripwire.SignalRead(parsed(), [], set(), {4, 5, 8, 9})
+    monkeypatch.setattr(cli, "_snapshot", lambda: (signals, BOOT))
+    monkeypatch.setattr(ack, "interactive_tty", lambda: "/dev/pts/test")
+
+    def failed_directory_sync(_directory):
+        raise OSError("directory fsync failed")
+
+    monkeypatch.setattr(ack, "_sync_directory", failed_directory_sync)
+    args = shlex.split(cli._ack_command(signals.journal.faults[0].key))[1:]  # pylint: disable=protected-access
+    response = CliRunner().invoke(convmem.app, args, input=ACK_ID[:12] + "\n")
+    assert response.exit_code == 3, response.output
+    assert "Document was written, but durability is unconfirmed" in response.output
+    assert "Refused" not in response.output
+    assert ack.load_acks().records[0]["ack_id"] == ACK_ID
+    assert tripwire.evaluate_signals(signals, ack.load_acks(), BOOT).status == "warn"
 
 
 @pytest.mark.parametrize("dumps", [[None], [{"pid": 1, "sig": []}], {"pid": 1}])
@@ -993,6 +1095,35 @@ def test_journal_oserror_still_checks_online_cpus(tmp_path):
 
     result = tripwire.check(CFG, runner=denied, **paths(tmp_path, online="0-23"))
     assert result.status == "fail" and "ONLINE again" in result.detail
+
+
+@pytest.mark.parametrize("bad_value", [["invalid"], ["8"], [True], "8", None])
+def test_invalid_known_bad_config_still_fails_cpu_attributed_fault(tmp_path, bad_value):
+    cfg = {"hardware": {"known_bad_cpus": bad_value}}
+    result = tripwire.check(cfg, runner=FakeRunner([entry()]), **paths(tmp_path))
+    assert result.status == "fail" and "timeshift" in result.detail
+    assert "known_bad_cpus" in result.detail
+
+
+def test_journal_decode_error_still_checks_known_bad_online(tmp_path):
+    def undecodable(argv):
+        if argv[0] == "journalctl":
+            raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad byte")
+        return subprocess.CompletedProcess(argv, 0, "[]", "")
+
+    result = tripwire.check(CFG, runner=undecodable, **paths(tmp_path, online="0-23"))
+    assert result.status == "fail" and "ONLINE again" in result.detail
+    assert "journalctl failed" in result.detail
+
+
+def test_coredump_decode_error_retains_kernel_fault(tmp_path):
+    def undecodable(argv):
+        if argv[0] == "journalctl":
+            return subprocess.CompletedProcess(argv, 0, json.dumps(entry()), "")
+        raise UnicodeDecodeError("utf-8", b"\xff", 0, 1, "bad byte")
+
+    result = tripwire.check(CFG, runner=undecodable, **paths(tmp_path))
+    assert result.status == "fail" and "timeshift" in result.detail
 
 
 # ref: ../cpu_tripwire.py, ../cpu_tripwire_ack.py, ../cpu_tripwire_cli.py — hermetic behavior coverage

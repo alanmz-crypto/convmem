@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -66,7 +67,13 @@ class Fault:  # pylint: disable=too-many-instance-attributes
     def describe(self) -> str:
         where = f"CPU {self.cpu}" if self.cpu is not None else "unknown CPU"
         who = f"{self.process}[{self.pid}]" if self.pid is not None else self.process
-        return f"{who} {self.kind} on {where} at {self.when}"
+        description = f"{who} {self.kind} on {where} at {self.when}"
+        return "".join(
+            f"\\u{ord(char):04x}"
+            if unicodedata.category(char).startswith("C") or char in "\u2028\u2029"
+            else char
+            for char in description
+        )
 
     @property
     def key(self) -> EventKey | None:

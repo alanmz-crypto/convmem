@@ -11,7 +11,7 @@
 ```
 Planning Status
 
-Phase:        Claude PASS-WITH-CHANGES; two reader corrections and recheck pending
+Phase:        Reader corrections implemented; exact-revision G2 reviews pending
 Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
@@ -21,10 +21,11 @@ Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
 ```
 
 Claude's static review of `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` found
-two remaining reader defects under §5.1: Unicode record splitting and uncaught
-decoding errors. The existing [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-records the required changes, advisories and lane comparison. Codex corrects
-the implementation; Claude rechecks the new exact revision. The original G2
+two reader defects under §5.1: Unicode record splitting and uncaught decoding
+errors. They are corrected in this takeover candidate. The existing
+[review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+records the historical result, new corrections, advisories and lane comparison.
+Claude rechecks the new exact revision. The original G2
 diff-coverage, Copilot safety-audit and Kiro implementation-review requirements
 also remain open; the takeover grant did not explicitly waive them.
 
@@ -117,9 +118,8 @@ Current code ([`cpu_tripwire.py`](../../cpu_tripwire.py)):
 
 **Out of scope (each needs its own authority)**
 
-- Changing the FAIL/WARN policy for anything that has not been acknowledged:
-  machine checks, known-bad CPUs online, faults pinned to a CPU, userspace
-  faults, orphan dumps, and the "tripwire blind" WARNs.
+- Changing any other FAIL/WARN policy for unacknowledged faults: machine checks,
+  userspace faults and orphan dumps retain their current classification.
 - `known_bad_cpus`, CPU offlining, rebooting, and clearing journals or
   coredumps.
 - Acknowledging machine checks, known-bad CPUs coming back online, kernel oops
@@ -146,6 +146,9 @@ Implementation boundaries (one-way dependencies):
 This separates parsing and CLI orchestration from persistence without introducing
 an import cycle. These modules, their tests, the existing planning/routing docs,
 and repository-knowledge classifications are the implementation scope.
+
+**Decision (Ryan, 2026-10-23):** Invalid `[hardware] known_bad_cpus` cannot short-circuit to WARN; a detected CPU-attributed fault FAILs.
+**Decision (Ryan, 2026-10-23):** An unreadable journal together with a known-bad CPU online FAILs.
 
 ## 5. Event identity
 
@@ -189,6 +192,9 @@ Decoding rules (each an explicit test; corrected after G0):
 - A nonzero journalctl exit or timeout marks the read incomplete. Parse any
   captured stdout first, including complete lines before a truncated tail.
   These conditions never discard already available positive fault evidence.
+- Split JSON records on LF only; Unicode separators within `MESSAGE` belong to
+  the same entry. A journal or coredump decoding error marks that reader
+  unreadable while preserving independently observed failures.
 - If a numeric CPU/PID field cannot be converted, retain the fault kind and
   other usable fields and mark the read incomplete. An unusable CPU number
   cannot erase a machine-check classification. Malformed coredump rows make
@@ -479,6 +485,9 @@ With `acks=None` the behavior is today's.
   (or `unreadable: <errno name>`).
 - **Boot cross-check failed:** the same treatment, with the suffix
   `; boot identity mismatch; no acknowledgments applied`.
+- **Journal unreadable without a detected fault:** the WARN begins with
+  `kernel fault count unknown this boot`, then names the blindness; it does not
+  claim zero native faults.
 
 `doctor.py` keeps `_check_cpu_tripwire()` as one line that maps the verdict.
 `check()` gains the parameters `ack_path` and `boot_id_path`, with production
@@ -497,9 +506,14 @@ change.
 | Record revoked | that record: none | the fault FAILs again, with an inert note |
 | Key appears in > 1 entry | that key: none | FAIL stands, with a note |
 | Journal unreadable, incomplete or malformed | none | Preserve detected FAILs and online-CPU failures; otherwise WARN, with a blindness note |
+| Invalid `[hardware] known_bad_cpus` with a detected CPU-attributed fault | none | FAIL, with a configuration note (Ryan, 2026-10-23) |
+| Journal unreadable and a known-bad CPU online | none | FAIL, with a blindness note (Ryan, 2026-10-23) |
 | Boot ID unreadable or mismatched | none | unchanged or PASS→WARN, with a note |
 | Writer interrupted before replacement | the previous file | the previous verdict |
 | Directory durability fails after replacement | complete new document (durability unconfirmed) | writer reports uncertainty; next read evaluates the complete document |
+
+**Decision (Ryan, 2026-10-23):** Invalid `[hardware] known_bad_cpus` cannot short-circuit to WARN; any detected CPU-attributed fault FAILs.
+**Decision (Ryan, 2026-10-23):** An unreadable journal plus a known-bad CPU online FAILs.
 
 ## 10. Deployment, live use, rollback
 

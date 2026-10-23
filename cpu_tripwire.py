@@ -72,8 +72,15 @@ def parse_cpu_list(text: str) -> set[int]:
 
 
 def known_bad_cpus(cfg: Mapping[str, Any] | None) -> set[int]:
-    raw = ((cfg or {}).get("hardware") or {}).get("known_bad_cpus") or []
-    return {int(cpu) for cpu in raw}
+    hardware = (cfg or {}).get("hardware") or {}
+    if not isinstance(hardware, Mapping):
+        raise TypeError("[hardware] must be a table")
+    raw = hardware.get("known_bad_cpus", [])
+    if not isinstance(raw, list) or any(
+        not isinstance(cpu, int) or isinstance(cpu, bool) or cpu < 0 for cpu in raw
+    ):
+        raise ValueError("known_bad_cpus must be a list of nonnegative CPU numbers")
+    return set(raw)
 
 
 def boot_epoch(proc_stat: Path = PROC_STAT) -> int | None:
@@ -113,12 +120,12 @@ def read_kernel_faults(runner: Runner = _run) -> JournalRead:
         output = exc.stdout or ""
         if isinstance(output, bytes):
             output = output.decode("utf-8", errors="replace")
-        result = parse_kernel_journal(output.splitlines())
+        result = parse_kernel_journal(line for line in output.split("\n") if line)
         result.problems.append("journalctl timed out")
         return result
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return JournalRead(problems=["journalctl failed"])
-    result = parse_kernel_journal(done.stdout.splitlines())
+    result = parse_kernel_journal(line for line in done.stdout.split("\n") if line)
     if done.returncode != 0:
         result.problems.append("journalctl failed")
     return result
@@ -146,7 +153,7 @@ def read_coredumps(
                 f"@{since_epoch}",
             ]
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     if done.returncode != 0:
         # coredumpctl exits 1 with "No coredumps found." when the list is empty.
@@ -366,9 +373,14 @@ def evaluate_signals(signals: SignalRead, acks: AckSet, boot_id: str | None) -> 
     if signals.dumps is None and verdict.status == "pass":
         notes.append("coredump list unreadable (coredumpctl)")
     if notes:
+        detail = verdict.detail
+        if signals.journal.problems and detail.startswith("0 native faults this boot"):
+            detail = detail.replace(
+                "0 native faults this boot", "kernel fault count unknown this boot", 1
+            )
         return Verdict(
             "warn" if verdict.status == "pass" else verdict.status,
-            verdict.detail + "; " + "; ".join(notes),
+            detail + "; " + "; ".join(notes),
         )
     return verdict
 

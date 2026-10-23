@@ -4,12 +4,12 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_CHANGES_REQUIRED`. Claude returned PASS-WITH-CHANGES at `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; Codex corrects two reader defects under Ryan's takeover grant, then Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
+**Resume state:** `CLAUDE_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at historical revision `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; the takeover candidate corrects the reader defects and Ryan's 2026-10-23 policy and durability requirements. Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
 
 ```
 Planning Status
 
-Phase:        Claude review complete; required corrections and exact-SHA recheck pending
+Phase:        Corrective implementation complete; exact-SHA G2 reviews pending
 Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
@@ -106,8 +106,9 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
   anything that cannot be acknowledged, and requires the operator to type the
   ID.
 - Exit codes: 0 when durable or durably confirmed already present; 1 when
-  refused, the lock is busy, or durability is uncertain; 2 for bad usage or no
-  TTY. Uncertainty explicitly states that the visible document may have changed.
+  refused or the lock is busy; 2 for bad usage or no TTY; 3 when replacement
+  succeeded but durability is unconfirmed. The exit-3 message says the
+  document was written and the next read evaluates it.
 - Copyable commands use shell quoting for the opaque cursor. Revoked records
   do not receive an `ack` command. Mixed FAIL output includes the ack author.
 - Add the three commands to the usage block at the top of `convmem.py`.
@@ -284,8 +285,8 @@ at least one test fail:
 Implementation and test code at `1768b4a94241853f12cb3fb19676178a9530ed14`
 was verified locally. The final review commit also carries documentation
 corrections and this evidence. Claude's fixed review candidate is
-`4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`, not a moving branch. Later reboot-checkpoint
-documentation leaves that review target unchanged.
+  `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`, now a historical review
+  target. The 2026-10-23 corrective candidate requires a new immutable SHA.
 
 - Focused tests: **223 passed** across `tests/test_cpu_tripwire.py`,
   `tests/test_cpu_tripwire_ack.py` and `tests/test_doctor.py` (Python 3.13.12,
@@ -319,16 +320,28 @@ documentation leaves that review target unchanged.
   scope. Six redundant CLI-local import statements were removed after added
   usage text changed line-number-bearing Pylint fingerprints.
 
+### Corrective verification (Codex, 2026-10-23)
+
+- Focused hermetic suite: **240 passed** across the two tripwire test files and
+  `tests/test_doctor.py` with Python 3.13.12 and pytest 9.1.1. It includes LF-only
+  parsing of raw U+2028/U+2029/U+0085 in a JSON `MESSAGE`, both reader decoding
+  errors, invalid known-bad CPU configuration, blind-journal wording, and a
+  timeout whose partial stdout holds both a CPU segfault and an MCE.
+- A CLI-level post-replacement directory-sync failure returns exit **3**, says
+  the document was written but durability is unconfirmed, and leaves the
+  acknowledgment applied on the next read. A refusal remains exit 1.
+- The printed command passes through actual bash and zsh parsers with its
+  opaque cursor and `<reason>` placeholder intact. A non-dict coredump row
+  does not interrupt acknowledgment evidence capture; control characters in
+  `Fault.describe()` are escaped.
+- Scoped Ruff lint and format, scoped Pylint, and `git diff --check` passed.
+  The committed-manifest check is run after the code commit, because it checks
+  committed content.
+
 No full-repository pytest, host tripwire invocation, hardware/power-loss test,
 runtime promotion, watcher restart or live acknowledgment was performed.
-The prior G0 FAIL remains historical. Claude's static review of the fixed
-candidate returned PASS-WITH-CHANGES; it did not rerun these checks. G2 remains
-incomplete. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-preserves Claude's two required reader corrections, nonblocking advisories,
-and the separately requested lane comparison. Add regression coverage for
-raw U+2028 within a journal JSON string, coredump decoding failure preserving
-a kernel FAIL, and journal decoding failure preserving a known-bad-online FAIL.
-These are required next checks, not completed test evidence.
+Claude's historical PASS-WITH-CHANGES did not cover these corrections. G2
+remains incomplete until independent review of the new immutable revision.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 
