@@ -13,9 +13,9 @@ cross-arc snapshot and the linked arc brief below.
   (2026-10-23, Codex):** Ryan assigned Codex the takeover implementation.
   The exact-entry store, CLI, reader corrections and hermetic tests are on
   `feat/2026-10-22-doctor-fault-ack-takeover`. **Claude's next review target is
-  `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`**, the immutable content
+  `132658d924ed495fc4fdcfdc48d84cfb3c08f61a`**, the immutable content
   revision. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-  gives the required checks and 240 passing local tests. The earlier Claude
+  gives the required checks and 249 passing local tests. The earlier Claude
   PASS-WITH-CHANGES and G0 FAIL remain historical. Claude's later FAIL on
   `01e720e` retired the separate `cpu-tripwire-fault-ack` branch from use;
   Ryan accepted its two policy corrections on this takeover line. **Next lane:

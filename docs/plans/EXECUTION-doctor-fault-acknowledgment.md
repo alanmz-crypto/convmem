@@ -5,7 +5,7 @@
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
 **Resume state:** `CLAUDE_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at historical revision `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; the takeover candidate corrects the reader defects and Ryan's 2026-10-23 policy and durability requirements. Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
-**Current review target:** `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` (immutable content revision; later routing edits are documentation only).
+**Current review target:** `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
@@ -323,11 +323,15 @@ corrections and this evidence. Claude's fixed review candidate is
 
 ### Corrective verification (Codex, 2026-10-23)
 
-- Focused hermetic suite: **240 passed** across the two tripwire test files and
+- Focused hermetic suite: **249 passed** across the two tripwire test files and
   `tests/test_doctor.py` with Python 3.13.12 and pytest 9.1.1. It includes LF-only
   parsing of raw U+2028/U+2029/U+0085 in a JSON `MESSAGE`, both reader decoding
   errors, invalid known-bad CPU configuration, blind-journal wording, and a
   timeout whose partial stdout holds both a CPU segfault and an MCE.
+- The preserved reader-fix branch was compared read-only. Its production fixes
+  are already present here; its additional 9-case Unicode-separator matrix now
+  checks complete reads, text timeouts and byte timeouts with exact fault
+  identity preserved.
 - A CLI-level post-replacement directory-sync failure returns exit **3**, says
   the document was written but durability is unconfirmed, and leaves the
   acknowledgment applied on the next read. A refusal remains exit 1.

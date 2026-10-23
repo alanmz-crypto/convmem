@@ -15,7 +15,7 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`.
+**Review target:** `132658d924ed495fc4fdcfdc48d84cfb3c08f61a`.
 This immutable content revision includes the corrected architecture, execution
 plan, code and tests. The following documentation-only routing commit points
 to it; it does not change the reviewed implementation. Claude should review
@@ -137,7 +137,7 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Review `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` in a separate clean
+1. Review `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` in a separate clean
    checkout. The local worktree remains at the path above; GitHub holds the
    same task branch as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
@@ -235,10 +235,13 @@ it is not a tamper-proof authority ledger.
 ## Verification and limits
 
 Codex ran the focused hermetic tests and the checks recorded in the execution
-plan. The corrective target passed 240 focused tests, scoped Ruff and Pylint,
+plan. The corrective target passed 249 focused tests, scoped Ruff and Pylint,
 the committed-manifest guard, and `git diff --check`. Its CLI test injects a
 post-replacement sync failure, checks exit 3 and the written-document message,
-then confirms the acknowledgment is applied. A timed-out journal with partial
+then confirms the acknowledgment is applied. The preserved reader-fix branch
+was compared read-only; its only useful unique coverage was the 9-case matrix
+for Unicode separators through complete and timed-out journal reads, now on
+this target. A timed-out journal with partial
 stdout containing both a CPU fault and an MCE remains FAIL. Actual bash and
 zsh parse the printed command without changing the cursor or `<reason>`.
 The earlier eight planned mutations produced assertion failures in isolated
@@ -279,8 +282,8 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`7066050b6fc38f3d40e5b5a12506c4555e28e5e2` for Claude's independent
-recheck. Codex's 240 local tests pass; Claude, Copilot and Kiro G2 reviews remain
+`132658d924ed495fc4fdcfdc48d84cfb3c08f61a` for Claude's independent
+recheck. Codex's 249 local tests pass; Claude, Copilot and Kiro G2 reviews remain
 open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->

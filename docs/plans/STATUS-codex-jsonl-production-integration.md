@@ -81,7 +81,7 @@ granted `1a68675` in that host snapshot; neither docs merge needs a deployment.
 The acknowledgment design subsequently merged through PR #415 as `3d24c75`.
 The 2026-10-23 corrective implementation is on
 `feat/2026-10-22-doctor-fault-ack-takeover` at review target
-`7066050b6fc38f3d40e5b5a12506c4555e28e5e2`, not `main` or the live runtime.
+`132658d924ed495fc4fdcfdc48d84cfb3c08f61a`, not `main` or the live runtime.
 Claude's earlier PASS-WITH-CHANGES reader findings have been corrected locally;
 Claude has not reviewed this new revision. Ryan retired the separate
 `cpu-tripwire-fault-ack` branch after Claude's FAIL at `01e720e` and accepted
@@ -115,7 +115,7 @@ or live acknowledgment was made.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Corrected branch-only review target `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` passed 240 focused local tests and the committed-manifest guard. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) preserves historical verdicts and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | Claude rechecks the exact revision and verifies coverage; Copilot performs the targeted safety audit; Kiro reviews implementation. Ryan owns G3–G6 |
+| Doctor acknowledgment, priority #1 | Corrected branch-only review target `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` passed 249 focused local tests and the committed-manifest guard. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) preserves historical verdicts and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | Claude rechecks the exact revision and verifies coverage; Copilot performs the targeted safety audit; Kiro reviews implementation. Ryan owns G3–G6 |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -129,7 +129,7 @@ Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
 **The next lane is Claude, for independent exact-revision review and coverage
-verification** of `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`. Ryan
+verification** of `132658d924ed495fc4fdcfdc48d84cfb3c08f61a`. Ryan
 directly granted Codex the implementation takeover. The earlier G0 FAIL and
 Claude PASS-WITH-CHANGES at the prior revision remain historical; Claude's
 later FAIL on the retired branch was resolved by Ryan's policy decisions in
@@ -243,7 +243,7 @@ Codex admission and the same-source publication fence are live.
 
 1. Complete Claude's recheck and diff-coverage verification, Copilot's targeted
    safety audit, and Kiro's implementation review on pinned revision
-   `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` (G2). Codex's verification
+   `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` (G2). Codex's verification
    does not replace independent reviews. Ryan then decides PR/merge (G3), runtime
    promotion without a watcher restart (G4), and acceptance (G6). G5 for the
    old Timeshift event is moot after reboot; future live acknowledgments need
@@ -420,7 +420,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-23 | Codex | Saved Ryan's reboot checkpoint with the immutable review target and self-contained restart instructions; old-event G5 becomes moot when the boot changes |
 | 2026-10-23 | Codex | Confirmed a changed boot ID; old-event G5 is moot, Claude review remains pending, and post-reboot doctor health is unverified |
 | 2026-10-23 | Codex | Recorded Claude PASS-WITH-CHANGES at the prior revision; restored the original G2 reviewers after lane comparison |
-| 2026-10-23 | Codex | Pinned corrective acknowledgment implementation at `7066050`; 240 focused tests pass, and Claude/Copilot/Kiro G2 reviews remain open |
+| 2026-10-23 | Codex | Pinned corrective acknowledgment implementation at `132658d`; 249 focused tests pass, and Claude/Copilot/Kiro G2 reviews remain open |
 
 ## TL;DR
 
@@ -434,8 +434,8 @@ Keep this document a current-state snapshot, not a session diary.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: the corrected acknowledgment review target is `7066050`.
-  Codex's 240 focused tests pass; Claude/Copilot/Kiro G2 requirements remain
+- Priority #1: the corrected acknowledgment review target is `132658d`.
+  Codex's 249 focused tests pass; Claude/Copilot/Kiro G2 requirements remain
   open. No runtime promotion or live acknowledgment occurred. Today's doctor
   check fails on an unacknowledged CPU 7 fault, so acceptance remains unmet.
 
