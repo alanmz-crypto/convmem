@@ -1947,6 +1947,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-run.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"

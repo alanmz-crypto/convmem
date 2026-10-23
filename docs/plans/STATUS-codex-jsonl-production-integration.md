@@ -104,8 +104,11 @@ runtime remains at the granted `1a68675`. That docs merge needs no deployment.
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
 | Doctor acknowledgment, priority #1 | Requested by Ryan; no existing reset, acknowledgment design or implementation. Ryan cannot reboot now. The standalone new-model handoff is in open delivery PR #414. | Ryan owns delivery-PR merge; fresh-model design and Kiro review remain next. No live acknowledgment or acceptance follows from this handoff |
-| Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
-| Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
+| Stage 1 outcome | **Recorded PASS, Ryan to confirm.** Run record landed from the Stage 1 branch: [Stage 1 packet](../inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md) §"Stage 1 result". Run 2 transformed 1 chunk, run 3 made 0 provider calls, checkpoint/Chroma/processed/export agreed, the pre-activation rollout routed legacy; 4 paid calls against the 40-call ceiling (2026-10-12). It proves the route is correct and bounded, not savings. | Ryan confirms acceptance |
+| Stage 2 outcome | **No formal PASS recorded.** Canary 1 (2026-10-12) stopped at the paid ceiling after 12.8 h (about 410 of 400 calls; 398 were legacy re-indexes, about 12 were new Codex sessions) and exposed the wedge, self-indexing and plain-open defects now fixed by #390, #395, #399 and #403 ([report](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-report.md), [run log](../inter-model/CLAUDE-2026-10-12-issue-286-codex-stage2-run.md)). Canary 2 hit its 200-call ceiling on 2026-10-17. The guarded 24 h windows ending 2026-10-21 10:49 CDT ran without a STOP (about 650 of 3,000 estimated calls). No document scores any window against the design §9 criteria; the memory-cap and doctor-gate criteria are unscored. | A Ryan-confirmed scoring of one window against design §9, or a fresh canary under a new grant |
+| Paid burn, last 24 h | Read-only journal measurement 2026-10-22 22:35 CDT: about 269 estimated paid calls, 233 on the new Codex route (exact) and about 36 legacy (2 calls per chunk); 0 errors, 0 timeouts, watcher at 94 MB. Oct 20–21 was about 650 calls, about 474 legacy. The 24 h guard ended 2026-10-21 and is not running. | Guard decision is Ryan's |
+| Pre-activation rollout residual-burn decision | **Partly recorded, Ryan to confirm.** Under Ryan's 2026-10-17 exposure policy, dormant full-re-index sessions were soft-excluded (reversible, index kept): three high-cost Codex rollouts and, in a bulk one-shot, 1,993 sessions (649 Codex, 672 Cursor, 574 Kiro, 98 Copilot). Backups: `~/.config/convmem/backups/processed.json.pre-exclude-2026-10-17`, `…pre-bulk-exclude-2026-10-17`, `…pre-oct9-exclude-2026-10-17`. The Oct 10 23:16 thread was still held as active. | Ryan confirms the disposition; no exclusion, retirement or rebuild is authorized here |
+| `allow_full_rebuild` flag | Live config still has `allow_full_rebuild = true` (added 2026-10-17 while DeepSeek was free). It is load-bearing: removing it would quarantine about 49 of 139 active Codex sessions on their next append, and a model, effort or prompt change with it set triggers full paid re-transforms. See `Issues/allow-full-rebuild-is-load-bearing-not-temporary.md` (local, untracked). | Ryan decides the policy before any model or prompt change |
 
 ## 5. Your Role
 
@@ -190,10 +193,10 @@ Codex admission and the same-source publication fence are live.
    acknowledgment mechanism, and obtains Kiro review before a separate Ryan
    Execute decision. Ryan cannot reboot now. The original doctor criterion
    still records FAIL; this handoff does not change it or authorize live use.
-2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
-   records; keep unsupported outcomes **Ryan to confirm**. Review the reported
-   quarantines and old wedged transaction without clearing them. Do not repeat
-   paid canaries or assert acceptance from a running service alone.
+2. Ryan confirms the Stage 1 PASS, scores one 24 h window against design §9
+   for Stage 2, and confirms the residual-burn disposition (§4). Review the
+   reported quarantines and old wedged transaction without clearing them. Do
+   not repeat paid canaries or assert acceptance from a running service alone.
 3. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
    cleanup is complete; the retention unit still records its prior failed run.
    Any service reset, retention retry, snapshot deletion, filesystem or hardware
@@ -204,6 +207,24 @@ Codex admission and the same-source publication fence are live.
    runtime/config/source/binding/dimension and the writer window immediately
    before a separately granted operation. The merged isolation/recovery fixes
    remove prerequisites, not the need for a fresh exact-source grant.
+5. Path to Done, in scope (Codex rollouts and Kiro only; Cursor, Copilot and
+   Crush stay legacy routes by design and are separate work):
+   a. Protect the gain: restart a burn guard and decide the
+      `allow_full_rebuild` policy (§4). Provider key outside the watcher
+      (`OPENAI_API_KEY` is only in `env.systemd`) leaves manual `index --file`
+      paying for summaries that get no knowledge units.
+   b. Kiro Stage 1: the Astra packet (`docs/2026-10-20-issue-286-kiro-stage1-packet`,
+      `0b00e6a`, unmerged) has Kiro PASS-with-conditions C1/C2 and a spending
+      NO-GO until the listed sessions, a cohort ledger, the Oct 13 wedge and a
+      no-other-writer window are resolved. The unattributed Oct 17 00:24:44
+      writer was a hard blocker; whether #411 clears it is unproven.
+   c. Stuck Codex sources (refused or quarantined, no cost, index gaps):
+      two `projection_checkpoint_mismatch`, two `frontier_violation`, three
+      `bootstrap_required`, the wedged Oct 13 transaction, and three
+      timeout quarantines. Clearing may only re-quarantine; read the
+      `transient-provider-errors-quarantine-sources-permanently` issue first.
+   d. Doctor acceptance via the #415 acknowledgment design (item 1).
+   e. Close the arc only after a, b and d, with Ryan's confirmations in item 2.
 
 ## 7. Hard Stops
 
@@ -353,6 +374,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Confirmed the requested doctor clearance has no existing reset mechanism and exactly one check still fails; stopped at the gate-redesign boundary and left a new-model handoff in §5 without live changes. |
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
+| 2026-10-22 | Claude | Landed the Stage 1 result and Stage 2 run/report from the unmerged Stage 1 branch, recorded Stage 1 as PASS and Stage 2 as unscored (both Ryan to confirm), added the measured 24 h burn and the `allow_full_rebuild` risk, and wrote the §6 path to Done. Docs only; no live change. |
 
 ## TL;DR
 
