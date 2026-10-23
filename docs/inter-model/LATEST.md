@@ -55,9 +55,13 @@ cross-arc snapshot and the linked arc brief below.
   isolation model and four §22 cases, with no production effect. Both live
   segments already carry release evidence, so Ryan parked it unreviewed.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`.
-  **Next lane: Ryan**, for the recovery inputs (lost-work interval, newest
-  Rescuezilla image). No lane is active; no PR, review, merge or live work is
-  granted. See [STATUS](../plans/STATUS-safe-harbor.md).
+  Recovery inputs are recorded (one-day loss for ConvMem data; image
+  `2026-10-20-05-img`, new tested image planned for 2026-10-23). The Safe Harbor
+  runtime is already live via runtime-main `1a68675`, not via ROLLOUT.
+  **Next lane: Ryan**: new image, off-workstation custody of one image drive
+  and a password copy, and a decision on a read-only post-deployment check. No
+  lane is active; no PR, review, merge or live work is granted. See
+  [STATUS](../plans/STATUS-safe-harbor.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its

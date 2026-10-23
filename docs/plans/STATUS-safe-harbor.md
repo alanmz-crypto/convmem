@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — active; legacy initializer PARKED by Ryan 2026-10-22.** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. The §23 implementation (`dd0c467`) is parked unreviewed: it missed the isolation model and four §22 cases, and a read-only look found both live segments already carrying release evidence. Operational readiness remains OPEN; Ryan's recovery inputs are next. No live work is granted.
+> **Arc: Safe Harbor — active; legacy initializer PARKED by Ryan 2026-10-22.** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. The §23 implementation (`dd0c467`) is parked unreviewed: it missed the isolation model and four §22 cases, and a read-only look found both live segments already carrying release evidence. Recovery inputs were recorded on 2026-10-22 (§4). The Safe Harbor runtime is already live through ordinary runtime-main promotions (`1a68675`), not through ROLLOUT; a read-only post-deployment check is the proposed next step. No live work is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -39,6 +39,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **T1–T5 are on main:** incident retention/canonical identity (#387), target-bound preflight (#389), preservation and strict release (#391), serialized approval recovery (#392), and integrated evidence/operator handoff (#394).
 - **Latest squash:** `c6f07241ccf1a71d9d874fee963a37b04091b3ce`; its tree equals accepted PR #394 head `188184b28707eb87c042d579aa7bbcba043dd5d0`. [VERIFY closeout](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping) records CI, pinned reviews and Ryan's exact-head outage exception.
 - **Historical deployed checkout:** the October 14 preflight observed runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. October 17's bounded static inspection found it at `3e705e4197829f53ebbbd8433b59b60b648309d2`; the old deployment comparison is stale and has not been requalified. Disk identity does not establish loaded process identity.
+- **Safe Harbor runtime already live (October 22, read-only):** runtime-main is clean at `1a68675` (2026-10-21, #412), which contains T1–T5 through `c6f0724`; the watcher (PID 904311) started from it at 13:52:34 CDT. Safe Harbor code reached production through ordinary runtime-main promotions for other arcs (already present at `3e705e4` on October 17), not through ROLLOUT's planned transition. This explains the evidence-bearing live snapshots. It is a git/process observation, not a qualification of the deployment.
 - **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records October 14 observations and a conditional sequence. Those service/timer observations are historical, not current guarantees. No rollout transition has been performed by this lane.
 - **Guard state at October 14 inspection:** two matching legacy snapshot generations lacked release evidence; no quarantine marker was present. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. This lane performed no production validation/adoption.
 - **Guard state, October 22 read-only look:** both live segments' CURRENT generations were recreated by ordinary capture (2026-10-21 and 2026-10-22) and carry full release evidence; the legacy generations are gone. Strict admission against current watermarks was not run; this is an observation, not a qualification ([VERIFY](VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22)).
@@ -54,13 +55,17 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Focused Python 3.11 evidence reviewed:** 83 existing safety cases and five new legacy cases passed, no skips/source drift. Kiro PASSed the bounded evidence with high confidence, correcting its initially overstated coverage before completion. Recorded logs were read, not rerun; hash maps were not independently recomputed by Kiro. This is not a full-suite or deployment PASS, or Ryan's acceptance.
 - **Deployment readiness OPEN:** old processes, timer routing and recovery inputs still require the named dispositions in ROLLOUT; the legacy initializer is parked and may no longer be needed (§3). The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
 - **Initializer planning/review complete:** Kiro's same-session delta closed B1–B3 (preview no-effect control, live/original source comparison, apply-time backend recheck). No scope-decision condition remains; Ryan granted isolated implementation/evidence on 2026-10-22. No new tests or production commands ran during the planning/review turn or the resume check.
-- At the October 14 preflight, the key-copy file was present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The ext4 destination was mounted and empty at top level. Those observations have not been refreshed. No current Rescuezilla artifact or accepted lost-work interval was established by that preflight.
+- **Recovery inputs recorded (2026-10-22).** Ryan delegated items 1–3 to Claude ("You're given authority"), which adopted its stated recommendations; item 4 is Ryan's report. Details: [ROLLOUT](ROLLOUT-safe-harbor.md#recovery-inputs--decided-2026-10-22).
+  1. **Lost-work interval:** one day for ConvMem data (the daily `convmem-data-v2` Restic snapshot; last success 2026-10-22 00:21 CDT); "since the last disk image" for the rest of the system. Tighter needs a backup-schedule change under the Complete-data Backup v2 arc.
+  2. **Recovery point:** Clonezilla image `2026-10-20-05-img` (whole workstation disk, matched by UUID; completed 00:16 CDT, no errors logged), with `2026-10-11-06-img` kept as the older fallback. Ryan will make and test a new image on 2026-10-23, which then becomes the recovery point.
+  3. **Independent access (policy):** keep at least one image drive and a Restic password copy unplugged and stored away from the workstation. On 2026-10-22 all six external drives, including both images, the Restic copy drive and the password copy, were mounted on the workstation. The physical step is Ryan's.
+  4. **Restore history (Ryan):** "Clonezilla is restorable. Tested." (image not named; "becoming two weeks old" fits `2026-10-11-06-img`); agents restored from Restic months ago. No restorability check is recorded for `2026-10-20-05-img` itself.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
 - **Startup exception (October 17):** doctor exited 1 on the retained Typora CPU-tripwire warning. Bounded read-only inspection established no ConvMem link or hardware cause. Ryan explicitly allowed static Safe Harbor planning/review to continue with the warning intact; this supplies no live-operation or healthy-host claim.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** the recovery facts in §6 item 1 (acceptable lost-work interval; newest Rescuezilla image, its date, location, independent access and restore-test history). Whether the parked initializer is ever resumed depends partly on that image's date.
+**Ryan:** (a) make and test the new disk image planned for 2026-10-23; (b) move one image drive and a Restic password copy off the workstation, per the recorded policy; (c) decide whether to grant a read-only post-deployment check of the already-live Safe Harbor runtime (§6 item 3). Once the 2026-10-23 image exists, restoring it cannot bring back legacy snapshot generations, so the parked initializer's remaining case shrinks to restoring the older images.
 
 **All lanes:** no lane is active. Do not review, rerun or extend `dd0c467` without a new grant. Preserve existing PASSes at their exact subjects and review only material deltas. Do not restart settled architecture reviews or infer authority from earlier grants. Any lane prompt starts with a lane check ("if you are not <lane>, stop").
 
@@ -70,10 +75,10 @@ Recovery facts and runtime observations must be refreshed under the appropriate
 grant; nothing here is a live readiness claim. Revisit this list before hardware
 or recovery maintenance that depends on these guarantees.
 
-1. Resolve recovery artifact, independent access/custody and acceptable loss interval; any new capture or scratch restore needs its own bounded grant.
+1. Recovery inputs are recorded (§4). Open within them: the 2026-10-23 image and its test, and the off-workstation custody step. Any agent-run capture or scratch restore still needs its own bounded grant.
 2. Decide whether the parked initializer is still needed. If so, a new grant covers the four missing §22 cases, the refusal-vs-partial status question and an isolated authoring/evidence rerun, then independent review; no public initializer or live procedure is qualified. Pending work is a refusal, not permission to flush or weaken release. Isolated implementation does not require guessing the still-open recovery facts.
-3. Review the complete operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits. No automatic first-write migration or generic reconcile fallback.
-4. Ryan grants only the named rollout transitions after those prerequisites pass. Record actual deployed identities and granted diagnostics afterwards. No implementation PASS or merge implies live recovery assurance.
+3. **Overtaken by events:** ROLLOUT planned a gated transition, but the runtime is already live (§3). The proposed next step is a read-only post-deployment check under Ryan's grant: actual process identities and old clients, timer routing, guard state and audit publication, against the "acceptance after a permitted rollout" record in [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout). Then decide which ROLLOUT steps still apply. No automatic first-write migration or generic reconcile fallback.
+4. Record actual deployed identities and granted diagnostics. No implementation PASS, merge or incidental promotion implies live recovery assurance.
 
 ## 7. Hard Stops (models cannot cross)
 
@@ -106,6 +111,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-22 — Claude: recorded the recovery inputs (items 1–3 under Ryan's delegated authority, item 4 from Ryan) and found the Safe Harbor runtime already live at runtime-main `1a68675`; read-only post-deployment check proposed next.
 
 - 2026-10-22 — Claude: verified the returned initializer (isolation lapses, four missing §22 cases, no production effect), corrected its provenance, and recorded Ryan's decision to park `dd0c467` unreviewed; live segments already carry release evidence; recovery inputs next.
 
@@ -230,7 +237,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Active, with the legacy initializer parked by Ryan on October 22: the Cursor-built candidate at `dd0c467` missed the isolation model and four §22 cases, and the live segments already carry release evidence. Ryan's recovery inputs are next. Warning retained; live readiness unresolved and no live work granted.
+[Arc Safe Harbor] Active. The legacy initializer is parked unreviewed at `dd0c467`. Recovery inputs are recorded (one-day loss for ConvMem data; image `2026-10-20-05-img`, with a new tested image planned for October 23; off-workstation custody still Ryan's step). The Safe Harbor runtime is already live through ordinary runtime promotions, so a read-only post-deployment check is the proposed next step. Warning retained; no live work granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — parked implementation handoff -->

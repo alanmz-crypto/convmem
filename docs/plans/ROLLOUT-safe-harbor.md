@@ -1,11 +1,14 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**Unexecuted draft; legacy initializer PARKED — Ryan, 2026-10-22.** Nothing in
-this procedure is granted; start with [STATUS](STATUS-safe-harbor.md). Historical
-observations below are not current operational assurances: on 2026-10-22 both
-live segments already carried release evidence, so the legacy-initialization
-steps may no longer apply. No service, corpus, backup/restore or deployment
-action is authorized.
+**Unexecuted draft, overtaken by events — 2026-10-22.** The Safe Harbor runtime
+(T1–T5, `c6f0724`) is already live: runtime-main reached it through ordinary
+promotions for other arcs (`3e705e4` by October 17; `1a68675` with the watcher
+restarted 2026-10-22 13:52 CDT), not through this procedure. Both live segments
+already carry release evidence, and the legacy initializer is parked. Nothing in
+this procedure is granted; start with [STATUS](STATUS-safe-harbor.md). The proposed
+next step is a read-only post-deployment check against the "acceptance after a
+permitted rollout" record in [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout). [Recovery inputs](#recovery-inputs--decided-2026-10-22) were decided on
+2026-10-22. No service, corpus, backup/restore or deployment action is authorized.
 
 **Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -170,6 +173,42 @@ before replacement: the torn files remain and the incident cannot be released.
   locations. Newest image, completion, scope, custody, restore history and the
   acceptable lost-work interval await Ryan. Absence from this limited inspection
   does not mean an image does not exist elsewhere.
+
+### Recovery inputs — decided 2026-10-22
+
+Claude gathered facts read-only (file names, dates, sizes and small Clonezilla
+metadata files; no image data, keys or Restic commands). Ryan delegated items 1–3
+("You're given authority"); Claude adopted its stated recommendations. Item 4 is
+Ryan's report.
+
+- **Images found** (search depth 5 on mounted volumes):
+  `/run/media/lauer/ext-ex4-1T-NVMe/2026-10-20-05-img` (Clonezilla Live 3.3.2,
+  saved 2026-10-20 05:03–05:16 UTC, 311 GB) and
+  `/run/media/lauer/rszl-larch-5t-fs/2026-10-11-06-img` (06:38–06:51 UTC, 254 GB).
+  Both are `savedisk` images of the workstation disk: their `blkid.list` UUIDs
+  `01A6-9C51` (vfat `/boot`) and `93d30805-f5c4-43a6-a746-ef914d6e5f8d` (ext4 `/`)
+  match the current root disk, so `/home` and the ConvMem data are included. Both
+  logs show "Finished saving" for both partitions; neither log records
+  Clonezilla's restorability check.
+- **Restic:** `convmem-restic-local` reported `snapshot OK` (tag
+  `convmem-data-v2`) at 2026-10-22 00:21 CDT; `convmem-restic-external` finished
+  every two hours through 21:04 CDT. These are journal reports, not a new check.
+- **1. Lost-work interval:** one day for ConvMem data, delivered by the daily
+  snapshot; "since the last disk image" for the rest of the system. A tighter
+  interval is a backup-schedule change owned by Complete-data Backup v2.
+- **2. Recovery point:** `2026-10-20-05-img`, keeping `2026-10-11-06-img` as the
+  older fallback. Ryan plans a new image and test on 2026-10-23; once tested it
+  becomes the recovery point, and an image made after the October 21–22 snapshot
+  refreshes cannot reintroduce legacy snapshot generations.
+- **3. Independent access (policy):** keep at least one image drive and a Restic
+  password copy unplugged and stored away from the workstation. Observed
+  2026-10-22: all six external drives were mounted, including both image drives,
+  `rxBUlauer-128Gfs` (Restic copy) and `BIT-Brg-larch-7t` (password copy). The
+  physical step is Ryan's; no agent unmounts drives or handles keys.
+- **4. Restore history (Ryan):** "Clonezilla is restorable. Tested." The image
+  was not named; "Image is becoming two weeks old" fits `2026-10-11-06-img`.
+  "agents have restore from restic months ago." No restorability check is
+  recorded for `2026-10-20-05-img` itself.
 
 ## 3. Readiness decisions before activation
 
