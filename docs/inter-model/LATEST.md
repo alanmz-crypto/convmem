@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,54 +9,32 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
-  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
-  the specific Timeshift crash while continuing to flag new faults. A fresh
-  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
-  - Each acknowledgment is keyed to one exact kernel journal entry and bound
-    to one boot.
-  - The matched fault becomes a visible WARN, never PASS.
-  - New faults, machine checks and known-bad CPUs coming back online still
-    FAIL.
-  **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-  under Ryan's PR Steward assignment; Ryan owns the merge.
-  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
-  Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The input
-  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
-  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
-  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
-  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
-  promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
-  outcomes and residual burn remain **Ryan to confirm**. See the current
-  [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **[Arc Codex #393] Crush indexing cost is the current scoping task
+  (2026-10-23, Codex; Ryan-directed):** Ryan parked doctor acknowledgment and
+  authorized scoping the repeated summary/distill cost for changed Crush
+  SQLite databases. Codex owns planning and future implementation; Claude
+  reviews this follow-up. The [scope proposal](../plans/SCOPE-crush-indexing-cost-reuse.md)
+  compares a global-chunk cache, direct JSONL reuse and a session-aware Crush
+  path. It proposes session-local chunks plus durable provider-result reuse;
+  source capture, identity, read/projection compatibility and adoption still
+  need a binding architecture and execution plan. **Next lane: Claude scope
+  review, then Codex design.** No implementation, migration, warm-up, paid
+  canary, PR, runtime promotion or live configuration grant follows from the
+  scoping instruction. [Arc brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
-- **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
-  Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
-  on 2026-10-17. It is included in runtime `1a68675` on `main`; no temporary
-  branch switch, pull, or repeat deployment is needed. Unattributed userspace
-  faults are WARN; CPU-attributed faults outside the configured known-bad set,
-  machine checks, and known-bad CPUs returning online remain FAIL. The current
-  Timeshift failure follows that retained policy; CPU damage is not established
-  by the classification. Ryan confirmed he unplugged the external USB drives
-  for testing. That explains the backup-volume disconnect four seconds before
-  Timeshift's I/O errors and crash; the exact software failure remains unproven.
-  Backup review found the failed `13:00:00` snapshot absent and replacement
-  `13:03:52` saved successfully at `13:07:24 CDT`, with hourly/daily metadata.
-  Stale-mount cleanup is complete: Ryan's root active-user check showed only
-  the kernel mount entry, then his normal unmount succeeded. Codex verified
-  `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
-  backup volume remains mounted read-write and the watcher remains active.
-  Retention still records its previous failed run; no retry/reset occurred.
-  **Next lane: Ryan** for any separate retention-maintenance decision and
-  doctor-acceptance disposition;
-  see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
-  Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
-  is historical context, not current runtime instructions. Ad-hoc host work;
-  no tripwire-policy or hardware change is authorized by this pointer.
+- **[Arc Codex] Doctor acknowledgment parked; original live step moot
+  (2026-10-23):** The current boot is `4a99c57d3478481192186b681f64687c`,
+  and the original `timeshift[835726]` segfault is absent from its kernel
+  journal. Ryan waived the separate known CPU-7 doctor failure for session
+  progress. No tripwire policy or deployment acceptance criterion changed.
+  The merged design #415 (`3d24c75`) and unmerged cursor revision `2a138be`
+  are preserved; identity finding 3 passes, but G0 remains FAIL for malformed
+  reads losing detected FAILs and undefined re-ack after revocation. There
+  is no acknowledgment implementation or active next step. Ryan reports a
+  Clonezilla image successfully restored onto another computer on 2026-10-23;
+  that does not claim a Timeshift/Restic restore test. The prior watcher
+  deployment and mount-cleanup grants remain consumed; do not repeat them.
+  Stage 1/Stage 2 and residual-burn acceptance remain **Ryan to confirm**.
 
 - **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
@@ -312,7 +290,7 @@ its existing archive/reference location. Use
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
-<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
-<!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
-<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design review pickup -->
+<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md, ../plans/SCOPE-crush-indexing-cost-reuse.md — current Arc Codex state, priority and gates -->
+<!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — parked acknowledgment context and subsequent queue -->
+<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — historical pickup for the parked design -->
 <!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->

@@ -13,7 +13,9 @@ crash-replayable: reuse stable historical chunks, transform only the overlap
 frontier and new messages, and never pay twice for a completed transform after
 a crash. The guarded production routes now cover selected Kiro session JSONL
 and admitted Codex rollout JSONL, with unselected sources staying on the legacy
-path. Current live selection and runtime evidence are in §3.
+path. Current live selection and runtime evidence are in §3. The current follow-up
+is #393, scoping paid-transform reuse for Crush SQLite; doctor acknowledgment
+is parked at Ryan's direction (2026-10-23).
 
 **Done means:** hermetic real-Chroma fault/replay review and authorized
 production measurements establish frontier reuse, durable paid-work reuse,
@@ -76,8 +78,20 @@ runtime worktree, the effective watcher service, and the live incremental
 configuration. Merged implementation and observed live operation are distinct
 from acceptance of the Stage 1 and Stage 2 measurements.
 Ryan later squash-merged the refreshed docs through PR #413 as `75d8e2a` and
-the priority-#1 handoff through PR #414 as `5c0a01b`. Runtime remains at the
-granted `1a68675`; neither docs merge needs a deployment.
+the priority-#1 handoff through PR #414 as `5c0a01b`. The last verified runtime was the
+granted `1a68675`; neither docs merge needs a deployment. Ryan also merged
+the acknowledgment design through PR #415 as `3d24c75`; it is unimplemented
+and now parked.
+
+The operational rows below are the last verified 2026-10-22 snapshot, not a
+new runtime attestation. On 2026-10-23, a read-only recheck found current boot
+`4a99c57d3478481192186b681f64687c` and no original `timeshift[835726]` crash.
+Doctor still exits 1 on a separate CPU-7 zsh event. Ryan waived that known
+startup failure for session progress and directed Codex to park acknowledgment
+and scope #393. This is not a hardware diagnosis or deployment acceptance.
+Ryan separately reports creating a Clonezilla image this morning and testing
+it successfully by installing it on another computer; this is user-reported
+restore evidence, not a new Timeshift/Restic test.
 
 | Surface | Current state |
 |---|---|
@@ -91,6 +105,7 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Opt-in Kiro watch route | PR #406 (`adcf5b3`) added opt-in Kiro incremental indexing with a crash-safe paid-call budget. Live `live_sources = []` selects no exact Kiro source. |
 | Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. Ryan's exact-SHA grant was executed on 2026-10-22: the watcher now runs the fence. |
 | Effective watcher runtime | `.worktrees/runtime-main` is clean on branch `main` at granted SHA `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, fast-forwarded from `686d50e` after its indexing child completed. The watcher restarted once at `2026-10-22T13:52:35-05:00`, active under PID `904311`, invocation `db09e9881aa7454499a1ae117be5dac5`. Effective `MemoryMax` is `8589934592` bytes (8 GiB); live config SHA-256 remained `9719875a5906d0a708be2fc54640df74b9515c1be8e39e18401c8b25015db89c`. |
+| Crush cost follow-up, issue #393 | [Scope proposal](SCOPE-crush-indexing-cost-reuse.md) on `plan/2026-10-23-issue-393-crush-indexing-scope`. Source inspection confirms the legacy whole-file route and global cross-session chunks. No Crush implementation exists; the next design must define logical SQLite capture, session-local chunks, durable provider-result reuse and adoption. |
 
 ## 4. Completion State
 
@@ -101,143 +116,79 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Codex admission and watcher prerequisites | Admission #388, rejection-loop #390, wedge fixes #395, compatibility #399, and manifest cache #403 are merged; live Codex admission is observed | Preserve current settings; do not infer canary acceptance from live operation |
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
 | Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
-| Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
-| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
+| Runtime-promotion verification | The 2026-10-22 promotion and its activity checks completed; full acceptance was not established. The original Timeshift event is absent after reboot; the latest doctor still exits 1 on a separate CPU-7 event. | Ryan waived the known CPU-7 startup failure for session progress; no deployment-acceptance claim follows |
+| Interrupted Timeshift backup | The 2026-10-22 replacement snapshot completed normally. On 2026-10-23 Ryan separately reported a Clonezilla image successfully restored onto another computer. | User-reported Clonezilla recovery test passed; it is not evidence of a Timeshift/Restic restore test |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Design drafted, not reviewed, on `plan/2026-10-22-doctor-fault-ack`: [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), [execution plan](EXECUTION-doctor-fault-acknowledgment.md) and [Kiro pickup](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md). Acknowledgments are keyed per journal entry and bound to one boot; an acknowledged fault becomes a visible WARN, never PASS. No implementation exists. Ryan cannot reboot now. | Kiro design review (G0), then Ryan's Execute decision (G1). Promotion, live acknowledgment and acceptance are separate later gates (G4–G6) |
+| Doctor acknowledgment | **PARKED by Ryan, 2026-10-23.** The original Timeshift event is absent from the current boot. Design #415 merged as `3d24c75`; cursor revision `2a138be` closes identity finding 3, but Codex/Claude G0 remains FAIL for malformed-read FAIL preservation and undefined re-ack after revocation. Nothing is implemented. | No active execution step; a future resume requires corrected design and review. The original one-event G5 is moot |
+| Crush indexing cost, issue #393 | **SCOPING authorized.** The scope compares global-chunk caching, direct JSONL reuse and a session-aware Crush path; it proposes the latter. | Claude scope review, then a binding architecture and execution plan. No code, warm-up, paid canary or live configuration grant |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-Ryan granted promotion to exact SHA
-`1a686753d8fd1b710883050e8a4f9c45b7ae1e26` and one watcher restart under
-Part A of Claude's 2026-10-22 post-fence handoff on
-`origin/docs/2026-10-22-2026-10-22-arc-codex-post-fence-next-model`.
-Codex executed both after an idle-window check. That one-time grant is consumed;
-the next lane must not repeat the deployment under it.
+**The active task is issue #393 scoping, not doctor acknowledgment.** Ryan
+explicitly directed Codex to park acknowledgment and scope the Crush paid-work
+problem on 2026-10-23. Codex owns planning and future implementation; Claude
+handles independent reviews for this follow-up at Ryan's direction. Start
+with [the scope proposal](SCOPE-crush-indexing-cost-reuse.md).
 
-**The next lane is Kiro, for design review of priority #1.** The task is a
-reviewed acknowledgment of this specific crash that still flags new faults.
-A fresh design model (Claude) wrote the design on
-`plan/2026-10-22-doctor-fault-ack`, starting from the standalone
-[new-model handoff](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md),
-which Ryan squash-merged through PR #414 as `5c0a01b`. Pick up from the
-[Kiro review handoff](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-It links the binding
-[architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and the
-[execution plan](EXECUTION-doctor-fault-acknowledgment.md) with gates G0–G6.
-Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-under Ryan's PR Steward assignment; Ryan owns the merge.
+The scope is a design input, not an implementation-ready specification.
+It identifies why a cache of today's global chunks is only partial: appending
+to an earlier-sorting session shifts later windows. The proposed complete
+approach needs session-local chunks, a consistent logical SQLite capture,
+and durable provider-result reuse. Snapshot identity, provider binding,
+projection/read compatibility, corruption/spending and existing-data adoption
+must be resolved in a binding architecture and execution plan before Execute.
+Claude independently reviews the scope and then the exact design revision.
+Ryan retains the implementation and live-operation decisions.
 
-The design itself:
+The source inspection reused Claude's recorded #393 fake-provider probe rather
+than repeating a paid run. No host Crush database, production Chroma, source
+configuration or watcher operation belongs in this scoping task.
 
-- **Key:** each acknowledgment is keyed to one kernel journal entry by boot ID,
-  realtime timestamp, kernel monotonic timestamp and message SHA-256.
-  Its ID is `4c6debf6cee1`.
-- **Result:** the matched fault becomes a visible WARN, never PASS.
-- **What it cannot hide:** new faults, machine checks and known-bad CPUs
-  coming back online keep FAILing.
-- **Failure handling:** a broken file or a boot mismatch never widens an
-  acknowledgment.
+**Acknowledgment is parked.** Its merged design is preserved, as is the
+unmerged cursor revision `2a138be9b0a12ae8849665435ab7ba1674154853` on
+`docs/2026-10-22-doctor-ack-g0-revision`. The read-only G0 review closed the
+cursor defect but retained FAIL: malformed JSON must not erase a detected
+fault, and re-ack after revocation is unspecified. Do not repair or implement
+that packet unless Ryan resumes it. The original boot-specific live operation
+is moot because its Timeshift entry is absent after reboot.
 
-Nothing is implemented. A Kiro PASS does not authorize implementation,
-promotion, live acknowledgment or acceptance; each is a separate Ryan gate.
-Ryan cannot reboot now. If he does reboot, the event leaves doctor's view and
-live use (G5) is moot.
+Ryan's known CPU-7 startup exception allows session progress; it does not
+change `cpu_tripwire`, establish a hardware cause, or supply the separate
+production acceptance decision. His reported successful Clonezilla restore is
+preserved in §3–§4 without substituting it for an unperformed Timeshift test.
 
-The fence is deployed and normal watcher activity has resumed, but full
-handoff acceptance is not claimed. The docs merges #413 (`75d8e2a`) and #414
-(`5c0a01b`) authorize no runtime or host changes.
-The promotion leaves the four checkpoint-safety files in §3 unchanged. Do not
-repeat the deployment, run protocol deployment, edit live configuration,
-bootstrap, clear quarantines, or initiate provider calls. Ryan also retains
-confirmation of Stage 1, Stage 2, and the residual-burn decision.
-
-Post-deployment doctor, run from `1a68675` with host access, exited 1 on the
-same CPU-tripwire report seen before deployment: a `timeshift` segfault on
-CPU 13 at `2026-10-22T13:01:22-05:00`. The first sandboxed diagnostic was
-interrupted after its backup query stalled; the host retry completed and both
-local/offsite backup checks passed. Ryan waived the session startup rules;
-that waiver does not establish the handoff's separate doctor-exit-0 acceptance
-check. Do not change the tripwire or repair unrelated runtime state in this task.
-
-The deployed-runtime recheck completed before `15:36:46 CDT` on 2026-10-22
-with exactly one failed check: the same Timeshift event; local/offsite backup,
-index, and native-crash checks passed. `cpu_tripwire.check()` rereads boot-scoped
-evidence rather than storing a failure latch. The standalone handoff pins the
-event's boot ID and journal timestamp, records the unresolved design questions,
-and preserves the later ingestion/retrieval queue. No acknowledgment mechanism
-has been designed or approved here; no failure was cleared, logs deleted,
-CPU configuration changed, or reboot performed.
-
-Host disposition: Ryan confirmed deliberate external-USB removal for testing
-while Timeshift was writing to its configured volume, UUID
-`b742a9e3-bc28-445b-b37f-e68fa959e70f` (`BIT-Brg-larch-7t`). USB loss at
-`13:01:18 CDT` preceded backup I/O failures and the `13:01:22` segfault.
-Storage-loss error handling is the leading crash hypothesis; the exact
-Timeshift software failure and any CPU defect remain unproven. No
-machine-check event was found in the checked boot journal. The retained
-CPU-attribution policy still classifies this event FAIL.
-
-Backup disposition: failed snapshot `2026-10-22_13-00-00` is absent;
-replacement `2026-10-22_13-03-52` has hourly/daily completion metadata and a
-journal success at `13:07:24 CDT`. The `14:00` check recognized it as the latest
-hourly/daily snapshot. Normal backup completion is established; restore and
-filesystem integrity were not tested.
-
-Stale-mount cleanup is complete. The retention script had selected the old
-`/run/timeshift/835726/backup` mount on disconnected `/dev/sdb2`, marked
-`emergency_ro,shutdown`, and exited 1 at `13:11:44 CDT`. Ryan's local root
-`fuser -v -m -M` check showed only the kernel mount entry, with no process PIDs;
-he then ran a normal `umount` of that exact path. Codex's `14:48:28 CDT`
-verification found the old mount absent and the same backup UUID still mounted
-read-write at `/run/media/lauer/BIT-Brg-larch-7t` on `/dev/sde2` (mount ID
-`1557`). The watcher remains active with PID `904311` and its original
-`13:52:35` activation timestamp. The one-time cleanup grant is consumed.
-Retention still records its earlier failed run; no retry, reset, snapshot
-deletion, or further watcher restart occurred. This cleanup does not change
-the recorded doctor failure or the tripwire policy.
-
-Stop and write a new-model handoff if further work requires a different lock
-order, transform contract, gate, or deployment model. Kiro bootstrap execution
-and unproven canary outcomes remain separate from this fence deployment.
+The previously granted `1a68675` promotion and one watcher restart are
+consumed, as is the stale Timeshift mount-cleanup grant. Do not repeat them,
+deploy protocols, edit live configuration, bootstrap, clear quarantines or
+initiate paid canaries. Stage 1, Stage 2 and residual-burn acceptance remain
+**Ryan to confirm**. Their reconciliation is separate from #393 scoping.
 
 ## 6. What Remains Before Live (sequential)
 
-Codex admission and the same-source publication fence are live.
-
-1. Kiro reviews the priority-#1 acknowledgment design (G0). Then come Ryan's
-   Execute decision (G1), hermetic Cursor implementation, exact-tip
-   verification, audit and review (G2), merge (G3), and a runtime promotion
-   with no watcher restart (G4). After that, Ryan acknowledges the one event
-   himself (G5) and decides on acceptance (G6). The original doctor criterion
-   still records FAIL until then. The no-code fallback, accepting the known
-   FAIL until a reboot, remains Ryan's option.
-2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
-   records; keep unsupported outcomes **Ryan to confirm**. Review the reported
-   quarantines and old wedged transaction without clearing them. Do not repeat
-   paid canaries or assert acceptance from a running service alone.
-3. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
-   cleanup is complete; the retention unit still records its prior failed run.
-   Any service reset, retention retry, snapshot deletion, filesystem or hardware
-   work needs separate authority. Do not repeat the consumed unmount or
-   ConvMem watcher restart.
-4. For any later Kiro bootstrap retry, prepare fresh mutation-state and
-   local/offsite backup evidence, exact proposal and review packet; revalidate
-   runtime/config/source/binding/dimension and the writer window immediately
-   before a separately granted operation. The merged isolation/recovery fixes
-   remove prerequisites, not the need for a fresh exact-source grant.
+1. Claude reviews the #393 scope. Codex then authors a binding architecture
+   and execution plan for the chosen direction, resolving the questions in
+   the scope before seeking a design verdict and Ryan's Execute grant.
+2. After design PASS and a bounded grant, Codex implements hermetically;
+   Claude independently reviews the exact revision. Implementation evidence,
+   PR/merge, promotion and any source-specific warm-up/model cost remain
+   separate decisions. Do not inherit Codex/Kiro JSONL live grants for Crush.
+3. Independently reconcile Stage 1/Stage 2 and residual-burn evidence when
+   Ryan resumes that task. Do not repeat paid canaries to replace missing
+   records or infer acceptance from a running service.
+4. A future Kiro bootstrap, Timeshift maintenance or acknowledgment resume
+   requires its own current proposal and authority. None is the current task.
 
 ## 7. Hard Stops
 
 | Stop | Owner | What it blocks |
 |---|---|---|
-| Architecture/plan review | Kiro | Cursor implementation before independent design review |
+| Architecture/plan review | Claude for #393 per Ryan; existing JSONL reviews retain their assigned lane | Implementation before independent design review |
 | Execute grant | Ryan | Any production-code implementation |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
-| Implementation evidence review | Kiro | PR disposition and any production canary |
+| Implementation evidence review | Claude for #393 per Ryan; existing JSONL reviews retain their assigned lane | PR disposition and any production canary |
 | Production canary | Ryan | Live source/Chroma/config/provider operation |
 | Activation | Ryan | Feature enablement and watcher participation |
 
@@ -247,7 +198,7 @@ or canary PASS does not enable production indexing.
 ## 8. Relationship to ConvMem
 
 Arc Codex changes ingestion efficiency and recovery for the selected JSONL
-adapters. It does not change ConvMem's source/projection authority direction,
+adapters; #393 is its separately scoped Crush cost follow-up. It does not change ConvMem's source/projection authority direction,
 retrieval scoring, semantic calibration, or other active arcs.
 
 - The source transcript remains authoritative input.
@@ -273,7 +224,8 @@ visible to readers.
 | Production-canary architecture | `docs/plans/ARCHITECTURE-codex-jsonl-production-canary.md` |
 | Production-canary execution plan | `docs/plans/EXECUTION-codex-jsonl-production-canary.md` |
 | Current arc snapshot | `docs/plans/STATUS-codex-jsonl-production-integration.md` |
-| Priority-#1 doctor acknowledgment design | `docs/plans/ARCHITECTURE-doctor-fault-acknowledgment.md`, `docs/plans/EXECUTION-doctor-fault-acknowledgment.md` |
+| Current #393 scope | `docs/plans/SCOPE-crush-indexing-cost-reuse.md` |
+| Parked doctor acknowledgment design | `docs/plans/ARCHITECTURE-doctor-fault-acknowledgment.md`, `docs/plans/EXECUTION-doctor-fault-acknowledgment.md` |
 | Corrected exact-source decision packet | `docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-review-packet.md` at reviewed commit `4aecb96` |
 | Authorized corrective handoff | `docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md` |
 | Cursor T0–T6 evidence | `docs/plans/VERIFY-codex-jsonl-production-integration.md` |
@@ -306,6 +258,7 @@ Keep this document a current-state snapshot, not a session diary.
 
 | Date | Who | Change |
 |---|---|---|
+| 2026-10-23 | Codex | Parked acknowledgment after the original event left the current boot; scoped #393 with Codex implementation/Claude review ownership and separate design/Execute gates |
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
 | 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed-state sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
 | 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
@@ -395,7 +348,7 @@ Keep this document a current-state snapshot, not a session diary.
 - Priority #1: the design for acknowledging this one doctor fault awaits Kiro
   review. It is not implemented, and doctor acceptance remains unmet.
 
-<!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
+<!-- ref: ../inter-model/LATEST.md, ./SCOPE-crush-indexing-cost-reuse.md — current Arc Codex routing and #393 scope -->
 <!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->
 <!-- ref: ./ARCHITECTURE-doctor-fault-acknowledgment.md, ./EXECUTION-doctor-fault-acknowledgment.md, ../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design and Kiro pickup -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->

@@ -4262,6 +4262,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/SCOPE-crush-indexing-cost-reuse.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
