@@ -126,6 +126,8 @@ Review the exact pushed tip of `feat/2026-10-22-cpu-tripwire-fault-ack`, its
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and
 [execution plan](EXECUTION-doctor-fault-acknowledgment.md). The earlier G0 FAIL
 remains historical evidence; it is not relabeled PASS by the implementation.
+The execution plan records 248 passing local tests, six caught mutation controls,
+and passing lint and clean-tree manifest gates. Independent review remains open.
 
 The binding behavior is:
 
@@ -229,7 +231,6 @@ visible to readers.
 | Incremental coordinator | `incremental_jsonl.py` |
 | Kiro adapter | `adapters/kiro_session_jsonl.py` |
 | Production writer/store | `chroma_write_store.py`, `chroma_store.py` |
-| 2026-10-22 | Codex | Implemented scoped doctor acknowledgment under Ryan's takeover grant, with cursor identity, partial-read FAIL preservation and terminal same-key revocation; Claude review next, no live change. |
 
 ## 10. How to Update This Brief
 
@@ -321,6 +322,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
+| 2026-10-23 | Codex | Implemented and verified scoped doctor acknowledgment under Ryan's takeover grant, with cursor identity, partial-read FAIL preservation and terminal same-key revocation; Claude review next, no live change. |
 
 ## TL;DR
 

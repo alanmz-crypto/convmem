@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -10,7 +10,7 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **[Arc Codex #286] Priority #1: acknowledgment implemented; Claude review next
-  (2026-10-22, Codex):** Ryan transferred implementation from Luna to Codex and
+  (2026-10-23, Codex):** Ryan transferred implementation from Luna to Codex and
   assigned Claude independent review. The branch is
   `feat/2026-10-22-cpu-tripwire-fault-ack`; review its exact pushed tip using the
   [execution plan](../plans/EXECUTION-doctor-fault-acknowledgment.md) and
@@ -18,6 +18,8 @@ cross-arc snapshot and the linked arc brief below.
   The cursor revision from `2a138be` is retained. The implementation preserves
   detected FAILs across malformed journal lines, refuses same-key re-ack after
   revocation, and reports post-replacement durability uncertainty accurately.
+  Local verification: 248 tests pass, all six mutation controls are caught,
+  and the lint and clean-tree manifest gates pass. Evidence is in the execution plan.
   Acknowledgments are exact, boot-bound WARNs. New faults, MCEs and known-bad
   CPUs online still FAIL. This is implementation evidence, not independent
   acceptance. **Next lane: Claude exact-tip review**, then Ryan's PR/merge

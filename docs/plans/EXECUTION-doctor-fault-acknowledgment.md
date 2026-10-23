@@ -268,7 +268,7 @@ Additional correction tests:
       Existing architecture, execution, STATUS and routing docs reflect the change. It touches none of the
       §4 out-of-scope files.
 - [x] ruff, the pylint gate and `git diff --check` pass.
-- [ ] The committed-manifest pytest passes on a clean committed tree.
+- [x] The committed-manifest pytest passes on a clean committed tree.
 - [x] Test acknowledgment/configuration writes stay under `tmp_path`, and no real `journalctl` or
       `coredumpctl` runs (T0).
 - [ ] Claude independently reviews the exact pushed implementation tip.
@@ -284,6 +284,10 @@ Python 3.12; that environment and Claude's independent review remain pending.
 - **43 passed:** `python -m pytest tests/test_shadow_writer_gate_c3.py
   tests/test_write_gate_effect.py tests/test_watch_subprocess_memcap.py
   tests/test_openclaw_watch_coverage.py -q`.
+- **1 passed:** `python -m pytest
+  tests/test_repository_knowledge_committed_manifest.py -q`, on the clean
+  implementation commit `aad01a6`. The implementation is pushed; the remaining
+  changes in this handoff only record verification and routing.
 - Coverage 7.17.0, installed only under `/tmp`, reports **100% statements and
   branches** across the four tripwire modules: 655 executable lines and 150
   branches. All 18 added executable lines in `convmem.py` are covered too.
@@ -296,6 +300,7 @@ Python 3.12; that environment and Claude's independent review remain pending.
   scan of all 658 tracked Python files, refreshed with a final `convmem.py`
   scan after removing redundant imports whose embedded line numbers shifted.
   Neither the baseline nor lint configuration changed.
+- The staged-addition secret scan and the complete branch diff secret scan pass.
 - No live acknowledgment/configuration file was written, no watcher was
   restarted, and no runtime checkout was promoted. The complete repository
   pytest suite was not run locally.
