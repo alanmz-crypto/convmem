@@ -107,7 +107,7 @@ runtime change followed.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Design merged through #415 as `3d24c75`; Codex's substitute review at exact SHA `3d24c753a4b46132d349c34a2cd37b0fbba464c2` returned FAIL. Required revisions: entry-unique identity across journal vacuum; handle oversized/null `MESSAGE` and malformed lines without losing parsed FAILs; define re-ack after revocation. No implementation exists. Ryan cannot reboot now. | Design author revises architecture/plan/tests, then Codex reviews the exact revision. G0 is not passed; Ryan's G1 Execute decision remains separate. Promotion, live acknowledgment and acceptance are later gates (G4–G6) |
+| Doctor acknowledgment, priority #1 | Design merged through #415 as `3d24c75`; Codex's substitute review at exact SHA `3d24c753a4b46132d349c34a2cd37b0fbba464c2` returned FAIL. Required revisions: entry-unique identity across journal vacuum; handle oversized/null `MESSAGE` and malformed lines without losing parsed FAILs; define re-ack after revocation. No implementation exists. Ryan expects a reboot; it is pending. | Design author revises architecture/plan/tests, then Codex reviews the exact revision. G0 is not passed; Ryan's G1 Execute decision remains separate. After reboot, recheck current-boot visibility; if the incident is absent, G5 for that event is moot. Promotion and acceptance remain separate gates (G4–G6) |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -157,8 +157,9 @@ The design intent, pending revision:
 
 Nothing is implemented. A review PASS does not authorize implementation,
 promotion, live acknowledgment or acceptance; each is a separate Ryan gate.
-Ryan cannot reboot now. If he does reboot, the event leaves doctor's view and
-live use (G5) is moot.
+Ryan now expects a reboot; it is pending. After reboot, recheck the current-boot
+doctor view. If this event is absent, G5 for acknowledging this incident is
+moot; the reboot itself does not pass G0 or grant implementation.
 
 The fence is deployed and normal watcher activity has resumed, but full
 handoff acceptance is not claimed. The docs merges #413 (`75d8e2a`) and #414
@@ -183,7 +184,7 @@ evidence rather than storing a failure latch. The standalone handoff pins the
 event's boot ID and journal timestamp, records the unresolved design questions,
 and preserves the later ingestion/retrieval queue. No acknowledgment mechanism
 has been designed or approved here; no failure was cleared, logs deleted,
-CPU configuration changed, or reboot performed.
+CPU configuration changed. A reboot is now expected but remains pending.
 
 Host disposition: Ryan confirmed deliberate external-USB removal for testing
 while Timeshift was writing to its configured volume, UUID
@@ -228,8 +229,10 @@ Codex admission and the same-source publication fence are live.
    verification, audit and review (G2), merge (G3), and a runtime promotion
    with no watcher restart (G4). After that, Ryan acknowledges the one event
    himself (G5) and decides on acceptance (G6). The original doctor criterion
-   still records FAIL until then. The no-code fallback, accepting the known
-   FAIL until a reboot, remains Ryan's option.
+   currently records FAIL. Ryan expects a reboot; after it, recheck whether the
+   incident remains in the current-boot view. If absent, G5 for this incident
+   is moot, and Ryan decides whether the broader acknowledgment objective still
+   applies.
 2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
    records; keep unsupported outcomes **Ryan to confirm**. Review the reported
    quarantines and old wedged transaction without clearing them. Do not repeat
@@ -397,6 +400,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
 | 2026-10-22 | Codex | Updated priority-#1 routing after Ryan squash-merged design PR #415 as `3d24c75`; exact Kiro review target recorded, with dispatch still Ryan-gated and no implementation or live change. |
 | 2026-10-22 | Codex | Reviewed design PR #415's exact merge commit `3d24c75` at Ryan's direction in place of Kiro; verdict FAIL pending three design revisions, with no implementation or live change. |
+| 2026-10-23 | Codex | Recorded Ryan's pending reboot and the required post-boot check of incident visibility; design FAIL and separate G0/G1 authorization gates remain unchanged. |
 
 ## TL;DR
 

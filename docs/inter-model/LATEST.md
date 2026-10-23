@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -10,10 +10,12 @@ cross-arc snapshot and the linked arc brief below.
 ## Current routing
 
 - **[Arc Codex #286] Priority #1: Codex design review FAILED; revision next
-  (2026-10-22, Codex at `3d24c75`):** Ryan cannot reboot now and prioritized
+  (reviewed 2026-10-22; updated 2026-10-23, Codex at `3d24c75`):** The original request prioritized
   acknowledging the specific Timeshift crash while continuing to flag new
-  faults. The design merged through PR #415. At Ryan's direction, Codex
-  reviewed exact `origin/main` commit
+  faults. Ryan now expects a reboot; it has not yet occurred. After reboot,
+  recheck whether the event remains in the current-boot view; if it is absent,
+  G5 for acknowledging this incident is moot. The design merged through PR #415.
+  At Ryan's direction, Codex reviewed exact `origin/main` commit
   `3d24c753a4b46132d349c34a2cd37b0fbba464c2` in place of Kiro and found three
   required changes:
   - Intended behavior is a boot-bound acknowledgment shown as WARN, never
@@ -36,9 +38,9 @@ cross-arc snapshot and the linked arc brief below.
   watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
   Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
   promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
-  outcomes and residual burn remain **Ryan to confirm**. See the current
-  [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+  grants are consumed. No live exception occurred. The reboot is pending.
+  Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**. See
+  the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
   Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
