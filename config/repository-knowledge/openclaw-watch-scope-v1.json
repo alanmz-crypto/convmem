@@ -2622,6 +2622,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/KSWEEP-PREVIEW-2026-07-07.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -3852,6 +3857,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-doctor-fault-acknowledgment.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-exclude-source-purge.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4088,6 +4098,11 @@
     },
     {
       "path": "docs/plans/EXECUTION-dependability-provenance.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EXECUTION-doctor-fault-acknowledgment.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
