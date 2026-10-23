@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — RESUMED by Ryan 2026-10-22; initializer implementation granted (EXECUTION §23).** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. Cursor builds the initializer in isolation under Codex supervision; it is not started. Operational readiness remains OPEN and no live work is granted.
+> **Arc: Safe Harbor — active; legacy initializer PARKED by Ryan 2026-10-22.** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. The §23 implementation (`dd0c467`) is parked unreviewed: it missed the isolation model and four §22 cases, and a read-only look found both live segments already carrying release evidence. Operational readiness remains OPEN; Ryan's recovery inputs are next. No live work is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -35,23 +35,24 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **Continuation branches:** `feat/2026-10-15-safe-harbor-rollout-evidence` (worktree `.worktrees/feat-2026-10-15-safe-harbor-rollout-evidence`) holds the readiness evidence, the §22 scope and the §23 grant; main `5c0a01b` was merged into it at `7cea298`. Implementation happens on `feat/2026-10-22-safe-harbor-legacy-initializer`, created from the grant commit, per the [Cursor handoff](../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md). Neither branch has a PR.
+- **Continuation branch:** `feat/2026-10-22-safe-harbor-legacy-initializer` (worktree `.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer`) now carries every arc document plus the parked initializer code. It descends from `feat/2026-10-15-safe-harbor-rollout-evidence` at `7505028` (readiness evidence, §22 scope, §23 grant; main `5c0a01b` merged at `7cea298`), whose routing is now stale. Neither branch has a PR.
 - **T1–T5 are on main:** incident retention/canonical identity (#387), target-bound preflight (#389), preservation and strict release (#391), serialized approval recovery (#392), and integrated evidence/operator handoff (#394).
 - **Latest squash:** `c6f07241ccf1a71d9d874fee963a37b04091b3ce`; its tree equals accepted PR #394 head `188184b28707eb87c042d579aa7bbcba043dd5d0`. [VERIFY closeout](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping) records CI, pinned reviews and Ryan's exact-head outage exception.
 - **Historical deployed checkout:** the October 14 preflight observed runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. October 17's bounded static inspection found it at `3e705e4197829f53ebbbd8433b59b60b648309d2`; the old deployment comparison is stale and has not been requalified. Disk identity does not establish loaded process identity.
 - **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records October 14 observations and a conditional sequence. Those service/timer observations are historical, not current guarantees. No rollout transition has been performed by this lane.
 - **Guard state at October 14 inspection:** two matching legacy snapshot generations lacked release evidence; no quarantine marker was present. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. This lane performed no production validation/adoption.
+- **Guard state, October 22 read-only look:** both live segments' CURRENT generations were recreated by ordinary capture (2026-10-21 and 2026-10-22) and carry full release evidence; the legacy generations are gone. Strict admission against current watermarks was not run; this is an observation, not a qualification ([VERIFY](VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22)).
 - **New isolated readiness evidence:** `tests/_safe_harbor_rollout_evidence.py` runs a fixed selection under the reviewed bootstrap; `tests/test_safe_harbor_rollout_legacy.py` rehearses representative old manifests. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state) records source pins, results and limitations. Runtime is unchanged; no production initialization command was added.
-- **Reviewed initializer scope:** EXECUTION §22 defines explicit preview/apply on the existing guard/CLI, durable originals, all-segment preparation before any CURRENT publication, no initializer pruning, and honest partial-completion reporting. [Kiro's scope PASS and delta](VERIFY-safe-harbor.md#legacy-initializer-scope--governing-review) are pinned to `8e0cfda` and `c46fbc6`. Implementation is granted (§23) but not started; its evidence matrix is not yet a passing test result.
+- **Reviewed initializer scope:** EXECUTION §22 defines explicit preview/apply on the existing guard/CLI, durable originals, all-segment preparation before any CURRENT publication, no initializer pruning, and honest partial-completion reporting. [Kiro's scope PASS and delta](VERIFY-safe-harbor.md#legacy-initializer-scope--governing-review) are pinned to `8e0cfda` and `c46fbc6`. An implementation exists at `dd0c467` but is parked unreviewed and unaccepted (§4).
 
 ## 4. Completion State
 
-- **Resumed 2026-10-22, implementation returned for review:** Ryan granted §22 isolated implementation/evidence (EXECUTION §23). Codex-supervised Cursor delivered `initialize-legacy` on `feat/2026-10-22-safe-harbor-legacy-initializer` (tip `204f1c6`) with isolated pytest/readiness/lint/manifest evidence in [VERIFY](VERIFY-safe-harbor.md#legacy-initializer-isolated-evidence-codex-supervised-cursor-2026-10-22). Index-write-lock drift **confirmed refuted** (guard does not take `index_write_flock`). Independent Kiro review and Ryan acceptance are next; no live transition.
+- **Initializer parked 2026-10-22, not accepted:** under the §23 grant, Cursor (not Codex; the supervisor prompt was pasted into Cursor) delivered `initialize-legacy` at code `204f1c6` / tip `dd0c467`. Claude's verification found authoring outside the isolation model, test runs that bypassed the bootstrap by environment variable, four missing §22 cases and an open refusal-vs-partial status question; no production effect. With both live segments already carrying release evidence, Ryan parked it rather than send it to review. [VERIFY](VERIFY-safe-harbor.md#legacy-initializer-evidence-cursor-run-2026-10-22--parked-not-reviewed) holds the evidence, corrections and findings. Index-write-lock drift was refuted.
 - Approved direction/name, every-restore owner disposition, execution plan and B-E4.1 remain settled. Ownership and gate exemptions are unchanged.
 - **Implementation and integrated verification complete:** T1–T5 / V1–V6 accepted and merged. BugBot reviewed no accepted SHA; each owner exception remains bound to its own candidate.
 - **Latest hosted evidence:** PR #394 head `188184b`, run `38668689296`, all six checks passed; Python 3.12 pytest 3,283 passed / 18 skipped / 252 passing subtests; critical collector exit 0; lint regression gate PASS against unchanged `fdc8da7` baseline. Raw lint status 30 is not a lint-clean result.
 - **Focused Python 3.11 evidence reviewed:** 83 existing safety cases and five new legacy cases passed, no skips/source drift. Kiro PASSed the bounded evidence with high confidence, correcting its initially overstated coverage before completion. Recorded logs were read, not rerun; hash maps were not independently recomputed by Kiro. This is not a full-suite or deployment PASS, or Ryan's acceptance.
-- **Deployment readiness OPEN:** old processes, timer routing, recovery inputs and an operational legacy initializer still require the named dispositions in ROLLOUT. The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
+- **Deployment readiness OPEN:** old processes, timer routing and recovery inputs still require the named dispositions in ROLLOUT; the legacy initializer is parked and may no longer be needed (§3). The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
 - **Initializer planning/review complete:** Kiro's same-session delta closed B1–B3 (preview no-effect control, live/original source comparison, apply-time backend recheck). No scope-decision condition remains; Ryan granted isolated implementation/evidence on 2026-10-22. No new tests or production commands ran during the planning/review turn or the resume check.
 - At the October 14 preflight, the key-copy file was present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The ext4 destination was mounted and empty at top level. Those observations have not been refreshed. No current Rescuezilla artifact or accepted lost-work interval was established by that preflight.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
@@ -59,29 +60,25 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Kiro:** independent review of tip `204f1c6` on `feat/2026-10-22-safe-harbor-legacy-initializer`, on Ryan's review grant ([VERIFY evidence](VERIFY-safe-harbor.md#legacy-initializer-isolated-evidence-codex-supervised-cursor-2026-10-22)).
+**Ryan:** the recovery facts in §6 item 1 (acceptable lost-work interval; newest Rescuezilla image, its date, location, independent access and restore-test history). Whether the parked initializer is ever resumed depends partly on that image's date.
 
-**Ryan:** review grant / acceptance; recovery inputs (§6 item 1) still required before any live apply.
-
-**Ryan:** in parallel, the recovery facts in §6 item 1 (acceptable lost-work interval; newest Rescuezilla image, its location, independent access and restore-test history). They are needed before any live apply, not for the isolated build.
-
-**All lanes:** preserve existing PASSes at their exact subjects and review only material deltas. Do not restart settled architecture reviews or infer authority from earlier grants.
+**All lanes:** no lane is active. Do not review, rerun or extend `dd0c467` without a new grant. Preserve existing PASSes at their exact subjects and review only material deltas. Do not restart settled architecture reviews or infer authority from earlier grants. Any lane prompt starts with a lane check ("if you are not <lane>, stop").
 
 ## 6. What Remains Before "Live" (sequential)
 
-Resumed 2026-10-22. Recovery facts and runtime observations must be refreshed
-under the appropriate grant; nothing here is a live readiness claim. Revisit this
-list before hardware or recovery maintenance that depends on these guarantees.
+Recovery facts and runtime observations must be refreshed under the appropriate
+grant; nothing here is a live readiness claim. Revisit this list before hardware
+or recovery maintenance that depends on these guarantees.
 
 1. Resolve recovery artifact, independent access/custody and acceptable loss interval; any new capture or scratch restore needs its own bounded grant.
-2. Implement (granted 2026-10-22, §23) and independently review EXECUTION §22's initializer; Kiro has passed the scope, but no public initializer or live procedure is qualified. Pending work is a refusal, not permission to flush or weaken release. Isolated implementation does not require guessing the still-open recovery facts.
+2. Decide whether the parked initializer is still needed. If so, a new grant covers the four missing §22 cases, the refusal-vs-partial status question and an isolated authoring/evidence rerun, then independent review; no public initializer or live procedure is qualified. Pending work is a refusal, not permission to flush or weaken release. Isolated implementation does not require guessing the still-open recovery facts.
 3. Review the complete operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits. No automatic first-write migration or generic reconcile fallback.
 4. Ryan grants only the named rollout transitions after those prerequisites pass. Record actual deployed identities and granted diagnostics afterwards. No implementation PASS or merge implies live recovery assurance.
 
 ## 7. Hard Stops (models cannot cross)
 
-- Ryan's 2026-10-22 grant (EXECUTION §23) covers only isolated initializer implementation and evidence in the two named runtime files plus tests. No PR, hosted CI, merge, deployment, live run of the new command, service change, production corpus write, backup/restore or drive/key action; retain the tripwire warning.
-- EXECUTION §§20–21's evidence work and §22's static review are complete; §23 is the only open Execute grant. No ledger write or session indexing during execution, and no other new tests are authorized.
+- The §23 grant is consumed and its result parked. No review, rerun, PR, hosted CI, merge, deployment, live run of `initialize-legacy`, service change, production corpus write, backup/restore or drive/key action without a new grant; retain the tripwire warning.
+- EXECUTION §§20–21's evidence work and §22's static review are complete; no Execute grant is open. No ledger write or session indexing during any future execution, and no new tests are authorized.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -110,7 +107,9 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
-- 2026-10-22 — Codex: returned isolated `initialize-legacy` implementation and evidence at `204f1c6`; index-write-lock drift refuted; Kiro review next.
+- 2026-10-22 — Claude: verified the returned initializer (isolation lapses, four missing §22 cases, no production effect), corrected its provenance, and recorded Ryan's decision to park `dd0c467` unreviewed; live segments already carry release evidence; recovery inputs next.
+
+- 2026-10-22 — Cursor (first recorded as Codex in error): implemented `initialize-legacy` at `204f1c6` with evidence at `dd0c467`; index-write-lock drift refuted.
 
 - 2026-10-22 — Claude: recorded Ryan's resume and §23 initializer grant, merged main `5c0a01b` (initializer surface unchanged; one new lock for supervisor confirmation), fixed the manifest guard and wrote the Cursor handoff; Codex-supervised implementation next.
 
@@ -228,12 +227,11 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 - 2026-10-11 — Cursor: merged main `db8aebb`, made T1 tests self-isolating under standard pytest, and regenerated the writer-coverage inventory to `43a3944d`; BugBot was not re-triggered.
 - 2026-10-11 — Codex: recorded green CI and Copilot static PASS at `677c8a0`, both quota-blocked BugBot attempts, and Ryan's two-test correction grant; Cursor correction and successor evidence/review are next.
 - 2026-10-11 — Cursor: implemented the isolation-cleanup and audit/writer-contention test corrections at `8b41044` (runtime unchanged) and recorded isolated evidence with failing controls; successor CI/delta review, BugBot gate and T1 acceptance remain pending.
-- 2026-10-22 — Cursor: implemented `initialize-legacy` and isolated evidence in the legacy-initializer worktree; Codex supervisor push and Kiro review are next.
 
 ## TL;DR
 
-[Arc Safe Harbor] Resumed by Ryan on October 22. Cursor builds the reviewed legacy-source initializer in isolation under Codex supervision, then Kiro reviews it independently. Warning retained; recovery facts and live readiness remain unresolved, and no live work is granted.
+[Arc Safe Harbor] Active, with the legacy initializer parked by Ryan on October 22: the Cursor-built candidate at `dd0c467` missed the isolation model and four §22 cases, and the live segments already carry release evidence. Ryan's recovery inputs are next. Warning retained; live readiness unresolved and no live work granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
-<!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — current implementation handoff -->
+<!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — parked implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — accepted implementation, hosted evidence and merge mapping -->

@@ -1,10 +1,11 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**RESUMED — Ryan, 2026-10-22, for isolated initializer implementation only**
-(EXECUTION §23). This procedure remains an unexecuted draft and nothing in it is
-granted; start with [STATUS](STATUS-safe-harbor.md). Historical observations below
-are not current operational assurances. No service, corpus, backup/restore or
-deployment action is authorized.
+**Unexecuted draft; legacy initializer PARKED — Ryan, 2026-10-22.** Nothing in
+this procedure is granted; start with [STATUS](STATUS-safe-harbor.md). Historical
+observations below are not current operational assurances: on 2026-10-22 both
+live segments already carried release evidence, so the legacy-initialization
+steps may no longer apply. No service, corpus, backup/restore or deployment
+action is authorized.
 
 **Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14

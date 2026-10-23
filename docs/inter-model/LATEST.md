@@ -50,14 +50,14 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — resumed; initializer implementation granted (2026-10-22, Claude):**
-  Ryan lifted the October 19 hold and approved Cursor building the legacy-source
-  initializer (EXECUTION §22, Kiro PASS at `c46fbc6`) in isolation.
-  **Next lane: Codex** (supervisor, driving Cursor's locked-down authoring) via the
-  [Cursor handoff](CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md) on
-  `feat/2026-10-22-safe-harbor-legacy-initializer`; state `NOT_STARTED`.
-  Results return for independent Kiro review. No PR, merge, deployment or live
-  work is granted; recovery facts stay open. See [STATUS](../plans/STATUS-safe-harbor.md).
+- **Arc Safe Harbor — legacy initializer parked (2026-10-22, Claude):**
+  Cursor (not Codex) built `initialize-legacy` at `dd0c467`; it missed the
+  isolation model and four §22 cases, with no production effect. Both live
+  segments already carry release evidence, so Ryan parked it unreviewed.
+  Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`.
+  **Next lane: Ryan**, for the recovery inputs (lost-work interval, newest
+  Rescuezilla image). No lane is active; no PR, review, merge or live work is
+  granted. See [STATUS](../plans/STATUS-safe-harbor.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its

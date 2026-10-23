@@ -6,13 +6,15 @@
 **For:** Cursor (authoring) under Codex supervision. Ryan starts the task by pasting the [starting prompt](#starting-prompt-for-codex) into Codex; Codex sets up Cursor's locked-down authoring copy and runs all execution.
 **Authorization:** Ryan, 2026-10-22, in a Claude Code session. He resumed the arc ("Yes, Safe Harbor. Can we pick that work up.") and answered **"yes"** to "Do you approve Cursor building the initializer, as Kiro approved the spec at `c46fbc6`?". Recorded in [EXECUTION §23](../plans/EXECUTION-safe-harbor.md#23-legacy-initializer-implementation-and-isolated-evidence--owner-authorized). He did not name a supervisor, so STATUS's named supervisor (Codex) applies.
 
+> **PARKED (2026-10-22).** The starting prompt below reached Cursor, not Codex. Cursor delivered `dd0c467` without the isolation model and with four §22 cases missing; Ryan parked it unreviewed. This handoff is consumed; do not rerun its prompt. A resumption needs a new grant ([findings](../plans/VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22)).
+
 ---
 
 ## Resume state
 
 | Field | Value |
 |-------|--------|
-| **State** | `NOT_STARTED` |
+| **State** | `PARKED` at `dd0c467` (originally `NOT_STARTED`) |
 | **Branch** | `feat/2026-10-22-safe-harbor-legacy-initializer`, created from the commit that adds this file |
 | **Base** | That commit = `feat/2026-10-15-safe-harbor-rollout-evidence` after merge `7cea298` of main `5c0a01b`, plus this grant record. `chroma_write_guard.py` and `scripts/chroma_guard.py` are byte-identical to main `5c0a01b`. Pin with `git rev-parse origin/feat/2026-10-22-safe-harbor-legacy-initializer` before authoring. |
 | **Worktree** | Codex creates `.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer` (disk-backed). Never switch branches or stash in `~/Projects/convmem`. |

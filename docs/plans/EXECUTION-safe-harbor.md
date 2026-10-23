@@ -1131,6 +1131,16 @@ was missing from `/tmp`; the handoff names a local copy with the pinned digest.
 independent Kiro review, then Ryan's acceptance. No self-acceptance; prior
 outage exceptions do not carry over.
 
+**Returned and parked (2026-10-22):** the starting prompt reached Cursor instead
+of Codex, so no independent supervisor existed. Cursor delivered
+`initialize-legacy` (code `204f1c6`, tip `dd0c467`), but authoring did not use the
+file-only copy, some runs bypassed the bootstrap by environment variable, and four
+§22 evidence cases are missing. Claude found no production effect, and a read-only
+look showed both live segments already carrying release evidence from ordinary
+capture. Ryan parked the candidate unreviewed and unaccepted; this grant is
+consumed. [VERIFY](VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22)
+holds the findings and what any resumption must cover.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->
