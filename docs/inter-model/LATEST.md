@@ -9,20 +9,20 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
-  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
-  the specific Timeshift crash while continuing to flag new faults. A fresh
-  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
+- **[Arc Codex #286] Priority #1: merged design awaits Kiro review
+  (2026-10-22, Claude/Codex):** Ryan cannot reboot now and prioritized
+  acknowledging the specific Timeshift crash while continuing to flag new
+  faults. The design merged through PR #415 as `3d24c75`:
   - Each acknowledgment is keyed to one exact kernel journal entry and bound
     to one boot.
   - The matched fault becomes a visible WARN, never PASS.
   - New faults, machine checks and known-bad CPUs coming back online still
     FAIL.
   **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-  under Ryan's PR Steward assignment; Ryan owns the merge.
-  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
+  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md),
+  reviewing exact `origin/main` commit `3d24c753a4b46132d349c34a2cd37b0fbba464c2`.
+  The design is `READY_FOR_REVIEW`; dispatch remains Ryan-gated, and
+  implementation is `NOT_STARTED`.
   Execute, promotion, live acknowledgment and acceptance are separate Ryan
   gates (G1–G6), and doctor acceptance remains unmet. The input
   [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through

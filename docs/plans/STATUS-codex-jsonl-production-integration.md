@@ -104,7 +104,7 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Design drafted, not reviewed, on `plan/2026-10-22-doctor-fault-ack`: [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), [execution plan](EXECUTION-doctor-fault-acknowledgment.md) and [Kiro pickup](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md). Acknowledgments are keyed per journal entry and bound to one boot; an acknowledged fault becomes a visible WARN, never PASS. No implementation exists. Ryan cannot reboot now. | Kiro design review (G0), then Ryan's Execute decision (G1). Promotion, live acknowledgment and acceptance are separate later gates (G4–G6) |
+| Doctor acknowledgment, priority #1 | Design merged through #415 as `3d24c75`, not yet reviewed: [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), [execution plan](EXECUTION-doctor-fault-acknowledgment.md) and [Kiro pickup](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md). Acknowledgments are keyed per journal entry and bound to one boot; an acknowledged fault becomes a visible WARN, never PASS. No implementation exists. Ryan cannot reboot now. | Ryan dispatches Kiro for design review (G0); after review, Ryan decides Execute (G1). Promotion, live acknowledgment and acceptance are separate later gates (G4–G6) |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -127,8 +127,10 @@ which Ryan squash-merged through PR #414 as `5c0a01b`. Pick up from the
 It links the binding
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and the
 [execution plan](EXECUTION-doctor-fault-acknowledgment.md) with gates G0–G6.
-Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-under Ryan's PR Steward assignment; Ryan owns the merge.
+Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) was
+squash-merged by Ryan as `3d24c75`. The [Kiro review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+targets exact `origin/main` commit
+`3d24c753a4b46132d349c34a2cd37b0fbba464c2`; review dispatch remains Ryan-gated.
 
 The design itself:
 
@@ -379,6 +381,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
+| 2026-10-22 | Codex | Updated priority-#1 routing after Ryan squash-merged design PR #415 as `3d24c75`; exact Kiro review target recorded, with dispatch still Ryan-gated and no implementation or live change. |
 
 ## TL;DR
 

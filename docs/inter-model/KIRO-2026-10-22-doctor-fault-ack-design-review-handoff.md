@@ -14,10 +14,8 @@ authorized.
 | Field | Value |
 |---|---|
 | **State** | `BLOCKED_ON_RYAN` for dispatching the review; the design is `READY_FOR_REVIEW` |
-| **Branch** | `plan/2026-10-22-doctor-fault-ack` (base `origin/main` `5c0a01b`, the squash merge of #414) |
-| **Tip SHA** | Resolve with `git log -1 origin/plan/2026-10-22-doctor-fault-ack`. Review that exact commit and quote it in the verdict. |
-| **Push status** | Pushed to origin |
-| **PR** | [#415](https://github.com/alanmz-crypto/convmem/pull/415), opened under Ryan's PR Steward assignment. Ryan owns the merge. |
+| **Review target** | `origin/main` at `3d24c753a4b46132d349c34a2cd37b0fbba464c2` (squash merge of #415) |
+| **PR** | [#415](https://github.com/alanmz-crypto/convmem/pull/415), merged by Ryan on 2026-10-22 CDT |
 | **Ryan GATE** | Send this packet to Kiro. After a PASS, Ryan decides on a separate Execute grant (G1). |
 | **Track A** | The Claude transcript for this session, under `~/.claude/projects/-home-lauer-Projects-convmem/` |
 
