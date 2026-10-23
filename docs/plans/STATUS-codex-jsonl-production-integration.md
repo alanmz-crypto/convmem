@@ -127,6 +127,8 @@ which Ryan squash-merged through PR #414 as `5c0a01b`. Pick up from the
 It links the binding
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and the
 [execution plan](EXECUTION-doctor-fault-acknowledgment.md) with gates G0–G6.
+Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
+under Ryan's PR Steward assignment; Ryan owns the merge.
 
 The design itself:
 

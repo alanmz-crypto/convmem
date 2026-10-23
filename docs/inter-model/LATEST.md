@@ -20,6 +20,8 @@ cross-arc snapshot and the linked arc brief below.
     FAIL.
   **Next lane: Kiro design review (G0)**, via the
   [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
+  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
+  under Ryan's PR Steward assignment; Ryan owns the merge.
   Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
   Execute, promotion, live acknowledgment and acceptance are separate Ryan
   gates (G1–G6), and doctor acceptance remains unmet. The input
