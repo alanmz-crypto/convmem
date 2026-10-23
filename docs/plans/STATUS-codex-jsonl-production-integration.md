@@ -77,7 +77,10 @@ configuration. Merged implementation and observed live operation are distinct
 from acceptance of the Stage 1 and Stage 2 measurements.
 Ryan later squash-merged the refreshed docs through PR #413 as `75d8e2a` and
 the priority-#1 handoff through PR #414 as `5c0a01b`. Runtime remains at the
-granted `1a68675`; neither docs merge needs a deployment.
+granted `1a68675`; neither docs merge needs a deployment. Ryan merged the
+priority-#1 design through PR #415 as `3d24c75`. Codex reviewed that exact
+revision in place of Kiro at Ryan's direction and returned FAIL; no code or
+runtime change followed.
 
 | Surface | Current state |
 |---|---|
@@ -104,7 +107,7 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Design merged through #415 as `3d24c75`, not yet reviewed: [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), [execution plan](EXECUTION-doctor-fault-acknowledgment.md) and [Kiro pickup](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md). Acknowledgments are keyed per journal entry and bound to one boot; an acknowledged fault becomes a visible WARN, never PASS. No implementation exists. Ryan cannot reboot now. | Ryan dispatches Kiro for design review (G0); after review, Ryan decides Execute (G1). Promotion, live acknowledgment and acceptance are separate later gates (G4–G6) |
+| Doctor acknowledgment, priority #1 | Design merged through #415 as `3d24c75`; Codex's substitute review at exact SHA `3d24c753a4b46132d349c34a2cd37b0fbba464c2` returned FAIL. Required revisions: entry-unique identity across journal vacuum; handle oversized/null `MESSAGE` and malformed lines without losing parsed FAILs; define re-ack after revocation. No implementation exists. Ryan cannot reboot now. | Design author revises architecture/plan/tests, then Codex reviews the exact revision. G0 is not passed; Ryan's G1 Execute decision remains separate. Promotion, live acknowledgment and acceptance are later gates (G4–G6) |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -117,8 +120,14 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-**The next lane is Kiro, for design review of priority #1.** The task is a
-reviewed acknowledgment of this specific crash that still flags new faults.
+**The next lane is the design author, to revise priority #1 before Codex
+re-review.** At Ryan's direction, Codex reviewed in place of Kiro at exact
+`origin/main` commit `3d24c753a4b46132d349c34a2cd37b0fbba464c2` and returned
+FAIL. The review found that the key can match another entry after the original
+is vacuumed, long JSON messages can be null, and re-ack after revocation is
+undefined. No implementation may start until the design is revised and passes
+review; G1 remains Ryan-owned.
+
 A fresh design model (Claude) wrote the design on
 `plan/2026-10-22-doctor-fault-ack`, starting from the standalone
 [new-model handoff](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md),
@@ -128,22 +137,25 @@ It links the binding
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and the
 [execution plan](EXECUTION-doctor-fault-acknowledgment.md) with gates G0–G6.
 Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) was
-squash-merged by Ryan as `3d24c75`. The [Kiro review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-targets exact `origin/main` commit
-`3d24c753a4b46132d349c34a2cd37b0fbba464c2`; review dispatch remains Ryan-gated.
+squash-merged by Ryan as `3d24c75`. The
+[design review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+contains the review questions; Codex's findings are in the current session
+transcript. Re-review the revised artifact at its exact tip.
 
-The design itself:
+The design intent, pending revision:
 
-- **Key:** each acknowledgment is keyed to one kernel journal entry by boot ID,
-  realtime timestamp, kernel monotonic timestamp and message SHA-256.
-  Its ID is `4c6debf6cee1`.
+- **Key:** the current four fields are boot ID, realtime timestamp, the
+  systemd source timestamp and message SHA-256. Codex found they are not
+  guaranteed entry-unique after journal vacuum; include a stable entry
+  identity before proceeding.
 - **Result:** the matched fault becomes a visible WARN, never PASS.
-- **What it cannot hide:** new faults, machine checks and known-bad CPUs
-  coming back online keep FAILing.
+- **Required guarantee:** detected new faults, machine checks and known-bad
+  CPUs coming back online keep FAILing, including partial or oversized JSON
+  output.
 - **Failure handling:** a broken file or a boot mismatch never widens an
   acknowledgment.
 
-Nothing is implemented. A Kiro PASS does not authorize implementation,
+Nothing is implemented. A review PASS does not authorize implementation,
 promotion, live acknowledgment or acceptance; each is a separate Ryan gate.
 Ryan cannot reboot now. If he does reboot, the event leaves doctor's view and
 live use (G5) is moot.
@@ -209,8 +221,10 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Kiro reviews the priority-#1 acknowledgment design (G0). Then come Ryan's
-   Execute decision (G1), hermetic Cursor implementation, exact-tip
+1. The design author revises priority #1 to address Codex's review findings;
+   Codex then reviews the exact revised tip (G0, per Ryan's reviewer
+   substitution). Only after a PASS does Ryan decide Execute (G1), followed by
+   hermetic Cursor implementation, exact-tip
    verification, audit and review (G2), merge (G3), and a runtime promotion
    with no watcher restart (G4). After that, Ryan acknowledges the one event
    himself (G5) and decides on acceptance (G6). The original doctor criterion
@@ -235,7 +249,7 @@ Codex admission and the same-source publication fence are live.
 
 | Stop | Owner | What it blocks |
 |---|---|---|
-| Architecture/plan review | Kiro | Cursor implementation before independent design review |
+| Architecture/plan review | Kiro normally; Codex by Ryan's substitution for priority #1 G0 | Cursor implementation before independent design review |
 | Execute grant | Ryan | Any production-code implementation |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
@@ -382,6 +396,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
 | 2026-10-22 | Codex | Updated priority-#1 routing after Ryan squash-merged design PR #415 as `3d24c75`; exact Kiro review target recorded, with dispatch still Ryan-gated and no implementation or live change. |
+| 2026-10-22 | Codex | Reviewed design PR #415's exact merge commit `3d24c75` at Ryan's direction in place of Kiro; verdict FAIL pending three design revisions, with no implementation or live change. |
 
 ## TL;DR
 
@@ -395,8 +410,9 @@ Keep this document a current-state snapshot, not a session diary.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: the design for acknowledging this one doctor fault awaits Kiro
-  review. It is not implemented, and doctor acceptance remains unmet.
+- Priority #1: design PR #415 is merged, but Codex's substitute G0 review
+  returned FAIL. Revise the identity, JSON-read and post-revocation behavior,
+  then re-review; no implementation exists and doctor acceptance remains unmet.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
 <!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->

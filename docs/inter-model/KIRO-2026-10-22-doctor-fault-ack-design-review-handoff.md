@@ -1,10 +1,12 @@
-# [Arc Codex] Kiro design review: scoped CPU-tripwire fault acknowledgment
+# [Arc Codex] Codex substitute review: scoped CPU-tripwire fault acknowledgment
 
 **Date:** 2026-10-22
 **Author:** Claude (Opus 5.5), fresh design model for priority #1
-**For:** Kiro, design review (non-implementing; review documents only)
+**For:** Codex, review only, at Ryan's direction in place of Kiro for priority
+#1 G0
 **Authorization:** Ryan dispatched a fresh design model for priority #1 on
-2026-10-22. The scope was design only: implementation and live use were not
+2026-10-22 and later directed Codex to perform this review instead of Kiro.
+The scope is design review only: implementation and live use are not
 authorized.
 
 ---
@@ -13,10 +15,11 @@ authorized.
 
 | Field | Value |
 |---|---|
-| **State** | `BLOCKED_ON_RYAN` for dispatching the review; the design is `READY_FOR_REVIEW` |
+| **State** | `FAIL` at the reviewed revision; design changes are required before G0 can pass |
 | **Review target** | `origin/main` at `3d24c753a4b46132d349c34a2cd37b0fbba464c2` (squash merge of #415) |
 | **PR** | [#415](https://github.com/alanmz-crypto/convmem/pull/415), merged by Ryan on 2026-10-22 CDT |
-| **Ryan GATE** | Send this packet to Kiro. After a PASS, Ryan decides on a separate Execute grant (G1). |
+| **Verdict** | Codex `FAIL`; see the current Arc Codex STATUS for required revisions C1–C3 |
+| **Next gate** | Design author revises; Codex re-reviews exact tip. A PASS still needs Ryan's separate Execute decision (G1). |
 | **Track A** | The Claude transcript for this session, under `~/.claude/projects/-home-lauer-Projects-convmem/` |
 
 ## What to review
@@ -62,9 +65,10 @@ it as a visible WARN. Every new fault that would FAIL today still FAILs.
   Inert records (from a previous boot, whose entry is gone, or revoked) never
   change the status. A broken file or boot mismatch never widens anything and
   turns PASS into WARN.
-- **Gates** (execution plan §G): G0 Kiro → G1 Execute → G2 verify, audit and
-  review → G3 merge → G4 promotion without a watcher restart → G5 Ryan's live
-  acknowledgment of one event → G6 Ryan's acceptance decision.
+- **Gates** (execution plan §G): G0 design review (Codex by Ryan's substitution
+  for this pass) → G1 Execute → G2 verify, audit and review → G3 merge → G4
+  promotion without a watcher restart → G5 Ryan's live acknowledgment of one
+  event → G6 Ryan's acceptance decision.
 
 ## Review questions (answer each)
 
@@ -93,8 +97,8 @@ it as a visible WARN. Every new fault that would FAIL today still FAILs.
 
 ## What NOT to do
 
-- Do not write code, tests, scripts, configuration, or generated files (Kiro
-  is non-implementing).
+- This is a review-only task. Do not write code, tests, scripts, configuration
+  or generated files.
 - Do not run `convmem tripwire …`; the commands do not exist yet. Do not edit
   `~/.config/convmem/`, and do not restart or promote anything.
 - Do not treat a PASS as an Execute grant, a promotion grant, a live-use
@@ -112,17 +116,17 @@ decide it.
 
 ## After the verdict
 
-- **PASS or PASS-WITH-CHANGES:** the design lane makes the changes on this
-  branch, and Kiro confirms the delta. Ryan then decides G1.
-- **FAIL:** the design lane revises the design. No implementation starts.
+- **Current result — FAIL:** the design author revises the identity, JSON-read
+  and post-revocation behavior in the current Arc Codex branch. Codex reviews
+  the exact revised tip. No implementation starts before a review PASS and a
+  separate Ryan G1 Execute grant.
 
 ---
 
-**TL;DR:** [Arc Codex] Please review a design that lets Ryan acknowledge
-exactly one kernel journal entry (the 13:01:22 Timeshift crash) so it shows as
-a visible WARN. Every new fault, machine check, or known-bad CPU back online
-still FAILs, and nothing about the acknowledgment can widen it. Design only:
-no grant follows from it.
+**TL;DR:** [Arc Codex] Codex reviewed the scoped acknowledgment design at
+`3d24c753a4b46132d349c34a2cd37b0fbba464c2` in place of Kiro and returned
+FAIL. Revise the event identity, JSON edge handling and post-revocation
+behavior, then re-review; no implementation or live-use grant follows.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — review targets and routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — event evidence and constraints -->

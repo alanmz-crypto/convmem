@@ -9,22 +9,28 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: merged design awaits Kiro review
-  (2026-10-22, Claude/Codex):** Ryan cannot reboot now and prioritized
+- **[Arc Codex #286] Priority #1: Codex design review FAILED; revision next
+  (2026-10-22, Codex at `3d24c75`):** Ryan cannot reboot now and prioritized
   acknowledging the specific Timeshift crash while continuing to flag new
-  faults. The design merged through PR #415 as `3d24c75`:
-  - Each acknowledgment is keyed to one exact kernel journal entry and bound
-    to one boot.
-  - The matched fault becomes a visible WARN, never PASS.
-  - New faults, machine checks and known-bad CPUs coming back online still
-    FAIL.
-  **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md),
-  reviewing exact `origin/main` commit `3d24c753a4b46132d349c34a2cd37b0fbba464c2`.
-  The design is `READY_FOR_REVIEW`; dispatch remains Ryan-gated, and
-  implementation is `NOT_STARTED`.
+  faults. The design merged through PR #415. At Ryan's direction, Codex
+  reviewed exact `origin/main` commit
+  `3d24c753a4b46132d349c34a2cd37b0fbba464c2` in place of Kiro and found three
+  required changes:
+  - Intended behavior is a boot-bound acknowledgment shown as WARN, never
+    PASS; the reviewed four-field key is not yet proven entry-unique.
+  - The revised design must preserve FAIL for detected new faults, machine
+    checks and known-bad CPUs coming back online, including JSON edge cases.
+  Required revisions: include entry-unique identity across journal vacuum;
+  define oversized/null JSON `MESSAGE` and malformed-line handling that
+  preserves already detected FAILs; define and test `ack` after revocation.
+  **Next lane: design author** revises the architecture, plan and tests; Codex
+  re-reviews the exact revision. G0 is not passed, and implementation remains
+  `NOT_STARTED`.
   Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The input
+  gates (G1–G6), and doctor acceptance remains unmet. The review questions
+  are in the
+  [design review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
+  The input
   [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
   #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
   watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
