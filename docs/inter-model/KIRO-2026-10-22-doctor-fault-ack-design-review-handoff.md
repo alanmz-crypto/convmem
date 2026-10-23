@@ -3,7 +3,7 @@
 **Updated:** 2026-10-23
 **Author:** Codex, implementation takeover under Ryan's direct instruction
 **For:** Claude, independent design and implementation review
-**State:** `READY_FOR_CLAUDE_REVIEW`; no independent PASS is claimed
+**State:** `CLAUDE_CHANGES_REQUIRED`; independent verdict PASS-WITH-CHANGES
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -19,6 +19,101 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 This immutable candidate includes the corrected architecture, execution plan,
 code, tests and the original review packet. Later reboot-checkpoint commits
 only make pickup self-contained; they do not advance the review target.
+
+## Independent review result — 2026-10-23
+
+**Claude returned PASS-WITH-CHANGES at
+`4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`.** The reviewer was the actual
+Claude CLI, reporting model `claude-sonnet-5-5`, session
+`302044cc-73e9-41a1-b026-3097d18e92aa`. It verified the exact HEAD and clean
+checkout before review; Codex also verified both after completion. Review was
+static: no tests, host diagnostics or tripwire commands were run. The recorded
+223 tests, diff coverage and mutation results remain Codex's author evidence.
+
+Claude's new required-change numbers are distinct from the historical C1–C5
+checklist below:
+
+- **Claude C1 — JSON record boundaries:** `cpu_tripwire.py:116,121` uses
+  `splitlines()` in the timeout and normal journal paths. Legal raw Unicode
+  line separators inside a JSON string can split a fault into malformed
+  fragments and lose its FAIL classification. Split on LF (`"\n"`) only and
+  ignore empty records. Add a raw-U+2028 CPU-14 segfault regression that remains
+  FAIL without a malformed-line problem. Claude did not verify actual
+  journalctl emission of these characters; architecture §5.1 still requires
+  correct JSON record handling.
+- **Claude C2 — Reader decoding errors:** `_run()` uses strict text decoding,
+  while both readers catch only `OSError` and `SubprocessError`.
+  `UnicodeDecodeError` can escape and prevent evaluation of already available
+  hard-failure evidence. Handle decoding failure in both readers without
+  erasing kernel faults or skipping the online-CPU check (§5.1, §9). Add cases
+  where a coredump decode error preserves the Timeshift FAIL and a journal
+  decode error preserves the known-bad-online FAIL. Any decoding change must
+  preserve the existing exact-byte identity and incomplete-read rules.
+
+The historical identity, revocation, durability and consistency findings were
+resolved in Claude's review. Historical malformed-output C2 remains subject
+to these two reader corrections. Prior A1 (CLOCK_BOOTTIME), A2 (author visible
+in mixed FAIL) and A3 (durability retry) were resolved. G2 remains incomplete
+until Codex corrects the readers, Claude rechecks the new exact SHA, and the
+original G2 coverage verification and Copilot/Kiro reviews are complete.
+
+Claude separately listed these nonblocking advisories:
+
+1. Add a CLI revoked-key re-ack test asserting exit 1 and byte-identical store.
+2. Add an ambiguous revoke-prefix refusal test.
+3. Add an ack CLI post-replacement failure test; revoke already has one.
+4. Assert acknowledgment time and reason as well as author in mixed FAIL tests.
+5. Use distinct cursors in new-fault fixtures T6–T8/T12; T45–T47 already cover
+   cursor independence.
+6. Consider the WARN classification of an unconvertible CPU number; the current
+   implementation follows the specified unclassifiable-input behavior.
+7. Check mode/owner when loading the acknowledgment file (§10.2).
+8. Account for `_snapshot()`/configuration or `Path.home()` errors after a
+   successful write, so a traceback does not obscure that it committed.
+9. Document that retrying an ack after its event is vacuumed cannot confirm
+   durability because the exact event is no longer available.
+10. Correct plural acknowledgment wording and reconcile “invalid” versus
+    “unreadable” for a directory at the store path.
+
+**Lane comparison, separately requested by Ryan:** Codex delegated a read-only
+comparison to another Codex agent (`lane_comparison`). It checked the raw user
+instructions and the team charter and found the takeover and Claude assignment
+authorized. Its initial comparison missed the G2 reviewer reduction. Ryan
+supplied another agent's finding, and both Codex and the comparison agent
+verified it against the original plan. The corrected comparison identifies
+three issues; it supplies no technical approval:
+
+- **Unsupported G2 reduction:** original execution-plan §G at merged design
+  `3d24c753a4b46132d349c34a2cd37b0fbba464c2` required Claude diff-coverage
+  verification, Copilot's targeted safety audit and Kiro's implementation
+  review. The takeover packet reduced this to Codex verification plus Claude
+  review without an explicit waiver. Ryan's substitution for the earlier
+  Kiro design review (G0) is distinct from Kiro's implementation review (G2).
+  Restore the original requirements; all remain open on the corrected
+  candidate. Claude's consistency finding did not detect this authorization
+  gap, so its review cannot establish that G2 routing was authorized.
+
+- The original branch `feat/2026-10-22-cpu-tripwire-fault-ack` received commits
+  `aad01a6e990d31064fa6f866751822d8ac94caf2` at 00:05:50 CDT and
+  `01e720ece294dbf2e513112b8be497201a1fc092` at 00:07:23 CDT on October 23,
+  after Ryan's October 22 23:50:27 takeover instruction. Its packet still routes
+  to Kiro. Separate worktrees prevented collisions, but no stand-down or
+  supersession notice was found. This proves overlapping delivery, not that
+  the other writer knowingly violated the instruction. This packet routes
+  corrections through the takeover branch; reconcile the other candidate's
+  routing before either delivery path advances.
+- Claude ran an additional read-only `git rev-parse <revision>:<path>` blob
+  comparison despite the prompt permitting only `git rev-parse HEAD` and
+  `git status --short` as shell commands. The checkout remained unchanged.
+  This is a narrow instruction violation and does not itself invalidate the
+  review findings.
+
+**Next owners:** Codex corrects the two required reader defects; Claude
+rechecks a newly pinned revision and verifies diff coverage. Copilot's targeted
+safety audit and Kiro's implementation review remain required on that candidate.
+Ryan retains PR/merge, promotion, live-use
+and acceptance decisions. No code correction or new test run is claimed by
+this review-result update.
 
 Use a separate review checkout at that exact commit. First compare
 `git rev-parse HEAD` with the SHA above and inspect `git status --short` for
@@ -39,7 +134,7 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Resume **Claude's independent review** of the pinned SHA above. The local
+1. Resume **Codex's scoped corrections** from Claude's result above. The local
    worktree remains at the path above; GitHub holds the same task branch as
    the recovery copy if the local checkout must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
@@ -49,7 +144,7 @@ Resume from here:
    Timeshift event `bab67b49aa4f` is moot. Do not replay its live acknowledgment
    command against the new boot. The implementation review can still continue;
    Ryan decides whether to merge/deploy it for future events.
-4. Preserve the pending independent review and all remaining Ryan gates.
+4. Preserve the pending exact-revision recheck and all remaining Ryan gates.
    No live acknowledgment, runtime promotion or acceptance was performed.
 
 The earlier packet recorded FAIL at merged design
@@ -61,11 +156,12 @@ Ryan's later takeover grant allowed implementation; it was not a design PASS.
 
 ## Outcome and reading order
 
-Ryan can eventually acknowledge only the investigated Timeshift segfault on
+The original use case was acknowledgment of the investigated Timeshift segfault on
 CPU 13 at `2026-10-22T13:01:22-05:00`, in boot
 `7f8e9d592ecc46c7aeb599df6b9457b2`. Its short acknowledgment ID is
-`bab67b49aa4f`. After separate deployment and live-use grants, the event remains
-visible as WARN. New faults and independent hard failures continue to FAIL.
+`bab67b49aa4f`. Its boot has ended, so that live-use step is now moot. For a
+future separately authorized event, acknowledgment remains visible as WARN.
+New faults and independent hard failures continue to FAIL.
 The mechanism is implemented on this branch only; the recorded live doctor
 failure and acceptance state are unchanged by these tests.
 
@@ -168,13 +264,17 @@ If a point is undecidable, name the specific missing evidence. A review PASS
 does not grant a PR, merge, promotion, live acknowledgment or acceptance.
 
 G0 is historical design review; G1 is Ryan's explicit takeover grant; G2 is
-verification and Claude review. Ryan separately owns G3 PR/merge, G4 exact-SHA
+Claude coverage verification/review, Copilot safety audit and Kiro implementation
+review, with Codex supplying author evidence. Ryan separately owns G3 PR/merge, G4 exact-SHA
 promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
-**TL;DR:** [Arc Codex] Codex implemented exact-entry acknowledgments and the
-required design corrections under Ryan's takeover grant. Claude reviews the
-pinned exact SHA next; the reboot pickup is saved here. Earlier FAILs remain recorded; nothing is live.
+**TL;DR:** [Arc Codex] Claude returned PASS-WITH-CHANGES at the pinned candidate:
+two reader corrections remain for Codex. The comparison confirmed the takeover
+grant but exposed an unsupported G2 reviewer reduction, overlapping delivery
+and one extra read-only reviewer command. Claude, Copilot and Kiro requirements
+are restored; G2 stays open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->
+<!-- src: /home/lauer/.claude/projects/-tmp-convmem-doctor-ack-claude-review-4d1aedd/302044cc-73e9-41a1-b026-3097d18e92aa.jsonl, /home/lauer/.codex/sessions/2026/10/22/rollout-2026-10-22T23-40-11-01a1670f-3005-75e0-8be1-f37f0c9d9955.jsonl — independent review, explicit grants and lane comparison -->

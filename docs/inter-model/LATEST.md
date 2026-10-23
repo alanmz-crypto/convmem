@@ -9,22 +9,28 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: reboot confirmed; Claude review next
+- **[Arc Codex #286] Priority #1: Claude requires reader fixes; G2 reviewers restored
   (2026-10-23, Codex):** Ryan directly assigned Codex the implementation
   takeover. The corrected design, exact-entry store, CLI and hermetic tests are
   on `feat/2026-10-22-doctor-fault-ack-takeover`. The prior G0 FAIL at
   `2a138be9b0a12ae8849665435ab7ba1674154853` remains recorded; this is not a
-  self-issued design PASS. **Next lane: Claude**, reviewing the corrected design
-  and implementation through the existing
+  self-issued design PASS. **Next lane: Codex**, correcting Claude's two reader
+  findings preserved in the existing
   [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md),
-  at fixed candidate `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`.
-  The packet now contains self-contained restart instructions. Later checkpoint
-  documentation does not advance that review target. Acknowledgments identify
+  for fixed candidate `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`:
+  **PASS-WITH-CHANGES** from Claude's static review. Journal LF splitting and
+  reader decoding-error handling need regression tests and a new exact-SHA
+  recheck. Lane comparison exposed an unsupported reduction of G2. Original
+  Claude diff-coverage verification, Copilot targeted safety audit and Kiro
+  implementation review remain required; the completed Claude review alone
+  does not close G2. The original implementation branch also advanced after
+  takeover; reconcile its stale delivery routing before either candidate advances.
+  Later documentation does not advance the reviewed target. Acknowledgments identify
   one entry and boot, remain visible WARNs, and preserve hard failures.
   Reboot is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
   The old Timeshift event's G5 is now moot; its acknowledgment command must
   not be replayed. Current doctor and hardware health have not been checked.
-  Resume state: implementation candidate `READY_FOR_CLAUDE_REVIEW`.
+  Resume state: implementation candidate `CLAUDE_CHANGES_REQUIRED`; G2 open.
   No PR, merge, runtime promotion, live acknowledgment or acceptance follows
   from this handoff. The recorded doctor criterion remains unmet. Runtime
   evidence is the earlier `1a68675` deployment snapshot, not a fresh host check.

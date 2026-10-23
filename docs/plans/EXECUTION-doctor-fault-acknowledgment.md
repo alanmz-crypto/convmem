@@ -4,13 +4,13 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `READY_FOR_CLAUDE_REVIEW`. Ryan assigned Codex the takeover on 2026-10-22; Claude reviews the resulting exact revision. The earlier G0 FAIL remains recorded.
+**Resume state:** `CLAUDE_CHANGES_REQUIRED`. Claude returned PASS-WITH-CHANGES at `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; Codex corrects two reader defects under Ryan's takeover grant, then Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
 
 ```
 Planning Status
 
-Phase:        Codex implementation candidate complete; independent review pending
-Lanes:        Codex implementation -> Claude independent review -> Ryan decision
+Phase:        Claude review complete; required corrections and exact-SHA recheck pending
+Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -20,9 +20,9 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 
 | # | Gate | Owner | What it permits | What it does NOT permit |
 |---|---|---|---|---|
-| G0 | Prior exact-revision design review | Codex, substituting for Kiro | FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; findings corrected in this branch for Claude to verify | No self-issued PASS |
+| G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude reviewed corrections at `4d1aedd` and requires two remaining reader fixes under G2 | No self-issued PASS |
 | G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
-| G2 | Exact-tip verification and independent review | Codex verifies; Claude reviews per Ryan | A PR decision after Claude checks design corrections and implementation | Merge, promotion, live use or acceptance |
+| G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + Copilot audit lane (targeted safety audit) + Kiro (implementation review); Codex supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
 | G4 | Runtime promotion grant at an exact SHA | Ryan | A fast-forward of `.worktrees/runtime-main`, **with no watcher restart** | Live acknowledgment |
 | G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `bab67b49aa4f` | Any other event; any acceptance claim |
@@ -30,6 +30,15 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 
 If Ryan reboots before G5, G5 is moot (architecture §10.1, step 6). E1–E5
 remain valid for future events if Ryan still wants the mechanism.
+
+**Review-routing correction (2026-10-23):** the takeover packet incorrectly
+reduced G2 to Codex verification plus Claude review. Original §G at merged
+design `3d24c753a4b46132d349c34a2cd37b0fbba464c2` required Claude diff coverage,
+Copilot's targeted safety audit and Kiro's implementation review. Ryan assigned
+Codex implementation and Claude review, but no explicit waiver of the other
+G2 requirements was found. They remain required. Claude's static
+PASS-WITH-CHANGES is evidence for its own review only; it does not complete
+diff-coverage verification or the Copilot/Kiro reviews. G2 is open.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
@@ -312,8 +321,14 @@ documentation leaves that review target unchanged.
 
 No full-repository pytest, host tripwire invocation, hardware/power-loss test,
 runtime promotion, watcher restart or live acknowledgment was performed.
-The prior G0 FAIL and Claude's pending independent review remain separate
-from these verification results.
+The prior G0 FAIL remains historical. Claude's static review of the fixed
+candidate returned PASS-WITH-CHANGES; it did not rerun these checks. G2 remains
+incomplete. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+preserves Claude's two required reader corrections, nonblocking advisories,
+and the separately requested lane comparison. Add regression coverage for
+raw U+2028 within a journal JSON string, coredump decoding failure preserving
+a kernel FAIL, and journal decoding failure preserving a known-bad-online FAIL.
+These are required next checks, not completed test evidence.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 

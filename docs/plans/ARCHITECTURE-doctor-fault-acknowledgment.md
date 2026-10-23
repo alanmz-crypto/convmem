@@ -11,14 +11,22 @@
 ```
 Planning Status
 
-Phase:        Implementation candidate complete; Claude independent review next
-Lanes:        Codex implementation -> Claude independent review (Ryan's assignment)
+Phase:        Claude PASS-WITH-CHANGES; two reader corrections and recheck pending
+Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
               live acknowledgment and acceptance remain separate. G0 remains FAIL
-              at 2a138be9b0a12ae8849665435ab7ba1674154853 pending independent review.
+              at 2a138be9b0a12ae8849665435ab7ba1674154853 as historical evidence.
 ```
+
+Claude's static review of `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c` found
+two remaining reader defects under §5.1: Unicode record splitting and uncaught
+decoding errors. The existing [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+records the required changes, advisories and lane comparison. Codex corrects
+the implementation; Claude rechecks the new exact revision. The original G2
+diff-coverage, Copilot safety-audit and Kiro implementation-review requirements
+also remain open; the takeover grant did not explicitly waive them.
 
 ---
 
@@ -501,8 +509,11 @@ change.
    C1 cursor identity was resolved; C2–C5 and A1–A3 needed correction.
 2. Ryan explicitly handed Codex implementation on 2026-10-22, including the
    remaining decoding and revocation corrections described above.
-3. Exact-tip hermetic verification by Codex, then Claude's independent review
-   under Ryan's assignment. No self-review substitutes for Claude's verdict.
+3. Exact-tip hermetic author verification by Codex, Claude's diff-coverage
+   verification and assigned independent review, Copilot audit lane's targeted
+   safety audit, and Kiro's implementation review. These original G2
+   requirements remain separate; no author verification or single review
+   substitutes for the others without Ryan's explicit reassignment or waiver.
 4. Ryan's PR and merge decision.
 5. Ryan's **runtime promotion grant** at an exact SHA. The `convmem` CLI and
    the watcher's index children both run from
