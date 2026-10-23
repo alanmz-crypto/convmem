@@ -9,31 +9,22 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: Claude requires reader fixes; G2 reviewers restored
-  (2026-10-23, Codex):** Ryan directly assigned Codex the implementation
-  takeover. The corrected design, exact-entry store, CLI and hermetic tests are
-  on `feat/2026-10-22-doctor-fault-ack-takeover`. The prior G0 FAIL at
-  `2a138be9b0a12ae8849665435ab7ba1674154853` remains recorded; this is not a
-  self-issued design PASS. **Next lane: Codex**, correcting Claude's two reader
-  findings preserved in the existing
-  [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md),
-  for fixed candidate `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`:
-  **PASS-WITH-CHANGES** from Claude's static review. Journal LF splitting and
-  reader decoding-error handling need regression tests and a new exact-SHA
-  recheck. Lane comparison exposed an unsupported reduction of G2. Original
-  Claude diff-coverage verification, Copilot targeted safety audit and Kiro
-  implementation review remain required; the completed Claude review alone
-  does not close G2. The original implementation branch also advanced after
-  takeover; reconcile its stale delivery routing before either candidate advances.
-  Later documentation does not advance the reviewed target. Acknowledgments identify
-  one entry and boot, remain visible WARNs, and preserve hard failures.
-  Reboot is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
-  The old Timeshift event's G5 is now moot; its acknowledgment command must
-  not be replayed. Current doctor and hardware health have not been checked.
-  Resume state: implementation candidate `CLAUDE_CHANGES_REQUIRED`; G2 open.
-  No PR, merge, runtime promotion, live acknowledgment or acceptance follows
-  from this handoff. The recorded doctor criterion remains unmet. Runtime
-  evidence is the earlier `1a68675` deployment snapshot, not a fresh host check.
+- **[Arc Codex #286] Priority #1: corrected acknowledgment awaits G2 review
+  (2026-10-23, Codex):** Ryan assigned Codex the takeover implementation.
+  The exact-entry store, CLI, reader corrections and hermetic tests are on
+  `feat/2026-10-22-doctor-fault-ack-takeover`. **Claude's next review target is
+  `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`**, the immutable content
+  revision. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  gives the required checks and 240 passing local tests. The earlier Claude
+  PASS-WITH-CHANGES and G0 FAIL remain historical. Claude's later FAIL on
+  `01e720e` retired the separate `cpu-tripwire-fault-ack` branch from use;
+  Ryan accepted its two policy corrections on this takeover line. **Next lane:
+  Claude** for the exact-revision recheck and diff-coverage verification;
+  Copilot's targeted safety audit and Kiro's implementation review also remain
+  required. G2 is open. The old Timeshift event's live acknowledgment is moot
+  after reboot. Today's `convmem doctor` still exits 1 on an unacknowledged CPU 7
+  fault; no live acknowledgment or runtime change was made. No PR, merge,
+  promotion, watcher restart or acceptance follows from this handoff.
   Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
   See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 

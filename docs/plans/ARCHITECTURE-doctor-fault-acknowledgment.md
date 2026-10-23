@@ -5,6 +5,7 @@
 **Updated:** 2026-10-23
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
+**Current review target:** `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 

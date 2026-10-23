@@ -3,7 +3,7 @@
 **Updated:** 2026-10-23
 **Author:** Codex, implementation takeover under Ryan's direct instruction
 **For:** Claude, independent design and implementation review
-**State:** `CLAUDE_CHANGES_REQUIRED`; independent verdict PASS-WITH-CHANGES
+**State:** `CLAUDE_REVIEW_PENDING`; historical verdict PASS-WITH-CHANGES
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -15,10 +15,11 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`.
-This immutable candidate includes the corrected architecture, execution plan,
-code, tests and the original review packet. Later reboot-checkpoint commits
-only make pickup self-contained; they do not advance the review target.
+**Review target:** `7066050b6fc38f3d40e5b5a12506c4555e28e5e2`.
+This immutable content revision includes the corrected architecture, execution
+plan, code and tests. The following documentation-only routing commit points
+to it; it does not change the reviewed implementation. Claude should review
+this exact SHA, not a moving branch tip.
 
 ## Independent review result — 2026-10-23
 
@@ -52,10 +53,18 @@ checklist below:
 
 The historical identity, revocation, durability and consistency findings were
 resolved in Claude's review. Historical malformed-output C2 remains subject
-to these two reader corrections. Prior A1 (CLOCK_BOOTTIME), A2 (author visible
-in mixed FAIL) and A3 (durability retry) were resolved. G2 remains incomplete
-until Codex corrects the readers, Claude rechecks the new exact SHA, and the
-original G2 coverage verification and Copilot/Kiro reviews are complete.
+to these two reader corrections, now implemented at the review target above.
+Prior A1 (CLOCK_BOOTTIME), A2 (author visible in mixed FAIL) and A3 (durability
+retry) were resolved. G2 remains incomplete until Claude rechecks the new
+exact SHA and verifies coverage, and the Copilot/Kiro reviews are complete.
+
+Ryan's 2026-10-23 authorization retired the old
+`feat/2026-10-22-cpu-tripwire-fault-ack` merge line without deleting it after
+Claude returned FAIL at `01e720ece294dbf2e513112b8be497201a1fc092`.
+The takeover revision also implements Ryan's two accepted policy decisions:
+invalid `[hardware] known_bad_cpus` cannot demote a CPU-attributed fault to
+WARN, and an unreadable journal plus a known-bad CPU online FAILs. Architecture
+§4 and §9.3 state both decisions explicitly.
 
 Claude separately listed these nonblocking advisories:
 
@@ -94,26 +103,20 @@ three issues; it supplies no technical approval:
   gap, so its review cannot establish that G2 routing was authorized.
 
 - The original branch `feat/2026-10-22-cpu-tripwire-fault-ack` received commits
-  `aad01a6e990d31064fa6f866751822d8ac94caf2` at 00:05:50 CDT and
-  `01e720ece294dbf2e513112b8be497201a1fc092` at 00:07:23 CDT on October 23,
-  after Ryan's October 22 23:50:27 takeover instruction. Its packet still routes
-  to Kiro. Separate worktrees prevented collisions, but no stand-down or
-  supersession notice was found. This proves overlapping delivery, not that
-  the other writer knowingly violated the instruction. This packet routes
-  corrections through the takeover branch; reconcile the other candidate's
-  routing before either delivery path advances.
+  `aad01a6e990d31064fa6f866751822d8ac94caf2` and
+  `01e720ece294dbf2e513112b8be497201a1fc092` after takeover. Ryan retired
+  that branch from use on 2026-10-23 after Claude's FAIL. It remains preserved;
+  this takeover branch is the only merge line for this handoff.
 - Claude ran an additional read-only `git rev-parse <revision>:<path>` blob
   comparison despite the prompt permitting only `git rev-parse HEAD` and
   `git status --short` as shell commands. The checkout remained unchanged.
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owners:** Codex corrects the two required reader defects; Claude
-rechecks a newly pinned revision and verifies diff coverage. Copilot's targeted
+**Next owners:** Claude rechecks the pinned revision and verifies diff coverage. Copilot's targeted
 safety audit and Kiro's implementation review remain required on that candidate.
 Ryan retains PR/merge, promotion, live-use
-and acceptance decisions. No code correction or new test run is claimed by
-this review-result update.
+and acceptance decisions. Codex's corrective tests are author evidence only.
 
 Use a separate review checkout at that exact commit. First compare
 `git rev-parse HEAD` with the SHA above and inspect `git status --short` for
@@ -134,9 +137,9 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Resume **Codex's scoped corrections** from Claude's result above. The local
-   worktree remains at the path above; GitHub holds the same task branch as
-   the recovery copy if the local checkout must be reconstructed.
+1. Review `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` in a separate clean
+   checkout. The local worktree remains at the path above; GitHub holds the
+   same task branch as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
    as historical snapshots. Reboot is not evidence that hardware is healthy
    or that the deployment's acceptance criterion has passed.
@@ -144,7 +147,7 @@ Resume from here:
    Timeshift event `bab67b49aa4f` is moot. Do not replay its live acknowledgment
    command against the new boot. The implementation review can still continue;
    Ryan decides whether to merge/deploy it for future events.
-4. Preserve the pending exact-revision recheck and all remaining Ryan gates.
+4. Preserve the pending exact-revision G2 reviews and all remaining Ryan gates.
    No live acknowledgment, runtime promotion or acceptance was performed.
 
 The earlier packet recorded FAIL at merged design
@@ -232,7 +235,13 @@ it is not a tamper-proof authority ledger.
 ## Verification and limits
 
 Codex ran the focused hermetic tests and the checks recorded in the execution
-plan. All eight planned mutations produced assertion failures in isolated
+plan. The corrective target passed 240 focused tests, scoped Ruff and Pylint,
+the committed-manifest guard, and `git diff --check`. Its CLI test injects a
+post-replacement sync failure, checks exit 3 and the written-document message,
+then confirms the acknowledgment is applied. A timed-out journal with partial
+stdout containing both a CPU fault and an MCE remains FAIL. Actual bash and
+zsh parse the printed command without changing the cursor or `<reason>`.
+The earlier eight planned mutations produced assertion failures in isolated
 copies, not collection errors. Their purpose was to prove that tests detect
 cross-boot/process/cursor widening, false PASS, incomplete-read acknowledgment,
 partial-file acceptance, revoked-key reactivation and skipped durability retry.
@@ -269,11 +278,10 @@ review, with Codex supplying author evidence. Ryan separately owns G3 PR/merge, 
 promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
-**TL;DR:** [Arc Codex] Claude returned PASS-WITH-CHANGES at the pinned candidate:
-two reader corrections remain for Codex. The comparison confirmed the takeover
-grant but exposed an unsupported G2 reviewer reduction, overlapping delivery
-and one extra read-only reviewer command. Claude, Copilot and Kiro requirements
-are restored; G2 stays open. Nothing is live.
+**TL;DR:** [Arc Codex] Corrective content is pinned at
+`7066050b6fc38f3d40e5b5a12506c4555e28e5e2` for Claude's independent
+recheck. Codex's 240 local tests pass; Claude, Copilot and Kiro G2 reviews remain
+open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

@@ -5,6 +5,7 @@
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
 **Resume state:** `CLAUDE_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at historical revision `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; the takeover candidate corrects the reader defects and Ryan's 2026-10-23 policy and durability requirements. Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
+**Current review target:** `7066050b6fc38f3d40e5b5a12506c4555e28e5e2` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
@@ -20,7 +21,7 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 
 | # | Gate | Owner | What it permits | What it does NOT permit |
 |---|---|---|---|---|
-| G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude reviewed corrections at `4d1aedd` and requires two remaining reader fixes under G2 | No self-issued PASS |
+| G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude's later PASS-WITH-CHANGES at `4d1aedd` led to reader fixes at the current target | No self-issued PASS |
 | G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
 | G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + Copilot audit lane (targeted safety audit) + Kiro (implementation review); Codex supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
@@ -335,8 +336,7 @@ corrections and this evidence. Claude's fixed review candidate is
   does not interrupt acknowledgment evidence capture; control characters in
   `Fault.describe()` are escaped.
 - Scoped Ruff lint and format, scoped Pylint, and `git diff --check` passed.
-  The committed-manifest check is run after the code commit, because it checks
-  committed content.
+  The committed-manifest guard passed **1 test** on the pushed content commit.
 
 No full-repository pytest, host tripwire invocation, hardware/power-loss test,
 runtime promotion, watcher restart or live acknowledgment was performed.
