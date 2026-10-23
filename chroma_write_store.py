@@ -131,6 +131,25 @@ def _held_writer_lease() -> _HeldWriterLease | None:
     return getattr(_writer_tls, "held", None)
 
 
+def production_write_session_depth() -> int:
+    """Nested shared writer lease depth (admission / attestation gate)."""
+    held = _held_writer_lease()
+    return int(held.depth) if held is not None else 0
+
+
+def production_chroma_store_session_depth() -> int:
+    """Opened production Chroma store sessions on this thread (lock-order enforcement)."""
+    return int(getattr(_writer_tls, "chroma_store_depth", 0) or 0)
+
+
+def _enter_chroma_store_session() -> None:
+    _writer_tls.chroma_store_depth = production_chroma_store_session_depth() + 1
+
+
+def _exit_chroma_store_session() -> None:
+    _writer_tls.chroma_store_depth = max(0, production_chroma_store_session_depth() - 1)
+
+
 def require_writer_attestation() -> WriterAttestation:
     """Return the internal writer attestation for the current execution scope.
 
@@ -1007,6 +1026,72 @@ def _session_config(path: Path) -> dict[str, Any]:
     return op.config()
 
 
+class _IndexWriteGuardedChromaStore:
+    """Production store wrapper: mutations require the index write lock (deny by default).
+
+    Read allow-list (CO-1): each method only reads Chroma state or metadata.
+    - close: release client resources without mutation
+    - query_summaries / count_summaries / summaries_metadata: read summary collection
+    - query_units / count_units / units_metadata / active_units_for_ledger_id /
+      get_units_with_embeddings / get_unit: read unit collection
+    - count_for_source_path / ids_for_source / preview_supersede_for_source /
+      snapshot_source_rows: read source-scoped inventory
+    - non_source_inventory_digest: read-only digest helper
+    """
+
+    _READS = frozenset(
+        {
+            "close",
+            "query_summaries",
+            "count_summaries",
+            "summaries_metadata",
+            "query_units",
+            "count_units",
+            "units_metadata",
+            "active_units_for_ledger_id",
+            "get_units_with_embeddings",
+            "get_unit",
+            "count_for_source_path",
+            "ids_for_source",
+            "preview_supersede_for_source",
+            "snapshot_source_rows",
+            "non_source_inventory_digest",
+        }
+    )
+
+    def __init__(self, inner: ChromaStore) -> None:
+        self._inner = inner
+
+    def __getattr__(self, name: str) -> Any:
+        if name == "client":
+            raise RuntimeError(
+                "raw Chroma client access is denied on production stores"
+            )
+        inner_attr = getattr(self._inner, name)
+        if not callable(inner_attr):
+            return inner_attr
+        if name in self._READS:
+            return inner_attr
+        from purge_locks import require_index_write_lock_held
+
+        if name == "_collection":
+
+            def _collection(name_arg: str, *args: Any, **kwargs: Any) -> Any:
+                require_index_write_lock_held(chroma_dir=self._inner.chroma_dir)
+                return inner_attr(name_arg, *args, **kwargs)
+
+            return _collection
+
+        def _guarded(*args: Any, **kwargs: Any) -> Any:
+            require_index_write_lock_held(chroma_dir=self._inner.chroma_dir)
+            return inner_attr(*args, **kwargs)
+
+        return _guarded
+
+    def close(self) -> None:
+        self._inner.close()
+
+
 @contextmanager
 def production_chroma_write_session(
     config_path: str | Path | None = None,
@@ -1046,11 +1131,14 @@ def production_chroma_write_session(
             create_collections=create_collections,
             use_strict_validator=True,
         )
+        guarded = _IndexWriteGuardedChromaStore(store)
+        _enter_chroma_store_session()
         try:
             yield ProductionWriteSession(
-                store=store, live_cfg=live_cfg, decision=decision
+                store=guarded, live_cfg=live_cfg, decision=decision
             )
         finally:
+            _exit_chroma_store_session()
             store.close()
 
 
@@ -1210,6 +1298,7 @@ def open_production_write_store(
         if closed["done"]:
             return
         closed["done"] = True
+        _exit_chroma_store_session()
         lease_cm.__exit__(None, None, None)
 
     try:
@@ -1232,8 +1321,11 @@ def open_production_write_store(
             use_strict_validator=True,
             on_close=_release,
         )
+        _enter_chroma_store_session()
         return ProductionWriteSession(
-            store=store, live_cfg=live_cfg, decision=decision
+            store=_IndexWriteGuardedChromaStore(store),
+            live_cfg=live_cfg,
+            decision=decision,
         )
     except Exception:
         _release()

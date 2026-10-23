@@ -11,6 +11,7 @@ from ingest_dedupe import (
     persist_ingest_dedupe,
 )
 from refine import apply_dedupe_queue_record
+from tests.refine_scratch_env import patch_refine_scratch_env
 
 
 def _row(physical: str, logical: str, embedding: list[float], *, owner="owner"):
@@ -93,9 +94,12 @@ def test_persisted_semantic_record_resolves_real_approval_path(tmp_path: Path) -
                 "canonical_id": canonical.physical_id,
             }
         )
-        applied = apply_dedupe_queue_record(
-            store.raw_store, cfg, persisted, verbose=False
-        )
+        # Refine writes only through C1 and the live store (issue #286); bind the
+        # live config to this test's Chroma tree for the apply calls.
+        with patch_refine_scratch_env(tmp_path, cfg):
+            applied = apply_dedupe_queue_record(
+                store.raw_store, cfg, persisted, verbose=False
+            )
         assert applied == {"tombstoned": 1, "skipped": 0, "errors": 0}
         changed = store.raw_store.get_unit(tombstone.physical_id)
         assert changed is not None
@@ -105,9 +109,10 @@ def test_persisted_semantic_record_resolves_real_approval_path(tmp_path: Path) -
         negative = dict(persisted)
         negative["tombstone_id"] = tombstone.logical_id
         negative["chroma_applied"] = False
-        silent = apply_dedupe_queue_record(
-            store.raw_store, cfg, negative, verbose=False
-        )
+        with patch_refine_scratch_env(tmp_path, cfg):
+            silent = apply_dedupe_queue_record(
+                store.raw_store, cfg, negative, verbose=False
+            )
         assert silent == {"tombstoned": 0, "skipped": 1, "errors": 0}
 
 

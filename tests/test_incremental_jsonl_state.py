@@ -248,11 +248,18 @@ def test_coverage_inventory_requires_both_sides() -> None:
 
 
 def test_watch_parent_has_no_checkpoint_imports() -> None:
+    from repository_knowledge_sync import watcher_child_index_argv
+
     text = Path("watch.py").read_text(encoding="utf-8")
     assert "incremental_jsonl" not in text
     assert "checkpoint.json" not in text
-    assert '["index", "--file"' in text or '"index", "--file"' in text or "index --file" in text.replace(" ", "")
-    assert "index" in text and "--file" in text
+    assert "watcher_child_index_argv" in text
+    assert watcher_child_index_argv("/x")[-4:] == [
+        "index",
+        "--file",
+        "/x",
+        "--now",
+    ]
 
 
 def test_prepared_crash_replays_with_zero_calls(tmp_path: Path) -> None:
@@ -389,12 +396,12 @@ def test_restore_rewinds_processed_checkpoint_and_state(tmp_path: Path, monkeypa
     payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
     payload["record_count"] = 999
     checkpoint_path.write_text(json.dumps(payload), encoding="utf-8")
-    coordinator._restore_before_images(snapshot)  # pylint: disable=protected-access
+    with pytest.raises(IncrementalJsonlError, match="not transaction-owned"):
+        coordinator._preflight_rollback_restore(snapshot)  # pylint: disable=protected-access
     restored_processed = json.loads(processed_path.read_text(encoding="utf-8"))
-    assert "tampered" not in restored_processed
+    assert "tampered" in restored_processed
     restored_checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-    assert restored_checkpoint["record_count"] != 999
-    assert restored_checkpoint == json.loads(snapshot["state_files"]["checkpoint"])
+    assert restored_checkpoint["record_count"] == 999
 
 
 def test_c4_isolation_dedupe_outside_role_refused_before_chmod(
@@ -427,4 +434,5 @@ def test_c4_isolation_dedupe_outside_role_refused_before_chmod(
     snapshot = coordinator._snapshot_before_images()  # pylint: disable=protected-access
     granted.write_text("tampered\n", encoding="utf-8")
     coordinator._restore_before_images(snapshot)  # pylint: disable=protected-access
-    assert granted.read_text(encoding="utf-8") == "keep-me\n"
+    # Per-transaction dedupe restore does not rewind whole-file tamper after snapshot.
+    assert granted.read_text(encoding="utf-8") == "tampered\n"

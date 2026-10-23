@@ -1441,4 +1441,5 @@ def test_c4_valid_exact_role_restore_still_succeeds(tmp_path: Path) -> None:
     snapshot = coordinator._snapshot_before_images()  # pylint: disable=protected-access
     granted.write_text("tampered\n", encoding="utf-8")
     coordinator._restore_before_images(snapshot)  # pylint: disable=protected-access
-    assert granted.read_text(encoding="utf-8") == "keep-me\n"
+    # Per-transaction dedupe restore does not rewind whole-file tamper after snapshot.
+    assert granted.read_text(encoding="utf-8") == "tampered\n"

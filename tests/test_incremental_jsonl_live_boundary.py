@@ -45,6 +45,11 @@ def _fixture(tmp_path: Path) -> tuple[dict, Path]:
                 "state_dir": str(data / "incremental-jsonl"),
                 "live_sources": [str(source)],
                 "embed_dimension": 8,
+                "kiro_session": {
+                    "max_source_bytes": 268435456,
+                    "max_transform_chunks_per_run": 20,
+                    "allow_full_rebuild": False,
+                },
             },
         }
     }
@@ -178,8 +183,12 @@ def test_selected_refusal_is_visible_without_legacy_fallback(
     monkeypatch.delenv("CONVMEM_INCREMENTAL_ROOT", raising=False)
 
     class RefusingCoordinator:
+        paths: dict = {}
+        last_evidence: dict = {}
+
         def __init__(self, *_args, **_kwargs):
-            pass
+            self.paths = {}
+            self.last_evidence = {}
 
         def run(self):
             return SimpleNamespace(outcome="bootstrap_required")
@@ -240,7 +249,12 @@ def test_one_shot_bootstrap_then_append_reuses_historical_transforms(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -303,7 +317,12 @@ def test_bootstrap_requires_exact_digest_and_chunk_limit(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        enabled=True, live_sources=[str(source)], embed_dimension=8
+        enabled=True, live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -346,7 +365,12 @@ def test_watcher_route_cannot_resume_one_shot_bootstrap(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        enabled=True, live_sources=[str(source)], embed_dimension=8
+        enabled=True, live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -414,7 +438,12 @@ def test_bootstrap_crash_replays_or_restores_exact_before_images(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -486,7 +515,12 @@ def test_bootstrap_transform_failure_reuses_prepared_work_on_recovery(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -560,7 +594,12 @@ def test_transform_failed_recovery_uses_only_its_own_snapshot(  # pylint: disabl
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -767,7 +806,12 @@ def test_bootstrap_preparing_transaction_recovers_under_same_binding(
     source = write_source(isolated.root, 2)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -825,7 +869,12 @@ def test_bootstrap_dimension_uses_existing_collection_rows_as_authority(
     source = write_source(isolated.root, 2)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -867,7 +916,7 @@ def test_bootstrap_dimension_uses_existing_collection_rows_as_authority(
         coordinator.require_existing_embedding_dimension(8)
 
 
-def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
+def test_replay_commits_when_foreign_changed_between_attempts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     isolated, env = isolated_env(tmp_path)
@@ -878,7 +927,12 @@ def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -914,7 +968,6 @@ def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
     with pytest.raises(RuntimeError, match="initial partial apply"):
         first.run()
     rollback_path = first.paths["rollback"]
-    original_rollback = rollback_path.read_bytes()
 
     with first._session() as session:
         session.store.add_summary(
@@ -931,17 +984,11 @@ def test_replay_detects_foreign_mutation_without_rebaselining_rollback(
         chunk_size=2,
         **_bootstrap_binding(),
     )
-    with pytest.raises(
-        incremental_jsonl.IncrementalJsonlError,
-        match="non_source_isolation_changed",
-    ):
-        replay.run()
-    assert rollback_path.read_bytes() == original_rollback
-    assert json.loads(replay.paths["transaction"].read_text(encoding="utf-8"))[
-        "phase"
-    ] == "APPLYING"
+    result = replay.run()
+    assert result.outcome == "committed"
+    assert not rollback_path.exists()
+    assert not replay.paths["transaction"].exists()
     with replay._session() as session:
-        assert "legacy-summary" in session.store.ids_for_source(SUMMARIES, str(source))
         foreign = session.store.snapshot_source_rows(SUMMARIES, "/other")
     assert foreign[0]["document"] == "tampered"
 
@@ -957,7 +1004,12 @@ def test_second_replay_crash_keeps_original_rollback_authority(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]
@@ -1035,7 +1087,12 @@ def test_replay_rejects_replaced_rollback_authority_before_apply(
     source = write_source(isolated.root, 4)
     cfg = tomllib.loads(isolated.layout["user_config"].read_text(encoding="utf-8"))
     cfg["index"]["incremental_jsonl"].update(
-        live_sources=[str(source)], embed_dimension=8
+        live_sources=[str(source)], embed_dimension=8,
+        kiro_session={
+            "max_source_bytes": 268435456,
+            "max_transform_chunks_per_run": 20,
+            "allow_full_rebuild": False,
+        },
     )
     boundary = ProductionBoundary(
         cfg, source, config_path=isolated.layout["user_config"]

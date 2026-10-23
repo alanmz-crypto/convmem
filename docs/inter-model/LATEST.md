@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-19
+**Updated:** 2026-10-22
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,47 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **[Arc Codex #286] Priority #1: new-model doctor-acknowledgment design
+  (2026-10-22, Codex):** Ryan cannot reboot now and prioritized acknowledgment
+  of the specific Timeshift crash while continuing to flag new faults. There
+  is no existing reset; this model stopped at the gate-redesign boundary.
+  **Next lane: a fresh Codex design model, dispatched by Ryan.** Read the
+  [standalone handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md);
+  its delivery PR [#414](https://github.com/alanmz-crypto/convmem/pull/414) is
+  open under Ryan's PR Steward assignment, with merge remaining Ryan-owned.
+  Design and implementation are `NOT_STARTED`, and doctor acceptance remains
+  unmet. The fence is already live at runtime `1a68675`, with the watcher
+  active since `13:52:35 CDT`, PID `904311`, no automatic restarts. Ryan
+  squash-merged deployment/status docs PR #413 as `75d8e2a`; no runtime
+  promotion follows from that docs merge. Deployment and stale-mount cleanup
+  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
+  outcomes and residual burn remain **Ryan to confirm**. See the current
+  [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+
+- **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
+  Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
+  on 2026-10-17. It is included in runtime `1a68675` on `main`; no temporary
+  branch switch, pull, or repeat deployment is needed. Unattributed userspace
+  faults are WARN; CPU-attributed faults outside the configured known-bad set,
+  machine checks, and known-bad CPUs returning online remain FAIL. The current
+  Timeshift failure follows that retained policy; CPU damage is not established
+  by the classification. Ryan confirmed he unplugged the external USB drives
+  for testing. That explains the backup-volume disconnect four seconds before
+  Timeshift's I/O errors and crash; the exact software failure remains unproven.
+  Backup review found the failed `13:00:00` snapshot absent and replacement
+  `13:03:52` saved successfully at `13:07:24 CDT`, with hourly/daily metadata.
+  Stale-mount cleanup is complete: Ryan's root active-user check showed only
+  the kernel mount entry, then his normal unmount succeeded. Codex verified
+  `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
+  backup volume remains mounted read-write and the watcher remains active.
+  Retention still records its previous failed run; no retry/reset occurred.
+  **Next lane: Ryan** for any separate retention-maintenance decision and
+  doctor-acceptance disposition;
+  see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
+  Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
+  is historical context, not current runtime instructions. Ad-hoc host work;
+  no tripwire-policy or hardware change is authorized by this pointer.
 
 - **Arc Safe Harbor — ON HOLD by Ryan (2026-10-19):**
   Saved on `feat/2026-10-15-safe-harbor-rollout-evidence`; start with
@@ -17,17 +58,6 @@ cross-arc snapshot and the linked arc brief below.
   **Next lane: Ryan, explicit resume only.** Do not advance planning, review,
   implementation or live work during the hold. Preserve the warning and existing
   recovery/live gates. Revisit before maintenance that depends on those guarantees.
-
-- **Arc Codex / issue #286 — Codex rollout admission merged, default off;
-  Stage 1 grant next (2026-10-11):** PR #388 lets new Codex rollouts use the
-  guarded incremental route instead of re-indexing the whole file on every
-  append, which is the paid "Codex burn". Copilot and Kiro both PASSed exact
-  tip `78b9295`. Production burn is unchanged until Ryan grants Stage 1 (see
-  the [Stage 1 packet](CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md))
-  and later Stage 2. Stage 2 also needs the residual-burn decision, the #308
-  fix and the 4G drop-in reconciliation. The Kiro bootstrap is a separate
-  track. No live config, runtime or watcher action is authorized. See the
-  [Arc Codex status brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -140,7 +170,6 @@ cross-arc snapshot and the linked arc brief below.
   and [`VERIFY-openclaw-watch-coverage.md`](../plans/VERIFY-openclaw-watch-coverage.md).
 - **Claude Gate 1 smoke retirement — MERGED / CLOSED:** issue [#317](https://github.com/alanmz-crypto/convmem/issues/317) found six blockers confined to the optional smoke harness. PR [#330](https://github.com/alanmz-crypto/convmem/pull/330) removed that harness and squash-merged as `e2148b2`; Kiro's post-update carry-forward review passed the updated branch tip and merged commit. The supported on-demand Claude adapter remains unchanged, and issue #317 is closed. Any future real-source containment smoke requires a new design and Ryan grant.
 - **Claude Watch Parity — CLOSED (`NO_GATE2_ROUTE`):** Gate 1 on-demand Claude indexing remains supported. Ryan closed the automatic Gate 2 route after three Security Review FAIL tips (`10322a6`: six findings; `52bdc02`: ten; `95ef122`: three). Kiro is stood down. No live canary, production route, watcher/source/service change, or activation occurred. Experimental plans and tips are preserved under `milestone/claude-watch-parity-*` tags. Issue #317 retired the optional Gate 1 smoke harness after its own Security Review FAIL; any future real-source containment smoke requires a new design and Ryan grant. See [`STATUS-claude-watch-parity.md`](../plans/STATUS-claude-watch-parity.md); do not resume Gate 2 from its tagged branches.
-- **Trapdoor Hunt / issue #286 — S0–S3 main integration (RECHECKED / UNMERGED):** reviewed implementation `506afc1…` on `feat/2026-09-17-issue-286-incremental-index` remains unchanged. Integration onto `origin/main` (`18f63db…`) was performed and pushed on `feat/2026-09-17-issue-286-main-integration`, tip `19d34a5…`. Prior exact tip `e99856e…` received Kiro PASS (S0–S3 contract) and Copilot FAIL (documentation acceptance); Copilot and Kiro rechecked documentation at `19d34a5…` and passed, with Codex whitespace check exit 0. **Next:** Ryan's separate PR decision for that branch. Resume from [`CURSOR-2026-09-17-issue-286-main-integration-handoff.md`](CURSOR-2026-09-17-issue-286-main-integration-handoff.md). No S4, S5, production indexing, watcher/config change, merge, or #268 OOM-closure claim is authorized.
 - **Trapdoor Hunt / issue #268 — exposure-probe MERGED; NEXT GATE = §9.7
   post-merge measurement (BLOCKED_ON_RYAN):** PR **#305** squash-merged as
   `ef4a7dd…` on 2026-09-17 (Copilot audit + Kiro review + Claude advisory PASS on
@@ -282,3 +311,6 @@ its existing archive/reference location. Use
 
 <!-- ref: ../plans/STATUS-safe-harbor.md — current Safe Harbor lane -->
 <!-- src: ../plans/ROLLOUT-safe-harbor.md — returned preflight and remaining readiness -->
+<!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
+<!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
+<!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->

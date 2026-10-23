@@ -178,17 +178,56 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
 
     def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
         """Run one native Chroma mutation, under the write guard when one is attached."""
+        from incremental_mutation_proof import active_session
+
+        session = active_session()
+        if session is not None:
+            if session.store is None:
+                session.bind_store(self)
+            session.on_native_before(collection, operation, **kwargs)
         guard = self._write_guard
         if guard is None:
-            # Keep the process-wide record of what this Chroma system has seen current,
-            # so a guarded store sharing it does not mistake this save for a stranger's.
             before = store_signature(self.chroma_dir)
-            result = getattr(self._collection(collection), operation)(**kwargs)
+            try:
+                result = getattr(self._collection(collection), operation)(**kwargs)
+            except Exception:
+                if session is not None:
+                    session.on_native_after(
+                        collection=collection,
+                        operation=operation,
+                        succeeded=False,
+                        guard_finalized=True,
+                    )
+                raise
             note_unguarded_write(self.chroma_dir, before)
+            if session is not None:
+                session.on_native_after(
+                    collection=collection,
+                    operation=operation,
+                    succeeded=True,
+                    guard_finalized=True,
+                )
             return result
         with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
-            # Fetch the collection inside the guard: a reload replaces the client.
-            return getattr(self._collection(collection), operation)(**kwargs)
+            try:
+                result = getattr(self._collection(collection), operation)(**kwargs)
+            except Exception:
+                if session is not None:
+                    session.on_native_after(
+                        collection=collection,
+                        operation=operation,
+                        succeeded=False,
+                        guard_finalized=False,
+                    )
+                raise
+        if session is not None:
+            session.on_native_after(
+                collection=collection,
+                operation=operation,
+                succeeded=True,
+                guard_finalized=True,
+            )
+        return result
 
     def _require_authorized_writer(self) -> None:
         if not self._require_writer_boundary:
@@ -294,6 +333,19 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
 
     def count_summaries(self) -> int:
         return self._collection(SUMMARIES).count()
+
+    def get_summary(self, summary_id: str) -> dict | None:
+        """Fetch a single conversation summary by id, or None if missing."""
+        res = self._collection(SUMMARIES).get(
+            ids=[summary_id], include=["metadatas", "documents"]
+        )
+        ids = res.get("ids") or []
+        if not ids:
+            return None
+        metas = res.get("metadatas") or [{}]
+        meta = dict(metas[0] or {})
+        meta["id"] = ids[0]
+        return meta
 
     def summaries_metadata(self) -> list[dict]:
         col = self._collection(SUMMARIES)
@@ -407,6 +459,23 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
             if len(ids) < _METADATA_PAGE_SIZE:
                 break
             offset += len(ids)
+        return out
+
+    def active_units_for_ledger_id(self, ledger_id: str) -> list[dict]:
+        """Active (non-superseded) unit metadata rows for one ledger id."""
+        lid = (ledger_id or "").strip()
+        if not lid:
+            return []
+        col = self._collection(UNITS)
+        res = col.get(where={"ledger_id": lid}, include=["metadatas"])
+        ids = res.get("ids") or []
+        metas = res.get("metadatas") or []
+        out: list[dict] = []
+        for chroma_id, meta in zip(ids, metas):
+            row = dict(meta or {})
+            row["id"] = chroma_id
+            if not is_superseded(row):
+                out.append(row)
         return out
 
     def get_units_with_embeddings(

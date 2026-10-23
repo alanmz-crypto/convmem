@@ -15,7 +15,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Literal, Mapping
+from typing import Any, Iterable, Iterator, Literal, Mapping, NoReturn
 
 ADAPTER_CONTRACT_VERSION = "repository_knowledge_v1"
 SOURCE_TYPE = "repository_knowledge_v1"
@@ -148,6 +148,20 @@ class LoadedManifest:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass(frozen=True)
+class _CacheRecord:  # pylint: disable=too-many-instance-attributes
+    """Validated manifest or traceback-free failure, keyed by bytes plus HEAD."""
+
+    identity: str
+    git_head: str
+    root: Path | None
+    loaded: LoadedManifest | None
+    failure_type: type[BaseException] | None
+    failure_code: str
+    failure_detail: str
+    stat: tuple[int, int] | None
+
+
+@dataclass(frozen=True)
 class PathDecision:  # pylint: disable=too-many-instance-attributes
     state: DetectState
     code: str
@@ -161,7 +175,7 @@ class PathDecision:  # pylint: disable=too-many-instance-attributes
 
 
 _configured_manifest_paths: tuple[str, ...] = ()
-_loaded_by_path: dict[str, LoadedManifest | BaseException] = {}
+_loaded_by_path: dict[str, _CacheRecord] = {}
 
 
 def reset_configuration() -> None:
@@ -704,23 +718,173 @@ def _reject_strict_example_bytes(relpath: str, blob: bytes) -> None:
         )
 
 
-def _cached_manifest(manifest_abs: str) -> LoadedManifest:
-    cached = _loaded_by_path.get(manifest_abs)
-    if isinstance(cached, LoadedManifest):
-        try:
-            current = sha256_file(Path(manifest_abs))
-            head = git_head(cached.root)
-        except (OSError, ScopeError) as exc:
-            _loaded_by_path[manifest_abs] = exc
-            raise
-        if current == cached.identity and head == cached.git_head:
-            return cached
+def _stat_signature(path: Path) -> tuple[int, int] | None:
     try:
-        loaded = load_and_validate_manifest(Path(manifest_abs))
+        st = path.stat()
+    except OSError:
+        return None
+    return (st.st_mtime_ns, st.st_size)
+
+
+def _resolve_git_dirs(root: Path) -> tuple[Path, Path]:
+    marker = root / ".git"
+    if marker.is_file():
+        raw = marker.read_text(encoding="utf-8").strip()
+        if not raw.startswith("gitdir:"):
+            raise ValueError("unrecognized .git file")
+        gitdir = Path(raw.split(":", 1)[1].strip())
+        if not gitdir.is_absolute():
+            gitdir = (marker.parent / gitdir).resolve()
+    elif marker.is_dir():
+        gitdir = marker
+    else:
+        raise ValueError("no git directory")
+    commondir = gitdir
+    common_file = gitdir / "commondir"
+    if common_file.is_file():
+        common_raw = common_file.read_text(encoding="utf-8").strip()
+        commondir = Path(common_raw)
+        if not commondir.is_absolute():
+            commondir = (gitdir / commondir).resolve()
+    return gitdir, commondir
+
+
+def _read_git_ref(gitdir: Path, commondir: Path, ref: str) -> str:
+    for base in (gitdir, commondir):
+        ref_path = base / ref
+        if ref_path.is_file():
+            return ref_path.read_text(encoding="utf-8").strip()
+    packed = commondir / "packed-refs"
+    if packed.is_file():
+        for line in packed.read_text(encoding="utf-8").splitlines():
+            if not line or line.startswith("#") or line.startswith("^"):
+                continue
+            sha, name = line.split(" ", 1)
+            if name == ref:
+                return sha
+    raise ValueError(f"missing ref {ref}")
+
+
+def _git_head_from_files(root: Path) -> str:
+    gitdir, commondir = _resolve_git_dirs(root)
+    raw = (gitdir / "HEAD").read_text(encoding="utf-8").strip()
+    if raw.startswith("ref:"):
+        return _read_git_ref(gitdir, commondir, raw.split(":", 1)[1].strip())
+    if len(raw) >= 40 and all(ch in "0123456789abcdef" for ch in raw.lower()):
+        return raw
+    raise ValueError("unrecognized HEAD")
+
+
+def _head_for_cache(root: Path) -> str:
+    try:
+        return _git_head_from_files(root)
+    except (OSError, ValueError):
+        return git_head(root)
+
+
+def _copy_failure(exc: BaseException) -> BaseException:
+    if isinstance(exc, ManifestValidationError):
+        return ManifestValidationError(exc.detail)
+    if isinstance(exc, ScopeError):
+        return ScopeError(exc.code, exc.detail)
+    if isinstance(exc, OSError):
+        return OSError(str(exc))
+    try:
+        return type(exc)(str(exc))
+    except TypeError:
+        return ScopeError("manifest_invalid", str(exc))
+
+
+def _remember_failure(manifest_abs: str, path: Path, exc: BaseException) -> None:
+    identity = ""
+    signature = None
+    try:
+        identity = sha256_file(path)
+        signature = _stat_signature(path)
+    except OSError:
+        pass
+    root = None
+    head = ""
+    try:
+        root = git_toplevel(path.parent)
+        head = _head_for_cache(root)
+    except (OSError, ScopeError):
+        pass
+    code = str(getattr(exc, "code", "") or "")
+    detail = str(getattr(exc, "detail", "") or exc)
+    _loaded_by_path[manifest_abs] = _CacheRecord(
+        identity=identity,
+        git_head=head,
+        root=root,
+        loaded=None,
+        failure_type=type(exc),
+        failure_code=code or "manifest_invalid",
+        failure_detail=detail,
+        stat=signature,
+    )
+
+
+def _raise_from_record(cached: _CacheRecord) -> NoReturn:
+    failure_type = cached.failure_type
+    if failure_type is ManifestValidationError:
+        raise ManifestValidationError(cached.failure_detail)
+    if failure_type is not None and issubclass(failure_type, ScopeError):
+        raise ScopeError(cached.failure_code, cached.failure_detail)
+    if failure_type is OSError:
+        raise OSError(cached.failure_detail)
+    if failure_type is None:
+        raise ScopeError(
+            cached.failure_code or "manifest_invalid", cached.failure_detail
+        )
+    try:
+        raise failure_type(cached.failure_detail)
+    except TypeError:
+        raise ScopeError(  # pylint: disable=raise-missing-from
+            cached.failure_code or "manifest_invalid",
+            cached.failure_detail,
+        )
+
+
+def _freshness_key(path: Path, cached: _CacheRecord) -> tuple[str, str]:
+    signature = _stat_signature(path)
+    if signature is not None and signature == cached.stat:
+        identity = cached.identity
+    else:
+        identity = sha256_file(path)
+    root = cached.root
+    if root is None:
+        root = git_toplevel(path.parent)
+    return identity, _head_for_cache(root)
+
+
+def _cached_manifest(manifest_abs: str) -> LoadedManifest:
+    path = Path(manifest_abs)
+    cached = _loaded_by_path.get(manifest_abs)
+    if isinstance(cached, _CacheRecord):
+        try:
+            identity, head = _freshness_key(path, cached)
+        except (OSError, ScopeError) as exc:
+            _remember_failure(manifest_abs, path, exc)
+            raise _copy_failure(exc) from None
+        if identity == cached.identity and head == cached.git_head:
+            if cached.loaded is not None:
+                return cached.loaded
+            _raise_from_record(cached)
+    try:
+        loaded = load_and_validate_manifest(path)
     except BaseException as exc:  # pylint: disable=broad-exception-caught
-        _loaded_by_path[manifest_abs] = exc
+        _remember_failure(manifest_abs, path, exc)
         raise
-    _loaded_by_path[manifest_abs] = loaded
+    _loaded_by_path[manifest_abs] = _CacheRecord(
+        identity=loaded.identity,
+        git_head=loaded.git_head,
+        root=loaded.root,
+        loaded=loaded,
+        failure_type=None,
+        failure_code="",
+        failure_detail="",
+        stat=_stat_signature(path),
+    )
     return loaded
 
 

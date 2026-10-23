@@ -81,6 +81,17 @@ def _create_pid_lock(lock_path: Path, pid: int, parent_fd: int) -> bool:
     return True
 
 
+def read_pid_lock(lock_path: Path) -> int | None:
+    """Return the PID recorded in a lock file, or None when absent."""
+    parent_fd = _open_lock_parent(lock_path, create=False)
+    if parent_fd is None:
+        return None
+    try:
+        return _read_pid(lock_path, parent_fd)
+    finally:
+        os.close(parent_fd)
+
+
 def acquire_pid_lock(
     lock_path: Path,
     *,

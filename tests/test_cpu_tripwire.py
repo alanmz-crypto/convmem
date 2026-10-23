@@ -31,6 +31,10 @@ INVALID_OPCODE = (
     "error:0 in rg[55e0+1000] likely on CPU 10 (core 20, socket 0)"
 )
 MCE = "2026-09-24T17:22:00-05:00 archlinux kernel: mce: [Hardware Error]: CPU 8: Machine Check: 0 Bank 1: b200"
+TYPORA_GPF = (
+    "2026-10-16T22:31:33-05:00 archlinux kernel: traps: Typora[2198961] general protection fault "
+    "ip:55c9153ebb7b sp:7fff1c4096a0 error:0 in Typora[2acdb7b,55c914f9f000+9aa1000]"
+)
 NOISE = [
     "2026-09-25T04:37:19-05:00 archlinux kernel: smpboot: Total of 24 processors activated",
     "2026-09-25T05:11:26-05:00 archlinux kernel: smpboot: CPU 8 is now offline",
@@ -70,10 +74,35 @@ def test_faults_only_on_a_known_bad_cpu_warn() -> None:
     assert verdict.status == "warn"
 
 
-def test_any_fault_on_a_healthy_or_unknown_cpu_fails() -> None:
+def test_cpu_attributed_fault_on_healthy_cpu_still_fails() -> None:
+    # Kernel pinned the fault to CPU 4, which is not known-bad -> real per-CPU alarm, FAIL.
     assert evaluate([_fault(4)], [], set(range(8)), {8, 9}).status == "fail"
-    assert evaluate([_fault(None)], [], set(range(8)), {8, 9}).status == "fail"
-    assert evaluate([_fault(8)], [], set(range(8)), set()).status == "fail"  # nothing configured
+
+
+def test_userspace_fault_no_cpu_warns() -> None:
+    # No CPU attribution and not a machine check -> advisory WARN, not a gate-failing FAIL.
+    assert evaluate([_fault(None)], [], set(range(8)), {8, 9}).status == "warn"
+    # A kernel-CPU-attributed fault stays FAIL even with nothing configured known-bad.
+    assert evaluate([_fault(8)], [], set(range(8)), set()).status == "fail"
+
+
+def test_userspace_gpf_no_cpu_warns_and_names_process() -> None:
+    gpf = Fault("t", "general_protection", None, "python3.11", 7788)
+    verdict = evaluate([gpf], [], set(range(8)), {8, 9})
+    assert verdict.status == "warn"
+    assert "python3.11[7788]" in verdict.detail and "advisory" in verdict.detail
+
+
+def test_machine_check_always_fails() -> None:
+    mce = Fault("t", "machine_check", None, "kernel", None)
+    assert evaluate([mce], [], set(range(8)), {8, 9}).status == "fail"
+
+
+def test_hardware_fail_dominates_userspace_warn() -> None:
+    mce = Fault("t", "machine_check", None, "kernel", None)
+    typora = Fault("t", "general_protection", None, "Typora", 2198961)
+    verdict = evaluate([mce, typora], [], set(range(8)), {8, 9})
+    assert verdict.status == "fail"
 
 
 def test_known_bad_cpu_back_online_fails() -> None:
@@ -81,10 +110,11 @@ def test_known_bad_cpu_back_online_fails() -> None:
     assert verdict.status == "fail" and "ONLINE again" in verdict.detail
 
 
-def test_crash_dump_without_a_kernel_line_fails_but_aborts_do_not() -> None:
+def test_crash_dump_without_a_kernel_line_warns_and_aborts_excluded() -> None:
+    # Orphan hardware-signal dump is now a visible WARN (was FAIL); SIGABRT electron dump stays excluded.
     dumps = [{"pid": 42, "sig": 11, "exe": "/usr/bin/python3.11"}, {"pid": 43, "sig": 6, "exe": "/x/electron"}]
     verdict = evaluate([], dumps, set(range(8)), {8, 9})
-    assert verdict.status == "fail" and "python3.11[42] SIGSEGV" in verdict.detail
+    assert verdict.status == "warn" and "python3.11[42] SIGSEGV" in verdict.detail
     assert "electron" not in verdict.detail
 
 
@@ -122,6 +152,13 @@ def test_check_reads_this_boot_only(tmp_path: Path) -> None:
 
 def test_check_empty_coredump_list_passes(tmp_path: Path) -> None:
     assert check(KNOWN_BAD, runner=_FakeRunner(NOISE, []), **_sys(tmp_path)).status == "pass"
+
+
+def test_check_real_typora_userspace_fault_warns_not_fail(tmp_path: Path) -> None:
+    # The observed 2026-10-16 Typora GPF (no CPU attribution) must not exit doctor 1.
+    runner = _FakeRunner([*NOISE, TYPORA_GPF], [])
+    verdict = check(KNOWN_BAD, runner=runner, **_sys(tmp_path))
+    assert verdict.status == "warn" and "Typora[2198961]" in verdict.detail
 
 
 def test_blind_tripwire_warns(tmp_path: Path) -> None:

@@ -202,9 +202,11 @@ def processed_lock_path(processed_path: str) -> Path:
 @contextmanager
 def _processed_lock(processed_path: str):
     """Exclusive advisory lock on the processed-state sidecar."""
+    from purge_locks import _open_private_lock
+
     lock = processed_lock_path(processed_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a+", encoding="utf-8") as handle:
+    with _open_private_lock(lock) as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield
@@ -427,6 +429,36 @@ def commit_processed_index_entry(
     return result["committed"]
 
 
+def commit_processed_index_entry_fenced(
+    cfg: dict,
+    processed_path: str,
+    *,
+    file_hash: str,
+    path_key: str,
+    chunks: int,
+    units: int,
+    incremental_jsonl_lineage: str | None = None,
+) -> bool:
+    """Publish one processed entry under the source publication fence.
+
+    The lower-level helper is used by the incremental coordinator while it
+    already holds ``source_flock``. Legacy and manual/index-file callers use
+    this wrapper so their final processed publication cannot race a roll-forward
+    publication for the same source.
+    """
+    from purge_locks import source_flock
+
+    with source_flock(cfg, path_key):
+        return commit_processed_index_entry(
+            processed_path,
+            file_hash=file_hash,
+            path_key=path_key,
+            chunks=chunks,
+            units=units,
+            incremental_jsonl_lineage=incremental_jsonl_lineage,
+        )
+
+
 def exclude_processed_path(
     processed_path: str,
     target: str,
@@ -531,8 +563,13 @@ def watch_skip_reason(
             return "excluded"
 
     if processed_log is None:
-        cfg = load_config()
-        processed_log = cfg["index"]["processed_log"]
+        if cfg is not None:
+            processed_log = cfg["index"]["processed_log"]
+        elif processed is not None:
+            processed_log = None
+        else:
+            cfg = load_config()
+            processed_log = cfg["index"]["processed_log"]
 
     if file_hash is None:
         try:
@@ -542,7 +579,9 @@ def watch_skip_reason(
 
     from inter_model_rejections import inter_model_rejection_matches
 
-    if inter_model_rejection_matches(processed_log, path_str, file_hash):
+    if processed_log is not None and inter_model_rejection_matches(
+        processed_log, path_str, file_hash
+    ):
         return "inter_model_rejected"
 
     path_known_hash = _stored_hash_for_path(path_str, processed)
@@ -647,89 +686,90 @@ def _commit_chunk_to_stores(  # pylint: disable=too-many-arguments,too-many-loca
 ) -> tuple[bool, int, int, int, int]:
     """Source/export-locked batch write with ingestion dedup statistics."""
     from ingest_dedupe import evaluate_ingest_batch, persist_ingest_dedupe
-    from purge_locks import export_flock, source_flock
+    from purge_locks import export_flock, index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
-        processed = load_processed(idx["processed_log"])
-        if _path_is_excluded(processed, path_key) or (
-            file_hash in processed and processed[file_hash].get("excluded")
-        ):
+        with index_write_flock(cfg):
+            processed = load_processed(idx["processed_log"])
+            if _path_is_excluded(processed, path_key) or (
+                file_hash in processed and processed[file_hash].get("excluded")
+            ):
+                if verbose:
+                    print(f"  [skip] excluded during batch-write {Path(path).name}")
+                return False, 0, 0, 0, 0
+            n_units = 0
+            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+                store = _pw.store
+                cfg = _pw.live_cfg
+                store.add_summary(doc_id, summary, summary_embedding, metadata)
+                dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
+                written_projection_ids: set[str] = set()
+                for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
+                    projection_unit = dict(unit)
+                    projection_meta = dict(unit_meta)
+                    existing = store.get_unit(unit["id"])
+                    existing_identity = (
+                        provenance_identity(existing.get("metadata") or {})
+                        if existing is not None
+                        else None
+                    )
+                    candidate_identity = provenance_identity(unit_meta)
+                    if (
+                        existing is not None
+                        and candidate_identity is not None
+                        and existing_identity != candidate_identity
+                        and (existing_identity is not None or candidate_identity is not None)
+                    ):
+                        # A stable source/chunk id is a projection address, not
+                        # provenance authority. Keep the old assertion intact
+                        # while staging a distinct assertion for this generation.
+                        projection_id = hashlib.sha256(
+                            (
+                                "convmem-p3-projection-v1:"
+                                f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
+                            ).encode("utf-8")
+                        ).hexdigest()
+                        projection_unit["id"] = projection_id
+                        projection_meta["id"] = projection_id
+                    store.add_unit(
+                        projection_unit["id"], doc, unit_embedding, projection_meta
+                    )
+                    written_projection_ids.add(projection_unit["id"])
+                    if units_export and write_export:
+                        units_export.parent.mkdir(parents=True, exist_ok=True)
+                        with export_flock(cfg):
+                            with open(units_export, "a", encoding="utf-8") as uf:
+                                uf.write(json.dumps(projection_unit) + "\n")
+                    n_units += 1
+                if written_unit_ids is not None:
+                    written_unit_ids.update(written_projection_ids)
+            if dedupe_events is not None:
+                dedupe_events.append(dedupe)
+            if persist_dedupe:
+                dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
+            else:
+                dedupe_stats = {
+                    "exact_suppressed": len(dedupe.exact_suppressions),
+                    "semantic_candidates_queued": len(dedupe.semantic_candidates),
+                }
             if verbose:
-                print(f"  [skip] excluded during batch-write {Path(path).name}")
-            return False, 0, 0, 0, 0
-        n_units = 0
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-            store = _pw.store
-            cfg = _pw.live_cfg
-            store.add_summary(doc_id, summary, summary_embedding, metadata)
-            dedupe = evaluate_ingest_batch(store, cfg, units_to_add)
-            written_projection_ids: set[str] = set()
-            for unit, doc, unit_embedding, unit_meta in dedupe.accepted:
-                projection_unit = dict(unit)
-                projection_meta = dict(unit_meta)
-                existing = store.get_unit(unit["id"])
-                existing_identity = (
-                    provenance_identity(existing.get("metadata") or {})
-                    if existing is not None
-                    else None
-                )
-                candidate_identity = provenance_identity(unit_meta)
-                if (
-                    existing is not None
-                    and candidate_identity is not None
-                    and existing_identity != candidate_identity
-                    and (existing_identity is not None or candidate_identity is not None)
-                ):
-                    # A stable source/chunk id is a projection address, not
-                    # provenance authority. Keep the old assertion intact
-                    # while staging a distinct assertion for this generation.
-                    projection_id = hashlib.sha256(
-                        (
-                            "convmem-p3-projection-v1:"
-                            f"{unit['id']}:{candidate_identity[0]}:{candidate_identity[1]}"
-                        ).encode("utf-8")
-                    ).hexdigest()
-                    projection_unit["id"] = projection_id
-                    projection_meta["id"] = projection_id
-                store.add_unit(
-                    projection_unit["id"], doc, unit_embedding, projection_meta
-                )
-                written_projection_ids.add(projection_unit["id"])
-                if units_export and write_export:
-                    units_export.parent.mkdir(parents=True, exist_ok=True)
-                    with export_flock(cfg):
-                        with open(units_export, "a", encoding="utf-8") as uf:
-                            uf.write(json.dumps(projection_unit) + "\n")
-                n_units += 1
-            if written_unit_ids is not None:
-                written_unit_ids.update(written_projection_ids)
-        if dedupe_events is not None:
-            dedupe_events.append(dedupe)
-        if persist_dedupe:
-            dedupe_stats = persist_ingest_dedupe(cfg, dedupe)
-        else:
-            dedupe_stats = {
-                "exact_suppressed": len(dedupe.exact_suppressions),
-                "semantic_candidates_queued": len(dedupe.semantic_candidates),
-            }
-        if verbose:
-            for row in dedupe.exact_suppressions:
-                print(
-                    f"    [dedupe] exact {row['suppressed_id'][:8]} "
-                    f"= {row['matched_id'][:8]} (suppressed)"
-                )
-            for row in dedupe.semantic_candidates:
-                print(
-                    f"    [dedupe?] {row['similarity']:.3f} "
-                    f"{row['id_a'][:8]} ~ {row['id_b'][:8]} (queued)"
-                )
-        return (
-            True,
-            1,
-            n_units,
-            dedupe_stats["exact_suppressed"],
-            dedupe_stats["semantic_candidates_queued"],
-        )
+                for row in dedupe.exact_suppressions:
+                    print(
+                        f"    [dedupe] exact {row['suppressed_id'][:8]} "
+                        f"= {row['matched_id'][:8]} (suppressed)"
+                    )
+                for row in dedupe.semantic_candidates:
+                    print(
+                        f"    [dedupe?] {row['similarity']:.3f} "
+                        f"{row['id_a'][:8]} ~ {row['id_b'][:8]} (queued)"
+                    )
+            return (
+                True,
+                1,
+                n_units,
+                dedupe_stats["exact_suppressed"],
+                dedupe_stats["semantic_candidates_queued"],
+            )
 
 
 def _index_inter_model_file(  # pylint: disable=too-many-arguments,too-many-locals
@@ -894,6 +934,10 @@ def build_chunk_artifact(  # pylint: disable=too-many-arguments,too-many-locals
                 deepseek_base_url=models.get(
                     "deepseek_base_url", "https://api.deepseek.com"
                 ),
+                openai_base_url=models.get(
+                    "openai_base_url", "https://api.openai.com"
+                ),
+                reasoning_effort=models.get("distill_reasoning_effort"),
             )
             _bump_counter(counters, "distill_success")
             break
@@ -1231,20 +1275,24 @@ def _process_file_chunks(  # pylint: disable=too-many-arguments,too-many-locals
 
 def _snapshot_reindex_rows(
     *,
+    cfg: dict,
     path: str,
     path_key: str,
 ) -> _ReindexSnapshot:
     """Snapshot only the rows a completed replacement may later prune."""
+    from purge_locks import index_write_flock
+
     snapshot = _ReindexSnapshot()
-    with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-        store = _pw.store
-        for source_path in dict.fromkeys([path, path_key]):
-            snapshot.unit_ids[source_path] = store.ids_for_source(
-                "knowledge_units", source_path
-            )
-            snapshot.summary_ids[source_path] = store.ids_for_source(
-                "conversation_summaries", source_path
-            )
+    with index_write_flock(cfg):
+        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+            store = _pw.store
+            for source_path in dict.fromkeys([path, path_key]):
+                snapshot.unit_ids[source_path] = store.ids_for_source(
+                    "knowledge_units", source_path
+                )
+                snapshot.summary_ids[source_path] = store.ids_for_source(
+                    "conversation_summaries", source_path
+                )
     return snapshot
 
 
@@ -1262,61 +1310,62 @@ def _prune_completed_reindex(  # pylint: disable=too-many-arguments
     verbose: bool,
 ) -> bool:
     """Prune the snapshotted generation only after a complete replacement."""
-    from purge_locks import source_flock
+    from purge_locks import index_write_flock, source_flock
 
     with source_flock(cfg, path_key):
-        if sha256_file(path) != file_hash:
-            if verbose:
-                print(f"  [skip] changed during index {Path(path).name}")
-            return False
-        processed = load_processed(idx["processed_log"])
-        if _path_is_excluded(processed, path_key):
-            if verbose:
-                print(f"  [skip] excluded before reindex prune {Path(path).name}")
-            return False
-        with production_chroma_write_session(entrypoint="ingest.write") as _pw:
-            store = _pw.store
-            n_units = 0
-            n_summaries = 0
-            tombstone_tag = f"{path_key}#{file_hash[:12]}"
-            if supersede_on_reindex:
-                merged: dict[str, dict] = {}
-                for source_path, candidate_ids in snapshot.unit_ids.items():
-                    for unit in store.preview_supersede_for_source(
-                        source_path,
-                        keep_ids=keep_unit_ids,
-                        candidate_ids=candidate_ids,
-                    ):
-                        merged.setdefault(unit["id"], unit)
-                _echo_neutralize_preview(
-                    list(merged.values()), Path(path).name, tombstone_tag, verbose
-                )
-            for source_path, candidate_ids in snapshot.unit_ids.items():
+        with index_write_flock(cfg):
+            if sha256_file(path) != file_hash:
+                if verbose:
+                    print(f"  [skip] changed during index {Path(path).name}")
+                return False
+            processed = load_processed(idx["processed_log"])
+            if _path_is_excluded(processed, path_key):
+                if verbose:
+                    print(f"  [skip] excluded before reindex prune {Path(path).name}")
+                return False
+            with production_chroma_write_session(entrypoint="ingest.write") as _pw:
+                store = _pw.store
+                n_units = 0
+                n_summaries = 0
+                tombstone_tag = f"{path_key}#{file_hash[:12]}"
                 if supersede_on_reindex:
-                    n_units += store.supersede_units_for_source(
+                    merged: dict[str, dict] = {}
+                    for source_path, candidate_ids in snapshot.unit_ids.items():
+                        for unit in store.preview_supersede_for_source(
+                            source_path,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        ):
+                            merged.setdefault(unit["id"], unit)
+                    _echo_neutralize_preview(
+                        list(merged.values()), Path(path).name, tombstone_tag, verbose
+                    )
+                for source_path, candidate_ids in snapshot.unit_ids.items():
+                    if supersede_on_reindex:
+                        n_units += store.supersede_units_for_source(
+                            source_path,
+                            superseded_by=tombstone_tag,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        )
+                    else:
+                        n_units += store.delete_units_for_source(
+                            source_path,
+                            keep_ids=keep_unit_ids,
+                            candidate_ids=candidate_ids,
+                        )
+                for source_path, candidate_ids in snapshot.summary_ids.items():
+                    n_summaries += store.delete_summaries_for_source(
                         source_path,
-                        superseded_by=tombstone_tag,
-                        keep_ids=keep_unit_ids,
+                        keep_ids=keep_summary_ids,
                         candidate_ids=candidate_ids,
                     )
-                else:
-                    n_units += store.delete_units_for_source(
-                        source_path,
-                        keep_ids=keep_unit_ids,
-                        candidate_ids=candidate_ids,
+                if verbose and (n_units or n_summaries):
+                    verb = "superseded" if supersede_on_reindex else "pruned"
+                    print(
+                        f"  [reindex] {verb} {n_units} stale units, "
+                        f"{n_summaries} stale summaries for {Path(path).name}"
                     )
-            for source_path, candidate_ids in snapshot.summary_ids.items():
-                n_summaries += store.delete_summaries_for_source(
-                    source_path,
-                    keep_ids=keep_summary_ids,
-                    candidate_ids=candidate_ids,
-                )
-            if verbose and (n_units or n_summaries):
-                verb = "superseded" if supersede_on_reindex else "pruned"
-                print(
-                    f"  [reindex] {verb} {n_units} stale units, "
-                    f"{n_summaries} stale summaries for {Path(path).name}"
-                )
     return True
 
 
@@ -1382,9 +1431,18 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
     # ``index --file`` path when either identity changes, so the generic
     # content-hash shortcut must not discard that request.
     if not force_reindex and file_hash in processed and fmt != "repository_knowledge_v1":
-        if verbose:
-            print(f"  [skip] unchanged {Path(path).name}")
-        return "skipped", 0, 0, 0, 0
+        from config import incremental_jsonl_settings
+        from incremental_jsonl_kiro_admission import selected_kiro_path
+
+        incremental_settings = incremental_jsonl_settings(cfg)
+        if not selected_kiro_path(
+            path_key=path_key,
+            live_sources=incremental_settings.live_sources,
+            detected_format=fmt,
+        ):
+            if verbose:
+                print(f"  [skip] unchanged {Path(path).name}")
+            return "skipped", 0, 0, 0, 0
 
     tool = TOOL_BY_FORMAT.get(fmt, fmt or "unknown")
     chroma_dir = idx["chroma_dir"]
@@ -1413,7 +1471,7 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
         return routed
 
     snapshot = (
-        _snapshot_reindex_rows(path=path, path_key=path_key)
+        _snapshot_reindex_rows(cfg=cfg, path=path, path_key=path_key)
         if force_file
         else None
     )
@@ -1486,7 +1544,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             verbose=verbose,
         ):
             return "skipped", 0, n_units, 0, 0
-        committed = commit_processed_index_entry(
+        committed = commit_processed_index_entry_fenced(
+            cfg,
             idx["processed_log"],
             file_hash=file_hash,
             path_key=path_key,
@@ -1530,7 +1589,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             verbose=verbose,
         ):
             return "skipped", 0, n_units, 0, 0
-        committed = commit_processed_index_entry(
+        committed = commit_processed_index_entry_fenced(
+            cfg,
             idx["processed_log"],
             file_hash=file_hash,
             path_key=path_key,
@@ -1588,7 +1648,8 @@ def _index_one_file(  # pylint: disable=too-many-arguments,too-many-locals,too-m
             result.semantic_queued,
         )
 
-    committed = commit_processed_index_entry(
+    committed = commit_processed_index_entry_fenced(
+        cfg,
         idx["processed_log"],
         file_hash=file_hash,
         path_key=path_key,
@@ -1779,3 +1840,7 @@ def _index_impl(
     _compact_units_export_after_index(units_export, stats)
 
     return stats
+
+
+# ref: ./incremental_jsonl.py — incremental publication uses the same source fence
+# ref: ./purge_locks.py — source publication lock implementation

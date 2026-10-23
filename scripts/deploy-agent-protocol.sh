@@ -733,8 +733,11 @@ done
 
 if [ -n "$CRUSH_CONFIG" ]; then
   CRUSH_HOOKS_DIR="$(dirname "$CRUSH_CONFIG")/hooks"
+  CRUSH_RITUAL_HOOK="$CRUSH_HOOKS_DIR/convmem-ritual-autorun.sh"
   CRUSH_HOOK="$CRUSH_HOOKS_DIR/convmem-allow.sh"
   mkdir -p "$CRUSH_HOOKS_DIR"
+  cp scripts/crush-hook-convmem-ritual-autorun.sh "$CRUSH_RITUAL_HOOK"
+  chmod +x "$CRUSH_RITUAL_HOOK"
   cp scripts/crush-hook-convmem-allow.sh "$CRUSH_HOOK"
   chmod +x "$CRUSH_HOOK"
   # Shell profile on Crush MCP (preserve unrelated env; never print values)
@@ -759,13 +762,14 @@ if [ -n "$CRUSH_CONFIG" ]; then
         ;;
     esac
   fi
-  merge_crush=$(python3 - <<'PY' "$CRUSH_CONFIG" "$(pwd)/config/crush-permissions.fragment.json" "$CRUSH_HOOK"
+  merge_crush=$(python3 - <<'PY' "$CRUSH_CONFIG" "$(pwd)/config/crush-permissions.fragment.json" "$CRUSH_HOOK" "$CRUSH_RITUAL_HOOK"
 import json, sys
 from pathlib import Path
 
 dest = Path(sys.argv[1])
 frag_path = Path(sys.argv[2])
-hook_path = sys.argv[3]
+allow_path = sys.argv[3]
+ritual_path = sys.argv[4]
 
 with open(frag_path) as f:
     frag = json.load(f)
@@ -784,14 +788,29 @@ if allowed != perms.get("allowed_tools"):
     changed = True
 
 hooks = cfg.setdefault("hooks", {})
-pre = [h for h in (hooks.get("PreToolUse") or []) if h.get("command") != hook_path]
+existing = list(hooks.get("PreToolUse") or [])
+
+def is_allow(h):
+    return h.get("command") == allow_path
+
+def is_ritual(h):
+    return h.get("command") == ritual_path or h.get("name") == "convmem-ritual-autorun"
+
+middle = [h for h in existing if not is_allow(h) and not is_ritual(h)]
+ritual_entry = {
+    "matcher": ".",
+    "command": ritual_path,
+    "name": "convmem-ritual-autorun",
+    "timeout": 120,
+}
 frag_hooks = []
 for frag_entry in frag["hooks"]["PreToolUse"]:
     entry = frag_entry.copy()
-    entry["command"] = hook_path
+    entry["command"] = allow_path
     frag_hooks.append(entry)
-if pre + frag_hooks != list(hooks.get("PreToolUse") or []):
-    hooks["PreToolUse"] = pre + frag_hooks
+new_pre = [ritual_entry] + middle + frag_hooks
+if new_pre != existing:
+    hooks["PreToolUse"] = new_pre
     changed = True
 
 if changed:
@@ -805,9 +824,10 @@ PY
 )
   case "$merge_crush" in
     deploy)
-      echo "  [deploy] $CRUSH_CONFIG (convmem permissions + bash hook)"
+      echo "  [deploy] $CRUSH_CONFIG (convmem permissions + ritual autorun + bash hook)"
+      echo "  [deploy] $CRUSH_RITUAL_HOOK"
       echo "  [deploy] $CRUSH_HOOK"
-      DEPLOY_REPORT+="  - Deployed Crush permissions (mcp_convmem_* + convmem bash hook)\n"
+      DEPLOY_REPORT+="  - Deployed Crush permissions (ritual autorun + mcp_convmem_* + convmem bash hook)\n"
       ;;
     skip)
       echo "  [skip]   $CRUSH_CONFIG already has convmem permissions"
@@ -857,6 +877,7 @@ echo "   Restart Kiro after deploy if prompts persist."
 echo ""
 echo "3. Crush permissions (~/.config/crush/crush.json):"
 echo "   permissions.allowed_tools: mcp_convmem_* read tools."
+echo "   hooks/convmem-ritual-autorun.sh: single-flight session ritual (before allow hook)."
 echo "   hooks/convmem-allow.sh: ritual deny + auto-approve read-only convmem bash."
 echo "   After deploy: bash scripts/restart-crush-if-stale.sh (hooks load at Crush process start)."
 echo ""

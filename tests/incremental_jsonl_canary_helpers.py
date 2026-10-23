@@ -48,7 +48,10 @@ def write_kiro_source(root: Path, count: int, *, name: str = "sess_canary") -> t
     stat_result = source.stat()
     complete_boundary = data.rfind(b"\n") + 1
     prefix_sha = hashlib.sha256(data[:complete_boundary]).hexdigest()
-    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    view = parse_complete_prefix(str(source))
+    meta_sha = view.session_meta_digest or hashlib.sha256(meta.read_bytes()).hexdigest()
     return source, SourceGrant(
         path=str(source.resolve()),
         metadata_path=str(meta.resolve()),
@@ -314,7 +317,10 @@ def append_kiro_source(source: Path, start_index: int, count: int) -> SourceGran
     stat_result = source.stat()
     complete_boundary = (data + appended).rfind(b"\n") + 1
     prefix_sha = hashlib.sha256((data + appended)[:complete_boundary]).hexdigest()
-    meta_sha = hashlib.sha256(meta.read_bytes()).hexdigest()
+    from adapters.kiro_session_jsonl import parse_complete_prefix
+
+    view = parse_complete_prefix(str(source))
+    meta_sha = view.session_meta_digest or hashlib.sha256(meta.read_bytes()).hexdigest()
     return SourceGrant(
         path=str(source.resolve()),
         metadata_path=str(meta.resolve()),

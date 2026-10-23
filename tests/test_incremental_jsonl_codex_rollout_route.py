@@ -22,9 +22,12 @@ def _sessions_root(tmp_path: Path) -> Path:
     return (tmp_path / ".codex" / "sessions").resolve()
 
 
-def _write_user_config(path: Path, cfg: dict) -> None:
+def _write_user_config(path: Path, cfg: dict, *, allow_full_rebuild: bool = False) -> None:
     index = cfg["index"]
     admission = index["incremental_jsonl"]["codex_rollout_admission"]
+    rebuild_line = (
+        f"allow_full_rebuild = {'true' if allow_full_rebuild else 'false'}\n"
+    )
     path.write_text(
         "\n".join(
             [
@@ -37,6 +40,7 @@ def _write_user_config(path: Path, cfg: dict) -> None:
                 "",
                 "[index.incremental_jsonl]",
                 "enabled = true",
+                rebuild_line.rstrip(),
                 f'state_dir = "{index["incremental_jsonl"]["state_dir"]}"',
                 f"embed_dimension = {index['incremental_jsonl']['embed_dimension']}",
                 "live_sources = []",
@@ -53,7 +57,13 @@ def _write_user_config(path: Path, cfg: dict) -> None:
     )
 
 
-def _production_cfg(tmp_path: Path, sessions_root: Path, admitted: datetime) -> dict:
+def _production_cfg(
+    tmp_path: Path,
+    sessions_root: Path,
+    admitted: datetime,
+    *,
+    allow_full_rebuild: bool = False,
+) -> dict:
     data = tmp_path / "data"
     return {
         "models": {
@@ -73,6 +83,7 @@ def _production_cfg(tmp_path: Path, sessions_root: Path, admitted: datetime) -> 
                 "state_dir": str(data / "incremental-jsonl"),
                 "live_sources": [],
                 "embed_dimension": 8,
+                "allow_full_rebuild": allow_full_rebuild,
                 "codex_rollout_admission": {
                     "root": str(sessions_root),
                     "admitted_after": admitted.strftime("%Y-%m-%dT%H:%M:%SZ"),

@@ -1856,6 +1856,20 @@ def closed_state_spec_paths(
 # ---------------------------------------------------------------------------
 # Inventory orchestration
 # ---------------------------------------------------------------------------
+
+
+def classify_scoped_shadow_diagnostic(path: str) -> Classification | None:
+    """Classify incremental JSONL scoped-shadow diagnostic receipts."""
+    normalized = str(path).replace("\\", "/")
+    if "scoped-shadow/" not in normalized:
+        return None
+    return Classification(
+        path=path,
+        authority="scoped_shadow_diagnostic",
+        outcome=OUTCOME_ADVISORY,
+        detail="non-authoritative scoped mutation proof receipts",
+    )
+
 def inventory_restored_state(
     restored_root: Path | str,
     expected_data_root: Path | str | None = None,

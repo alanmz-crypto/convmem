@@ -330,39 +330,21 @@ def _execute_purge_impl(
         if callable(fn):
             fn()
 
+    from purge_locks import index_write_flock
+
     with source_flock(cfg, canonical):
         _hook("before_exclusion")  # F1
         exclusion_key = mark_purge_exclusion(cfg, canonical, reason)
         _hook("after_exclusion")  # F2
 
-        _pw = open_production_write_store(entrypoint="source_purge.execute")
-        store = _pw.store
-        cfg = _pw.live_cfg
-        try:
-            units_deleted = 0
-            summaries_deleted = 0
-            if hooks.get("force_chroma_locked"):
-                return PurgeResult(
-                    exit_code=1,
-                    canonical_path=canonical,
-                    candidates=candidates,
-                    units_deleted=units_deleted,
-                    summaries_deleted=summaries_deleted,
-                    jsonl_removed=0,
-                    message="Chroma locked: injected",
-                    exclusion_key=exclusion_key,
-                )
+        with index_write_flock(cfg):
+            _pw = open_production_write_store(entrypoint="source_purge.execute")
+            store = _pw.store
+            cfg = _pw.live_cfg
             try:
-                for candidate in candidates:
-                    units_deleted += int(store.delete_units_for_source(candidate))
-                _hook("after_units")  # F3
-                for candidate in candidates:
-                    summaries_deleted += int(
-                        store.delete_summaries_for_source(candidate)
-                    )
-                _hook("after_summaries")  # F4
-            except Exception as exc:  # noqa: BLE001 — surface locked/IO for retry
-                if "database is locked" in str(exc).lower():
+                units_deleted = 0
+                summaries_deleted = 0
+                if hooks.get("force_chroma_locked"):
                     return PurgeResult(
                         exit_code=1,
                         canonical_path=canonical,
@@ -370,73 +352,94 @@ def _execute_purge_impl(
                         units_deleted=units_deleted,
                         summaries_deleted=summaries_deleted,
                         jsonl_removed=0,
-                        message=f"Chroma locked: {exc}",
+                        message="Chroma locked: injected",
                         exclusion_key=exclusion_key,
                     )
-                raise
-            if units_deleted:
-                from chroma_store import invalidate_superseded_cache
+                try:
+                    for candidate in candidates:
+                        units_deleted += int(store.delete_units_for_source(candidate))
+                    _hook("after_units")  # F3
+                    for candidate in candidates:
+                        summaries_deleted += int(
+                            store.delete_summaries_for_source(candidate)
+                        )
+                    _hook("after_summaries")  # F4
+                except Exception as exc:  # noqa: BLE001 — surface locked/IO for retry
+                    if "database is locked" in str(exc).lower():
+                        return PurgeResult(
+                            exit_code=1,
+                            canonical_path=canonical,
+                            candidates=candidates,
+                            units_deleted=units_deleted,
+                            summaries_deleted=summaries_deleted,
+                            jsonl_removed=0,
+                            message=f"Chroma locked: {exc}",
+                            exclusion_key=exclusion_key,
+                        )
+                    raise
+                if units_deleted:
+                    from chroma_store import invalidate_superseded_cache
 
-                invalidate_superseded_cache(store.chroma_dir)
+                    invalidate_superseded_cache(store.chroma_dir)
 
-            jsonl_removed = 0
-            remaining_jsonl = 0
-            _hook("before_export_lock")
-            try:
-                with export_flock(cfg):
-                    _hook("after_export_lock")  # F5
-                    jsonl_removed = purge_source_from_jsonl(
-                        cfg,
-                        export,
-                        candidates,
-                        already_locked=True,
-                        _hooks=hooks,
+                jsonl_removed = 0
+                remaining_jsonl = 0
+                _hook("before_export_lock")
+                try:
+                    with export_flock(cfg):
+                        _hook("after_export_lock")  # F5
+                        jsonl_removed = purge_source_from_jsonl(
+                            cfg,
+                            export,
+                            candidates,
+                            already_locked=True,
+                            _hooks=hooks,
+                        )
+                        _hook("after_jsonl_rewrite")  # alias after rename
+                        remaining_jsonl = count_jsonl_lines_for_source(export, candidates)
+                except MalformedJsonlError as exc:
+                    return PurgeResult(
+                        exit_code=1,
+                        canonical_path=canonical,
+                        candidates=candidates,
+                        units_deleted=units_deleted,
+                        summaries_deleted=summaries_deleted,
+                        jsonl_removed=0,
+                        message=f"JSONL purge aborted: {exc}",
+                        exclusion_key=exclusion_key,
                     )
-                    _hook("after_jsonl_rewrite")  # alias after rename
-                    remaining_jsonl = count_jsonl_lines_for_source(export, candidates)
-            except MalformedJsonlError as exc:
-                return PurgeResult(
-                    exit_code=1,
-                    canonical_path=canonical,
-                    candidates=candidates,
-                    units_deleted=units_deleted,
-                    summaries_deleted=summaries_deleted,
-                    jsonl_removed=0,
-                    message=f"JSONL purge aborted: {exc}",
-                    exclusion_key=exclusion_key,
-                )
 
-            _hook("before_postcondition")
-            remaining = count_chroma_for_source(store, candidates)
-            # F8 inject residual
-            if hooks.get("inject_residual"):
-                remaining = {"units": 1, "summaries": 0}
+                _hook("before_postcondition")
+                remaining = count_chroma_for_source(store, candidates)
+                # F8 inject residual
+                if hooks.get("inject_residual"):
+                    remaining = {"units": 1, "summaries": 0}
 
-            total = remaining["units"] + remaining["summaries"] + remaining_jsonl
-            if total > 0:
+                total = remaining["units"] + remaining["summaries"] + remaining_jsonl
+                if total > 0:
+                    return PurgeResult(
+                        exit_code=1,
+                        canonical_path=canonical,
+                        candidates=candidates,
+                        units_deleted=units_deleted,
+                        summaries_deleted=summaries_deleted,
+                        jsonl_removed=jsonl_removed,
+                        message=(
+                            "postcondition failed: residual rows "
+                            f"units={remaining['units']} summaries={remaining['summaries']} "
+                            f"jsonl={remaining_jsonl}"
+                        ),
+                        exclusion_key=exclusion_key,
+                    )
                 return PurgeResult(
-                    exit_code=1,
+                    exit_code=0,
                     canonical_path=canonical,
                     candidates=candidates,
                     units_deleted=units_deleted,
                     summaries_deleted=summaries_deleted,
                     jsonl_removed=jsonl_removed,
-                    message=(
-                        "postcondition failed: residual rows "
-                        f"units={remaining['units']} summaries={remaining['summaries']} "
-                        f"jsonl={remaining_jsonl}"
-                    ),
+                    message="purge ok",
                     exclusion_key=exclusion_key,
                 )
-            return PurgeResult(
-                exit_code=0,
-                canonical_path=canonical,
-                candidates=candidates,
-                units_deleted=units_deleted,
-                summaries_deleted=summaries_deleted,
-                jsonl_removed=jsonl_removed,
-                message="purge ok",
-                exclusion_key=exclusion_key,
-            )
-        finally:
-            store.close()
+            finally:
+                store.close()

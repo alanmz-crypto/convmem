@@ -15,12 +15,52 @@ from pathlib import Path
 from typing import Any, Callable
 
 from chroma_store import ChromaStore, invalidate_superseded_cache, is_superseded
-from chroma_write_store import open_production_write_store, production_writer_boundary
-from domains import DEFAULT_DOMAINS, normalize_domain
-from process_lock import acquire_lock, release_lock
-from vector_similarity import cosine_similarity
-from ingest_dedupe import semantic_queue_at_max_depth
-from provenance_binding import provenance_identity
+from contextlib import contextmanager  # pylint: disable=wrong-import-order
+
+from chroma_write_store import (
+    open_production_write_store,
+    production_chroma_write_session,
+    production_writer_boundary,
+)
+
+
+@contextmanager
+def _index_write_lock(cfg: dict):
+    from purge_locks import index_write_flock
+
+    with index_write_flock(cfg):
+        yield
+
+
+@contextmanager
+def _refine_write_scope(_cfg: dict | None = None):
+    """C1 from live config before production store session (issue #286 corrective 9)."""
+    from config import load_config
+
+    live_cfg = load_config()
+    if _cfg is not None:
+        caller = Path(_cfg["index"]["chroma_dir"]).expanduser().resolve()
+        live = Path(live_cfg["index"]["chroma_dir"]).expanduser().resolve()
+        if caller != live:
+            raise ValueError(
+                f"refine write scope: caller chroma_dir {caller} != live config {live}"
+            )
+    with _index_write_lock(live_cfg):
+        with production_chroma_write_session(entrypoint="refine.write") as session:
+            yield session.store, session.live_cfg
+
+
+def _open_read_store(cfg: dict):
+    from chroma_readonly import open_readonly_unit_store
+
+    return open_readonly_unit_store(cfg["index"]["chroma_dir"])
+
+
+from domains import DEFAULT_DOMAINS, normalize_domain  # pylint: disable=wrong-import-position
+from process_lock import acquire_lock, release_lock  # pylint: disable=wrong-import-position
+from vector_similarity import cosine_similarity  # pylint: disable=wrong-import-position
+from ingest_dedupe import semantic_queue_at_max_depth  # pylint: disable=wrong-import-position
+from provenance_binding import provenance_identity  # pylint: disable=wrong-import-position
 
 JOB_NAMES = (
     "chroma_dedupe",
@@ -152,6 +192,9 @@ def load_dedupe_queue(cfg: dict) -> list[dict]:
 
 
 def save_dedupe_queue(cfg: dict, rows: list[dict]) -> None:
+    from purge_locks import require_index_write_lock_held
+
+    require_index_write_lock_held()
     path = dedupe_queue_path(cfg)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -195,12 +238,16 @@ def _tombstone_semantic_duplicate(
         if tombstone_identity != canonical_identity:
             raise ValueError("cross-provenance tombstone is blocked")
     meta["id"] = tombstone_id
-    write_undo_snapshot(cfg, "semantic_dedupe", [meta])
-    new_meta = dict(meta)
-    new_meta["superseded"] = True
-    new_meta["superseded_by"] = canonical_id
-    new_meta["updated_at"] = _now_iso()
-    store.update_unit_metadata(tombstone_id, new_meta)
+    with _refine_write_scope(cfg) as (wstore, wcfg):
+        canon = wstore.get_unit(canonical_id)
+        if not canon:
+            raise ValueError(f"canonical unit not found: {canonical_id}")
+        write_undo_snapshot(wcfg, "semantic_dedupe", [meta])
+        new_meta = dict(meta)
+        new_meta["superseded"] = True
+        new_meta["superseded_by"] = canonical_id
+        new_meta["updated_at"] = _now_iso()
+        wstore.update_unit_metadata(tombstone_id, new_meta)
     invalidate_superseded_cache(store.chroma_dir)
     if verbose:
         print(
@@ -271,12 +318,9 @@ def _apply_approved_dedupe_impl(
     from config import load_config
 
     cfg = load_config()
-    rows = load_dedupe_queue(cfg)
-    if not rows:
-        return {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
 
     if target.strip().lower() == "all":
-        indices = list(range(len(rows)))
+        indices_arg = "all"
     else:
         try:
             line = int(target)
@@ -284,50 +328,64 @@ def _apply_approved_dedupe_impl(
             raise ValueError(
                 f"--approve-dedupe expects 1-based line number or 'all', got {target!r}"
             ) from e
-        if line < 1 or line > len(rows):
-            raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
-        indices = [line - 1]
+        indices_arg = line
 
-    _pw = open_production_write_store(entrypoint="refine.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
-    try:
-        for idx in indices:
-            rec = rows[idx]
-            row_stats = apply_dedupe_queue_record(store, cfg, rec, verbose=verbose)
-            totals["processed"] += 1
-            for k in ("tombstoned", "skipped", "errors"):
-                totals[k] += row_stats[k]
-            if row_stats["tombstoned"] or (
-                row_stats["skipped"] and rec.get("status") in APPROVED_DEDUPE_STATUSES
-            ):
-                if row_stats["tombstoned"]:
-                    rec["chroma_applied"] = True
-                    rec["chroma_applied_at"] = _now_iso()
-                elif rec.get("chroma_applied") is not True:
-                    unit = store.get_unit((rec.get("tombstone_id") or ""))
-                    if unit and is_superseded(unit.get("metadata") or {}):
-                        rec["chroma_applied"] = True
-                        rec["chroma_applied_at"] = rec.get("chroma_applied_at") or _now_iso()
-        save_dedupe_queue(cfg, rows)
+    from purge_locks import index_write_flock
 
-        all_stats = load_stats(cfg)
-        all_stats.setdefault("jobs", {})
-        all_stats["jobs"]["approve_dedupe"] = {
-            "last_run": _now_iso(),
-            **totals,
-        }
-        save_stats(cfg, all_stats)
+    cfg = load_config()
+    with index_write_flock(cfg):
+        rows = load_dedupe_queue(cfg)
+        if not rows:
+            return {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
+        if indices_arg == "all":
+            indices = list(range(len(rows)))
+        else:
+            line = int(indices_arg)
+            if line < 1 or line > len(rows):
+                raise ValueError(f"dedupe_queue line {line} out of range (1–{len(rows)})")
+            indices = [line - 1]
+        _pw = open_production_write_store(entrypoint="refine.write")
+        store = _pw.store
+        cfg = _pw.live_cfg
+        totals = {"processed": 0, "tombstoned": 0, "skipped": 0, "errors": 0}
         try:
-            from brief import refresh_brief_after_change
+            for idx in indices:
+                rec = rows[idx]
+                row_stats = apply_dedupe_queue_record(store, cfg, rec, verbose=verbose)
+                totals["processed"] += 1
+                for k in ("tombstoned", "skipped", "errors"):
+                    totals[k] += row_stats[k]
+                if row_stats["tombstoned"] or (
+                    row_stats["skipped"] and rec.get("status") in APPROVED_DEDUPE_STATUSES
+                ):
+                    if row_stats["tombstoned"]:
+                        rec["chroma_applied"] = True
+                        rec["chroma_applied_at"] = _now_iso()
+                    elif rec.get("chroma_applied") is not True:
+                        unit = store.get_unit((rec.get("tombstone_id") or ""))
+                        if unit and is_superseded(unit.get("metadata") or {}):
+                            rec["chroma_applied"] = True
+                            rec["chroma_applied_at"] = (
+                                rec.get("chroma_applied_at") or _now_iso()
+                            )
+            save_dedupe_queue(cfg, rows)
 
-            refresh_brief_after_change(cfg)
-        except Exception:
-            pass
-        return totals
-    finally:
-        store.close()
+            all_stats = load_stats(cfg)
+            all_stats.setdefault("jobs", {})
+            all_stats["jobs"]["approve_dedupe"] = {
+                "last_run": _now_iso(),
+                **totals,
+            }
+            save_stats(cfg, all_stats)
+            try:
+                from brief import refresh_brief_after_change
+
+                refresh_brief_after_change(cfg)
+            except Exception:
+                pass
+            return totals
+        finally:
+            store.close()
 
 
 def job_chroma_dedupe(
@@ -377,27 +435,33 @@ def job_chroma_dedupe(
         if not to_tombstone:
             stats["skipped"] += 1
             continue
-        write_undo_snapshot(cfg, "chroma_dedupe", to_tombstone)
-        for m in to_tombstone:
-            chroma_id = m["id"]
-            new_meta = dict(m)
-            new_meta["superseded"] = True
-            new_meta["superseded_by"] = canon_id
-            new_meta["updated_at"] = _now_iso()
-            try:
-                store.update_unit_metadata(chroma_id, new_meta)
-                stats["tombstoned"] += 1
-                if verbose:
-                    print(
-                        f"  [tombstone] {lid}  {m['id'][:8]} → {canon_id[:8]}",
-                        file=sys.stderr,
-                    )
-            except Exception as e:
-                stats["errors"] += 1
-                if verbose:
-                    print(f"  [error] {m['id']}: {e}", file=sys.stderr)
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            write_undo_snapshot(wcfg, "chroma_dedupe", to_tombstone)
+            for m in to_tombstone:
+                chroma_id = m["id"]
+                fresh = wstore.get_unit(chroma_id)
+                if not fresh:
+                    stats["errors"] += 1
+                    continue
+                base_meta = dict(fresh.get("metadata") or m)
+                new_meta = dict(base_meta)
+                new_meta["superseded"] = True
+                new_meta["superseded_by"] = canon_id
+                new_meta["updated_at"] = _now_iso()
+                try:
+                    wstore.update_unit_metadata(chroma_id, new_meta)
+                    stats["tombstoned"] += 1
+                    if verbose:
+                        print(
+                            f"  [tombstone] {lid}  {m['id'][:8]} → {canon_id[:8]}",
+                            file=sys.stderr,
+                        )
+                except Exception as e:
+                    stats["errors"] += 1
+                    if verbose:
+                        print(f"  [error] {m['id']}: {e}", file=sys.stderr)
         if stats["tombstoned"]:
-            invalidate_superseded_cache(store.chroma_dir)
+            invalidate_superseded_cache(str(cfg["index"]["chroma_dir"]))
         stats["processed"] += 1
     return stats
 
@@ -462,19 +526,25 @@ def job_backfill_domain(
             continue
 
         domain = normalize_domain(raw.strip().split()[0] if raw else None)
-        write_undo_snapshot(cfg, "backfill_domain", [m])
-        new_meta = dict(m)
-        new_meta["domain"] = domain
-        new_meta["updated_at"] = _now_iso()
-        try:
-            store.update_unit_metadata(uid, new_meta)
-            stats["updated"] += 1
-            if verbose:
-                print(f"  [domain] {uid[:8]} → {domain}", file=sys.stderr)
-        except Exception as e:
-            stats["errors"] += 1
-            if verbose:
-                print(f"  [error] update {uid[:8]}: {e}", file=sys.stderr)
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            fresh = wstore.get_unit(uid)
+            if not fresh:
+                stats["skipped"] += 1
+                continue
+            fresh_meta = dict(fresh.get("metadata") or m)
+            write_undo_snapshot(wcfg, "backfill_domain", [fresh_meta])
+            new_meta = dict(fresh_meta)
+            new_meta["domain"] = domain
+            new_meta["updated_at"] = _now_iso()
+            try:
+                wstore.update_unit_metadata(uid, new_meta)
+                stats["updated"] += 1
+                if verbose:
+                    print(f"  [domain] {uid[:8]} → {domain}", file=sys.stderr)
+            except Exception as e:
+                stats["errors"] += 1
+                if verbose:
+                    print(f"  [error] update {uid[:8]}: {e}", file=sys.stderr)
         stats["processed"] += 1
     return stats
 
@@ -538,8 +608,8 @@ def job_ledger_link(
     return stats
 
 
-def job_semantic_dedupe(
-    store: ChromaStore,
+def job_semantic_dedupe(  # pylint: disable=too-many-locals
+    store: ChromaStore,  # pylint: disable=unused-argument
     cfg: dict,
     *,
     limit: int | None = None,
@@ -554,9 +624,12 @@ def job_semantic_dedupe(
         if verbose:
             print(f"  [pause] dedupe_queue depth {existing} >= {max_depth}", file=sys.stderr)
         return {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
-    queue_path = dedupe_queue_path(cfg)
-
-    units = store.get_units_with_embeddings(include_superseded=False)
+    chroma_dir = cfg["index"]["chroma_dir"]
+    vector_store = ChromaStore(str(chroma_dir), mutation_sink=None)
+    try:
+        units = vector_store.get_units_with_embeddings(include_superseded=False)
+    finally:
+        vector_store.close()
     rows: list[tuple[str, dict, list[float]]] = [
         (u["id"], u["metadata"], u["embedding"]) for u in units
     ]
@@ -564,6 +637,8 @@ def job_semantic_dedupe(
     stats = {"processed": 0, "queued": 0, "skipped": 0, "errors": 0, "llm_calls": 0}
     batch_cap = limit or int(refine.get("batch_size", 10))
     seen_pairs: set[tuple[str, str]] = set()
+    pending_records: list[dict] = []
+    cap_hit = False
 
     for i, (uid_a, meta_a, emb_a) in enumerate(rows):
         if stats["queued"] >= batch_cap:
@@ -582,23 +657,34 @@ def job_semantic_dedupe(
             if limiter and not limiter.allow("semantic_dedupe"):
                 if verbose:
                     print("  [stop] semantic_dedupe hourly cap", file=sys.stderr)
-                return stats
-            rec = {
-                "id_a": uid_a,
-                "id_b": uid_b,
-                "similarity": round(sim, 4),
-                "title_a": meta_a.get("title"),
-                "title_b": meta_b.get("title"),
-                "domain": dom_a,
-                "queued_at": _now_iso(),
-                "status": "pending",
-            }
-            with queue_path.open("a", encoding="utf-8") as qf:
-                qf.write(json.dumps(rec) + "\n")
+                cap_hit = True
+                break
+            pending_records.append(
+                {
+                    "id_a": uid_a,
+                    "id_b": uid_b,
+                    "similarity": round(sim, 4),
+                    "title_a": meta_a.get("title"),
+                    "title_b": meta_b.get("title"),
+                    "domain": dom_a,
+                    "queued_at": _now_iso(),
+                    "status": "pending",
+                }
+            )
             stats["queued"] += 1
             stats["processed"] += 1
             if verbose:
                 print(f"  [dedupe?] {sim:.3f}  {uid_a[:8]} ~ {uid_b[:8]}", file=sys.stderr)
+        if cap_hit:
+            break
+    if pending_records:
+        from purge_locks import index_write_flock
+
+        with index_write_flock(cfg):
+            queue_path = dedupe_queue_path(cfg)
+            with queue_path.open("a", encoding="utf-8") as qf:
+                for rec in pending_records:
+                    qf.write(json.dumps(rec) + "\n")
     return stats
 
 
@@ -703,15 +789,22 @@ def job_stale_source_flag(
         if path.is_file():
             stats["skipped"] += 1
             continue
-        write_undo_snapshot(cfg, "stale_source_flag", [m])
-        new_meta = dict(m)
-        new_meta["source_available"] = False
-        new_meta["updated_at"] = _now_iso()
-        try:
-            store.update_unit_metadata(m["id"], new_meta)
-            stats["updated"] += 1
-        except Exception:
-            stats["errors"] += 1
+        with _refine_write_scope(cfg) as (wstore, wcfg):
+            fresh = wstore.get_unit(m["id"])
+            if not fresh:
+                stats["errors"] += 1
+                stats["processed"] += 1
+                continue
+            fresh_meta = dict(fresh.get("metadata") or m)
+            write_undo_snapshot(wcfg, "stale_source_flag", [fresh_meta])
+            new_meta = dict(fresh_meta)
+            new_meta["source_available"] = False
+            new_meta["updated_at"] = _now_iso()
+            try:
+                wstore.update_unit_metadata(m["id"], new_meta)
+                stats["updated"] += 1
+            except Exception:
+                stats["errors"] += 1
         stats["processed"] += 1
     return stats
 
@@ -742,11 +835,12 @@ def run_job(
     *,
     limit: int | None = None,
     verbose: bool = True,
+    limiter: CostLimiter | None = None,
 ) -> dict:
     """Run one refinement job under one universal mutation/capture boundary."""
 
     with production_writer_boundary(entrypoint="refine.write"):
-        return _run_job_impl(job, limit=limit, verbose=verbose)
+        return _run_job_impl(job, limit=limit, verbose=verbose, limiter=limiter)
 
 
 def _run_job_impl(
@@ -754,6 +848,7 @@ def _run_job_impl(
     *,
     limit: int | None = None,
     verbose: bool = True,
+    limiter: CostLimiter | None = None,
 ) -> dict:
     from config import load_config
 
@@ -761,10 +856,9 @@ def _run_job_impl(
         raise ValueError(f"Unknown job {job!r}. Choose from: {', '.join(JOB_NAMES)}")
 
     cfg = load_config()
-    _pw = open_production_write_store(entrypoint="refine.write")
-    store = _pw.store
-    cfg = _pw.live_cfg
-    limiter = CostLimiter(_cost_caps(cfg))
+    if limiter is None:
+        limiter = CostLimiter(_cost_caps(cfg))
+    store = _open_read_store(cfg)
 
     kwargs: dict[str, Any] = {"limit": limit, "verbose": verbose}
     if job in ("backfill_domain", "semantic_dedupe"):
@@ -789,7 +883,7 @@ def _run_job_impl(
             pass
         return result
     finally:
-        store.close()
+        pass
 
 
 def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
@@ -816,6 +910,8 @@ def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
             file=sys.stderr,
         )
 
+    limiter = CostLimiter(_cost_caps(cfg))
+
     try:
         while True:
             for job in jobs:
@@ -823,7 +919,10 @@ def run_refine_daemon(*, verbose: bool = True, use_lock: bool = True) -> None:
                     continue
                 if verbose:
                     print(f"[refine] job {job}", file=sys.stderr)
-                run_job(job, limit=batch, verbose=verbose)
+                try:
+                    run_job(job, limit=batch, verbose=verbose, limiter=limiter)
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    print(f"[refine] job {job} failed: {exc}", file=sys.stderr)
             # Release fragmented Python heap arenas back to the OS
             gc.collect()
             try:

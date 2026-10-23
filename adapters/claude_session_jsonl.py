@@ -15,7 +15,23 @@ from adapters.jsonl_io import session_parse_context
 
 _MESSAGE_TYPES = frozenset({"user", "assistant"})
 _SIGNAL_TYPES = frozenset({"user", "assistant", "system"})
-_PROBE_LINES = 10
+# Metadata rows before the first message can exceed the old 10-line probe window.
+_SUBSTANTIVE_PROBE_BUDGET = 10
+_PROBE_MAX_NONBLANK = 200
+_METADATA_RECORD_TYPES = frozenset(
+    {
+        "ai-title",
+        "agent-name",
+        "api-request-shape",
+        "atis-latch",
+        "attachment",
+        "cost-state",
+        "file-history-snapshot",
+        "last-prompt",
+        "mode",
+        "permission-mode",
+    }
+)
 
 _STRIP_TAGS = (
     "system-reminder",
@@ -84,24 +100,38 @@ def is_claude_session_jsonl(path: Path | str) -> bool:
     return _probe_claude_session(p)
 
 
+def _is_metadata_record(record: dict) -> bool:
+    rtype = record.get("type")
+    return isinstance(rtype, str) and rtype in _METADATA_RECORD_TYPES
+
+
 def _probe_claude_session(path: Path) -> bool:
-    """First N non-blank lines must carry sessionId and a signal type."""
+    """Within the probe window, require sessionId and a user/assistant/system row.
+
+    Metadata-only prefixes (ai-title, file-history-snapshot, etc.) do not
+    consume the substantive line budget so newer transcripts with long headers
+    still match.
+    """
     seen_session = False
     seen_type = False
+    substantive_seen = 0
     try:
         for record in _iter_claude_jsonl_entries(
-            str(path), max_nonblank=_PROBE_LINES
+            str(path), max_nonblank=_PROBE_MAX_NONBLANK
         ):
-            if record is None:
-                continue
-            sid = record.get("sessionId") or record.get("session_id")
-            if isinstance(sid, str) and sid:
-                seen_session = True
-            rtype = record.get("type")
-            if rtype in _SIGNAL_TYPES:
-                seen_type = True
-            if seen_session and seen_type:
-                return True
+            if record is not None:
+                sid = record.get("sessionId") or record.get("session_id")
+                if isinstance(sid, str) and sid:
+                    seen_session = True
+                rtype = record.get("type")
+                if rtype in _SIGNAL_TYPES:
+                    seen_type = True
+                if seen_session and seen_type:
+                    return True
+            if record is None or not _is_metadata_record(record):
+                substantive_seen += 1
+                if substantive_seen >= _SUBSTANTIVE_PROBE_BUDGET:
+                    break
     except OSError:
         return False
     return False
@@ -175,6 +205,8 @@ def parse(filepath: str) -> list[dict]:
     messages: list[dict] = []
     for record in _iter_claude_jsonl_dicts(filepath):
         rtype = record.get("type")
+        if isinstance(rtype, str) and rtype in _METADATA_RECORD_TYPES:
+            continue
         if rtype not in _MESSAGE_TYPES:
             continue
         if record.get("isSidechain") is True:

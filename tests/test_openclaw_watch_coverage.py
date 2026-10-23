@@ -397,7 +397,12 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
             @contextmanager
             def fake_session(*, entrypoint=None, **kwargs):
                 del entrypoint, kwargs
-                yield type("S", (), {"store": store, "live_cfg": cfg, "decision": None})()
+                from tests.fake_production_write_session import (
+                    counting_fake_production_write_session,
+                )
+
+                with counting_fake_production_write_session(store, cfg) as session_obj:
+                    yield session_obj
 
             @contextmanager
             def fake_boundary(**kwargs):
@@ -433,7 +438,8 @@ class IsolatedWatchCoverageTests(unittest.TestCase):
                 reconcile_manifest(str(man), cfg, dispatch=dispatch, recorded_argv=recorded)
 
             argv_ok = recorded and all(
-                row[-3:] == ["index", "--file", path] for row, path in zip(recorded, dispatched)
+                row[-4:] == ["index", "--file", path, "--now"]
+                for row, path in zip(recorded, dispatched)
             )
 
             def retrieve(nonce: str) -> list[dict]:

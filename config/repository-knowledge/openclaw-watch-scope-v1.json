@@ -342,6 +342,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "bootstrap_safety.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "bootstrap_supersession.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "brief.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -398,6 +408,16 @@
     },
     {
       "path": "chroma_write_store.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "chunk_expand.py",
+      "class": "include",
+      "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "chunk_render.py",
       "class": "include",
       "reason": "combined-system maintenance file"
     },
@@ -1917,6 +1937,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-09-27-pr-steward-reminder-decision-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-10-11-issue-286-codex-stage1-packet.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2063,6 +2093,21 @@
     },
     {
       "path": "docs/inter-model/CODEX-2026-09-23-switchboard-claude-adversarial-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CODEX-2026-10-05-issue-286-live-activation-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -2342,6 +2387,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CURSOR-2026-10-10-issue-286-codex-rollout-admission-execute-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CURSOR-2026-10-11-issue-286-codex-rollout-admission-corrective-4-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/DECISION-REVIEW-GUARDRAILS.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2552,6 +2607,21 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/KIRO-2026-10-15-issue-286-stage2-fixes-design-review-r4.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/KIRO-2026-10-17-issue-286-transform-compatibility-review.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/KSWEEP-PREVIEW-2026-07-07.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -2658,6 +2728,16 @@
     },
     {
       "path": "docs/inter-model/SOAK-REPORT-2026-06-25.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-review-packet.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/SOL-2026-10-09-issue-286-bootstrap-safety-corrective-execute.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -3832,6 +3912,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/ARCHITECTURE-safe-harbor.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/ARCHITECTURE-semantic-dedupe-hygiene.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -3868,6 +3953,41 @@
     },
     {
       "path": "docs/plans/CONVMEM-FIVE-PRIORITY-ARCS.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/DESIGN-issue-286-codex-rollout-admission.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/DESIGN-issue-286-live-activation.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EVIDENCE-watch-oom-exposure-index-e2e-20261010T032215Z-5980fdce.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EVIDENCE-watch-oom-exposure-index-e2e-20261010T210439Z-31f4ffc5.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EVIDENCE-watch-oom-exposure-index-e2e-20261010T233510Z-9e8ad3b2.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EVIDENCE-watch-oom-exposure-index-e2e-20261011T004945Z-e0bd34c6.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/EVIDENCE-watch-oom-exposure-index-e2e.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -4042,6 +4162,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/EXECUTION-safe-harbor.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/EXECUTION-shadow-ledger-phase0.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4118,6 +4243,11 @@
     },
     {
       "path": "docs/plans/RUNBOOK-cg2-production-activation.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/SCOPED-PROOF-WRITER-INVENTORY.json",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -4203,6 +4333,11 @@
     },
     {
       "path": "docs/plans/STATUS-recovery-authority.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/plans/STATUS-safe-harbor.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -4382,6 +4517,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/plans/VERIFY-safe-harbor.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/plans/VERIFY-semantic-dedupe-hygiene.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4475,6 +4615,11 @@
       "path": "docs/plans/git-hygiene-baseline.md",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/incremental_transform_epoch_bump_checklist.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/reasoning-modes.md",
@@ -5202,6 +5347,21 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "hermetic_open_guards.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "hermetic_path_guard.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_checkpoint_migration.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "incremental_jsonl.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5227,12 +5387,47 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "incremental_jsonl_codex_admission.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_jsonl_cohort_budget.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "incremental_jsonl_formats.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "incremental_jsonl_isolation.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_jsonl_kiro_admission.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_jsonl_production.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_mutation_proof.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_retry_state.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "incremental_transform_contract.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -5250,6 +5445,11 @@
       "path": "inter_model_index.py",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "inter_model_rejections.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "inventory.py",
@@ -5273,6 +5473,11 @@
     },
     {
       "path": "ledger_recent.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "live_diagnosis.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -5482,6 +5687,11 @@
       "reason": "exclusion:credentials"
     },
     {
+      "path": "scripts/bootstrap-incremental-jsonl.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "scripts/check_ci_critical_invariants.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5548,6 +5758,11 @@
     },
     {
       "path": "scripts/crush-hook-convmem-allow.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "scripts/crush-hook-convmem-ritual-autorun.sh",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -5668,6 +5883,11 @@
     },
     {
       "path": "scripts/generate-site-reference.sh",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "scripts/generate_scoped_proof_writer_inventory.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6042,12 +6262,112 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/_c22_recovery_outage_probe.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/_chroma_write_guard_worker.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/_r7_recovery_probe.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_bootstrap.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_restic_ci.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t2_cli.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t3_backend_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t3_fault_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t3_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_common.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_concurrency.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_harness.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_network.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_order.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_probe.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_publication.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_pytest.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_refusal.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_terminal.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/_safe_harbor_t4_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/ci-critical-invariants.txt",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/conftest.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6058,6 +6378,11 @@
     },
     {
       "path": "tests/export_compaction_sigkill_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/fake_production_write_session.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6317,6 +6642,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/refine_scratch_env.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/safe_harbor_t3_fixtures.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/scratch_jsonl_isolation_worker.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6447,6 +6782,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_chunk_render_ingest_parity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_ci_contract.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6518,6 +6858,11 @@
     },
     {
       "path": "tests/test_crush_hook_search_inheritance.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_crush_ritual_autorun_single_flight.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6647,6 +6992,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_expand_cli_registration.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_export_compaction.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6717,6 +7067,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_full_chunk_expansion.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_git_hooks.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6725,6 +7080,11 @@
       "path": "tests/test_governed_recovery_and_writers.py",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "tests/test_governed_recovery_matrix_admitted.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "tests/test_governed_writer_gate.py",
@@ -6738,6 +7098,21 @@
     },
     {
       "path": "tests/test_incremental_index_contract_inventory.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_bootstrap_command.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_bootstrap_safety.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_bootstrap_supersession.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6772,6 +7147,41 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_incremental_jsonl_codex_admission.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_admission_predicate_extra.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_corrective_4.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_corrective_5.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_rollout_route.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_route_corrective.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_codex_watch_corrective.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_incremental_jsonl_config.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6782,7 +7192,17 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_incremental_jsonl_exact_path_recovery_parity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_incremental_jsonl_isolation.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_jsonl_live_boundary.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6793,6 +7213,11 @@
     },
     {
       "path": "tests/test_incremental_jsonl_state.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_incremental_transform_compatibility.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -6820,6 +7245,91 @@
       "path": "tests/test_inter_model_doc.py",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "tests/test_issue_286_commit_digest_reuse.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_budget.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_codex_regression.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_routing.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_sidecar.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_kiro_incremental_watcher.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "class": "unrelated",
+      "path": "tests/test_issue_286_rollback_fresh_before_image.py",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_scoped_proof_shadow.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_corrective12.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_corrective6_audit.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_corrective7_entrypoint.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_corrective7_q8.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_wedge_fixes.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_stage2_wedge_probes.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_286_watcher_child_index_now.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_issue_308_inter_model_rejection.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_jsonl_prefix_streaming_digest.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "tests/test_judge_injection_hardening.py",
@@ -6883,6 +7393,11 @@
     },
     {
       "path": "tests/test_ledger_related.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_live_diagnosis.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7013,6 +7528,11 @@
     },
     {
       "path": "tests/test_next_steps.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_openai_distill_provider.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7202,6 +7722,16 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "tests/test_repository_knowledge_committed_manifest.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_repository_knowledge_failure_cache.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_repository_knowledge_scope.py",
       "class": "include",
       "reason": "combined-system maintenance file"
@@ -7253,6 +7783,81 @@
     },
     {
       "path": "tests/test_safe_file_reindex.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t1.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t2.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t3.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t3_backend_proof.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t3_ci.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t3_matrix.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_concurrency_real.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_durability.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_fixture_scope.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_matrix.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_order.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_publication.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_refusal.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_restic_ci.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_safe_harbor_t4_terminal.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7452,6 +8057,31 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_watch_oom_cgroup_runner.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_watch_oom_exposure_index_e2e.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_watch_oom_live_diagnosis_d1.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_watch_oom_live_diagnosis_d1_canaries.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_watch_oom_live_diagnosis_d1_isolation.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_watch_oom_stream_brief.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7487,6 +8117,101 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "tests/test_zz_claude_verify10.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify15.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify16.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify17.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify23.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify24.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify26.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify29.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify8.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify8b.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify8c.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify8d.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_claude_verify9.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit_r3.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit_r4.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit_r5.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit_r6.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_zz_codex_audit_r7.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/watch_oom_brief_hermetic.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7497,7 +8222,37 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/watch_oom_cgroup_common.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_cgroup_probe.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_cgroup_runner.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_cgroup_supervisor.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/watch_oom_exposure_hermetic.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_exposure_index_e2e_support.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_exposure_index_e2e_worker.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7512,12 +8267,52 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/watch_oom_live_diagnosis_bwrap.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_dual_boundary.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_inner_supervisor.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_net_probe.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_parent.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_support.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_live_diagnosis_worker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/watch_oom_memory_test_support.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "tests/watch_oom_memory_worker_shared.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/watch_oom_mount_probe.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -7547,6 +8342,21 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "watch_circuit_breaker.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "watch_kiro_paths.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "watch_source_paths.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "work_git.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7560,7 +8370,7 @@
   "entries": [
     {
       "path": "AGENTS.md",
-      "sha256": "1706b028ded3298e4559f82e5cf0b6e83df6216fc4458e070927875821510e43",
+      "sha256": "8c5c18f0047b657f017a1f7d7c1006eba292b3aa9360837d679a054d794db6c7",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7628,7 +8438,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "9623badb59c7994c910ee500375cf2d3e8955e8287b8ea6dc825dc3ea8ebb554",
+      "sha256": "97bbdbbcaead8e2bd9f780d9147ddd347cecbdf16a684077757ba73be0f270ff",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7645,7 +8455,7 @@
     },
     {
       "path": "chroma_write_store.py",
-      "sha256": "c864d43ce887a211b6c0a6cfec3731309509f472762599d0ca389ac1859afcf0",
+      "sha256": "b10199cb0e9f7ea7861718afc2fb61cd5b45c16d03d6b0e3dc6dd726918908d5",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7661,8 +8471,42 @@
       "sensitivity": "source_code"
     },
     {
+      "path": "chunk_expand.py",
+      "sha256": "be852b258f6fe38c3bba9c877c038024b2f39e8a0efa3afd00cbe40f10788239",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_expand.py",
+        "chunk expand"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
+      "path": "chunk_render.py",
+      "sha256": "abe9b105ebbbfcc5e59b304627c89403948a459ee0c4e1396097978cd6643184",
+      "content_class": "python",
+      "parser_mode": "python_ast_spans",
+      "adapter_contract_version": "repository_knowledge_v1",
+      "source_type": "repository_knowledge_v1",
+      "required_state": "current",
+      "reviewed_state": "reviewed",
+      "owner": "convmem-maintainers",
+      "freshness_role": "current_guidance",
+      "retrieval_needles": [
+        "chunk_render.py",
+        "chunk render"
+      ],
+      "sensitivity": "source_code"
+    },
+    {
       "path": "config.example.toml",
-      "sha256": "824aae92d737cc059887bd4783774ae4d60717db112734882298b5305be98a51",
+      "sha256": "dc059d4311fd871ec501ecfef45bb3a90ec956917890bab69ef430d5e03717f5",
       "content_class": "toml",
       "parser_mode": "toml_table_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7679,7 +8523,7 @@
     },
     {
       "path": "config.py",
-      "sha256": "7546cdc6e6534e257f8ebffa972768762ce777cbcb5c927dd51454c0d9f931cb",
+      "sha256": "3bcfdd5aed6ba56995c42a977dc3cb453fc24f8d9a8741d0507454d3246df1e1",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7696,7 +8540,7 @@
     },
     {
       "path": "config/agent-protocol.md",
-      "sha256": "ef22cd8aad85c4207a8295a4ac79a779240c27a52d35a42b5136094d5bc91061",
+      "sha256": "ffe03dfd2f08cafb496705a453b729bad793aa6a17b32e038294bdafc49bd482",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7730,7 +8574,7 @@
     },
     {
       "path": "conflict_events.py",
-      "sha256": "0d41dbe4dca05e250ff2940698f5f1b36514365684198752a4258e393cc11a99",
+      "sha256": "42f8f1b998542c2c161a50340e4f1ac0027dd2e49cc8a7ca835279ba4e21b70d",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7747,7 +8591,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "8af10ddaf10f76ca8e9c0daca87c3458b72ea30ab5b0bf43ed1dd322f41ba221",
+      "sha256": "65ac6f6a91ca4e1b33a2c7c6618430ab7e38d704be0c89c5bc18d0288ae8ba01",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7815,7 +8659,7 @@
     },
     {
       "path": "docs/RECOVER.md",
-      "sha256": "abb2c79c9621468d6a7520f3a332e0a13c75088240dd9ee886b0de1920186094",
+      "sha256": "0795b5d8ff103f1bb1ee0775150a2316c9da1d51c91d799a374ae7eab07670f5",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -7934,7 +8778,7 @@
     },
     {
       "path": "docs/plans/ARCHITECTURE-openclaw-convmem-integration.md",
-      "sha256": "11a22c8fe63e5669b197727b8ac6af11a294587bb6a8996fcaeb12c24aada9f4",
+      "sha256": "27556d181d4b8a5c9c7bfd6d8aabe268f8c9ca154e55801ce1c4fcf03e1b6943",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8019,7 +8863,7 @@
     },
     {
       "path": "docs/plans/EXECUTION-openclaw-convmem-integration.md",
-      "sha256": "03b2acc874c725198ec1f29e0b9fc4725a0fc71e2a06998103e3d205c8d404b3",
+      "sha256": "2330a2b1bb4b620f3c268838f69c67ddd2f6722c5f205ee541c8a706e83b080a",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8036,7 +8880,7 @@
     },
     {
       "path": "docs/plans/EXECUTION-openclaw-convmem-milestone-plan.md",
-      "sha256": "64596d872672142cc78904f01325f364fa1fafa8df38bf6ab69fd23bb0bd7409",
+      "sha256": "b7a7706234afa0ee17494f960c5f3a510a12c3463632392de3b5557a7f2110be",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8121,7 +8965,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-convmem-integration.md",
-      "sha256": "634937c93719b0e3bf223c714210d1f52d4cfe9a65fd02463510d454ee34de0d",
+      "sha256": "4c1cd64085b13ec7753509e54ea59e863d15204a8753595fe4e8061949649fe2",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8138,7 +8982,7 @@
     },
     {
       "path": "docs/plans/STATUS-openclaw-watch-coverage.md",
-      "sha256": "60ba555a76592083e743f77488c6eec3a2d6b9ce8332af732ae7f420525ca6d6",
+      "sha256": "7176c6646e54de801757b1c1a0cf7de7f2deb4ef6898ac3eec5988a22c4ef639",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8189,7 +9033,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "a3c20269537735a096921bdfd25451c403a83305c1d7f729962b453bd6a7a4f3",
+      "sha256": "5d1d7dfac184c617c3d8de09cab3226fa311455c321adbf7c33c10526de9c92e",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8206,7 +9050,7 @@
     },
     {
       "path": "inter_model_index.py",
-      "sha256": "144819012ffeead30bd7a5456689dd0b41ad850dd8ea11b70e545ba3fb6a3a13",
+      "sha256": "5a5c0392812b873180f983f7f7603af920d9f0278b37003d1c56a3980cc91499",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8223,7 +9067,7 @@
     },
     {
       "path": "mcp_server.py",
-      "sha256": "f9ac448cf8ecbb9c8822f327a79a7af753685458ea1cd71e0dbed9c0fae85cb3",
+      "sha256": "2b58eac1724a99b5935de99c7016160d33805ac6c419d8355e70fd45a41de431",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8240,7 +9084,7 @@
     },
     {
       "path": "observe.py",
-      "sha256": "2d50037cdc9fddf919996f52f98109bfb8acf106b918855300a6b7d6bcc34599",
+      "sha256": "e49b669d3e6cfb8197250309e8ca2bf09f30a08731c595644159be4b03d04400",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8257,7 +9101,7 @@
     },
     {
       "path": "propose_decision.py",
-      "sha256": "1bc098ad9275c8729269da90875eec83a65da7e3d37d288e091659f893b49dd1",
+      "sha256": "cf83ecab5f57bc474c007b50db9a9e6a244991ac622f0d297094ba6f1945dcb2",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8308,7 +9152,7 @@
     },
     {
       "path": "repository_knowledge_index.py",
-      "sha256": "51505c1f2d844a22b8211d9dcfbc78529760490fef40326e7acbb6313a8d9b15",
+      "sha256": "abc81b6d9ebf378c8018d50bfc573469e551d820c138e022cbb1b66168c6d0dc",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8325,7 +9169,7 @@
     },
     {
       "path": "repository_knowledge_scope.py",
-      "sha256": "6d6d7dd5e2f229dc3f0985dba3dae0e81ae2b6f52c6d73a11557ebf5715735a7",
+      "sha256": "6effd5c3202fdb0e1ba81ddda76891e7a395ecf51799a5f2e10213fcde3a6b65",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8342,7 +9186,7 @@
     },
     {
       "path": "repository_knowledge_sync.py",
-      "sha256": "0e15be89291e20dd59161b52a54bb775bf0ea711350fa154befc87fcfbf575d4",
+      "sha256": "b29f27f2b70a2f00e0bf9e09be1824cd976c3872d2a4613dc0526e1d5a0f7227",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8359,7 +9203,7 @@
     },
     {
       "path": "source_reconciler.py",
-      "sha256": "43fbfef1a8e7fbbe501d00a69f5604a5df077e3f178bdeab1a585b9306464952",
+      "sha256": "7f2cf2609b2a2b5d8dac83f71f458f8ea3b0459b2aac8448398b14db231e7915",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8563,7 +9407,7 @@
     },
     {
       "path": "tests/test_governed_recovery_and_writers.py",
-      "sha256": "909b1834e94f60aaecc3dbfe8978350a2fc398366c7e0078cefb6c5964807f64",
+      "sha256": "fb3e9b3b2f8d83cbfadb713d3629d1b1008286ef8f273bc7c88ac07bbf526ad4",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8597,7 +9441,7 @@
     },
     {
       "path": "tests/test_inter_model_doc.py",
-      "sha256": "5e0b2c199e63a52e4dd1670e2ea70e1a390d9b0da3dee9c257a9def3980c8724",
+      "sha256": "02f2db971b01281f5d5ed2fb61c2165e8227dee5587dd29afe4cf1687eabeed0",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8614,7 +9458,7 @@
     },
     {
       "path": "tests/test_openclaw_watch_coverage.py",
-      "sha256": "ab040f7e18de366b3933bce634968d2f9c7ca9ae020bc8d8d0fda0b2f3c7f93d",
+      "sha256": "73c286e0182577d987ce323c04338ff23ee24ea55aed33297f75a6dd1a705c91",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8631,7 +9475,7 @@
     },
     {
       "path": "tests/test_propose_decision.py",
-      "sha256": "929405645d85745f2b3432512b1f91cf5ab529cd215431336f24319e7fafab5a",
+      "sha256": "309f964e300e5249ad46bf96f094754a378d3bf09a0b340c49acd7a61b40751c",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8682,7 +9526,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_adapter.py",
-      "sha256": "1341a2a9dd1ea7053f727a5823657899723a5d607752cc3e76c4188e03a6b40f",
+      "sha256": "61d5f5c5a24033dc4919205bffd4dd82ff144b71ca9df8e42adc120e28f06eb6",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8716,7 +9560,7 @@
     },
     {
       "path": "tests/test_repository_knowledge_sync.py",
-      "sha256": "fecc1ee674f40db3bd6055940e50d9661c5bb32c55837d96e91366b51f0fc563",
+      "sha256": "ad13df58dd2d381b5b93d72c20eac24ef5ac3d877a24677e7ec7795b9b9e4a78",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8733,7 +9577,7 @@
     },
     {
       "path": "tests/test_shadow_writer_coverage_scan.py",
-      "sha256": "665e2895c22883e0f048138c22f6afa108c91f4ce2e8ded39262d06031ebf6b9",
+      "sha256": "2ae5bf8197cbf408c056cbcf7d7bb9df6894ab29e6786792a62b24fb45c0246b",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8750,7 +9594,7 @@
     },
     {
       "path": "tests/test_shadow_writer_gate_c3.py",
-      "sha256": "0089b522d951e4d9c7e9d5229c9ad06418df8ae8ef775912f5547dc9cb9e1420",
+      "sha256": "bfa90a157cc03ea094816d4935327b385097d7ef97b274f92b4a549aea467f66",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8784,7 +9628,7 @@
     },
     {
       "path": "tests/test_watch_skip.py",
-      "sha256": "52ff10655821b67d43e29d4d1c3ea7c9720a9e9809613cae5bf095a1d5f96c6c",
+      "sha256": "87200fa2cf57934d9c77e0f2410394d9d76ec199b890349233766d41770a58a1",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8818,7 +9662,7 @@
     },
     {
       "path": "watch.py",
-      "sha256": "ff226b0890017175af2664a8d5da49a9a31eca9a9ee750084b6535995a94cb7c",
+      "sha256": "0a3f9f23dd192dc9aa30d46ee6b61ae5a5c6a6b9701bac8e70760d0a9edd5214",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

@@ -297,6 +297,13 @@ def _append_jsonl(
 
 
 def persist_ingest_dedupe(cfg: dict, result: IngestDedupeResult) -> dict:
+    from purge_locks import index_write_flock
+
+    with index_write_flock(cfg):
+        return _persist_ingest_dedupe_locked(cfg, result)
+
+
+def _persist_ingest_dedupe_locked(cfg: dict, result: IngestDedupeResult) -> dict:
     data_dir = Path(cfg["index"]["chroma_dir"]).expanduser().parent
     exact_written = _append_jsonl(
         data_dir / "ingest_duplicate_suppressions.jsonl",

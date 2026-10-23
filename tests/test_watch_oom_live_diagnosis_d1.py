@@ -48,6 +48,7 @@ from tests.watch_oom_live_diagnosis_support import (
     d1_parent_teardown_postcheck,
     load_external_backup_manifest,
     overlay_live_diagnosis_env,
+    d1_scratch_base,
     prepare_scratch_arm,
     production_canary_drift_lines,
     read_d1_harness_limits,
@@ -62,13 +63,14 @@ from tests.watch_oom_live_diagnosis_support import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
 WORKER = Path(__file__).resolve().parent / "watch_oom_live_diagnosis_worker.py"
 RUN_CGROUP = os.environ.get("CONVMEM_D1_CGROUP") == "1"
 requires_bwrap_userns = pytest.mark.skipif(
     not d1_bwrap_integration_available(),
     reason="bwrap user-ns integration unavailable on this host",
 )
-SCRATCH_BASE = ROOT / "tests" / ".d1-scratch-arms"
+SCRATCH_BASE = d1_scratch_base(ROOT)
 
 
 def _worker_command(layout: dict) -> list[str]:
@@ -437,12 +439,19 @@ def test_network_denied_under_hermetic(layout: dict, monkeypatch: pytest.MonkeyP
         "CONVMEM_LIVE_DIAG_INDEX_PID_PATH",
         str(layout["index_pid_path"]),
     )
+    import brief
+    import ingest
+
+    # bootstrap_index_child() is a child-process entry hook: its patches never stop.
+    monkeypatch.setattr(brief, "DEFAULT_BRIEF_PATH", brief.DEFAULT_BRIEF_PATH)
+    monkeypatch.setattr(ingest, "_LIVE_DIAG_PATCHED", False, raising=False)
     try:
         bootstrap_index_child()
         with pytest.raises(LiveDiagnosisRefused, match="network_denied"):
             socket.create_connection(("127.0.0.1", 9), timeout=0.2)
     finally:
         teardown_hermetic_guards()
+        patch.stopall()
 
 
 def test_canary_drift_fail_closed() -> None:

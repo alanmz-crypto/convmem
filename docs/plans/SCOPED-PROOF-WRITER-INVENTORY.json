@@ -1,0 +1,307 @@
+{
+  "generated_from": "docs/plans/SHADOW-WRITER-COVERAGE-INVENTORY.json",
+  "purpose": "Arc #286 shadow proof writer route inventory",
+  "routes": [
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "convmem.py:1884",
+      "owner": "production_chroma_write_session",
+      "route_id": "convmem.py:1884",
+      "shadow_inventory_ref": "convmem.py:1884"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "convmem.py:504",
+      "owner": "production_chroma_write_session",
+      "route_id": "convmem.py:504",
+      "shadow_inventory_ref": "convmem.py:504"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "convmem.py:609",
+      "owner": "production_chroma_write_session",
+      "route_id": "convmem.py:609",
+      "shadow_inventory_ref": "convmem.py:609"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "convmem.py:715",
+      "owner": "production_chroma_write_session",
+      "route_id": "convmem.py:715",
+      "shadow_inventory_ref": "convmem.py:715"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "incremental_jsonl.py:947",
+      "owner": "production_chroma_write_session",
+      "route_id": "incremental_jsonl.py:947",
+      "shadow_inventory_ref": "incremental_jsonl.py:947"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "ingest.py:671",
+      "owner": "production_chroma_write_session",
+      "route_id": "ingest.py:671",
+      "shadow_inventory_ref": "ingest.py:671"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "ingest.py:671",
+      "owner": "production_chroma_write_session",
+      "route_id": "ingest.py:671",
+      "shadow_inventory_ref": "ingest.py:671"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "ingest.py:1257",
+      "owner": "production_chroma_write_session",
+      "route_id": "ingest.py:1257",
+      "shadow_inventory_ref": "ingest.py:1257"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "inter_model_index.py:313",
+      "owner": "production_chroma_write_session",
+      "route_id": "inter_model_index.py:313",
+      "shadow_inventory_ref": "inter_model_index.py:313"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "observe.py:872",
+      "owner": "open_production_write_store",
+      "route_id": "observe.py:872",
+      "shadow_inventory_ref": "observe.py:872"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "propose_decision.py:1272",
+      "owner": "open_production_write_store",
+      "route_id": "propose_decision.py:1272",
+      "shadow_inventory_ref": "propose_decision.py:1272"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "propose_decision.py:1272",
+      "owner": "open_production_write_store",
+      "route_id": "propose_decision.py:1272",
+      "shadow_inventory_ref": "propose_decision.py:1272"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "refine.py:347",
+      "owner": "open_production_write_store",
+      "route_id": "refine.py:347",
+      "shadow_inventory_ref": "refine.py:347"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "refine.py:347",
+      "owner": "open_production_write_store",
+      "route_id": "refine.py:347",
+      "shadow_inventory_ref": "refine.py:347"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "repository_knowledge_index.py:275",
+      "owner": "production_chroma_write_session",
+      "route_id": "repository_knowledge_index.py:275",
+      "shadow_inventory_ref": "repository_knowledge_index.py:275"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "repository_knowledge_sync.py:288",
+      "owner": "production_chroma_write_session",
+      "route_id": "repository_knowledge_sync.py:288",
+      "shadow_inventory_ref": "repository_knowledge_sync.py:288"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "scratch_jsonl_prototype/chroma_projection.py:66",
+      "owner": "production_chroma_write_session",
+      "route_id": "scratch_jsonl_prototype/chroma_projection.py:66",
+      "shadow_inventory_ref": "scratch_jsonl_prototype/chroma_projection.py:66"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "source_purge.py:341",
+      "owner": "open_production_write_store",
+      "route_id": "source_purge.py:341",
+      "shadow_inventory_ref": "source_purge.py:341"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "chroma_store.py:83",
+      "owner": "allowlisted_direct",
+      "route_id": "chroma_store.py:83",
+      "shadow_inventory_ref": "chroma_store.py:83"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "chroma_store.py:108",
+      "owner": "allowlisted_direct",
+      "route_id": "chroma_store.py:108",
+      "shadow_inventory_ref": "chroma_store.py:108"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "chroma_write_store.py:685",
+      "owner": "allowlisted_direct",
+      "route_id": "chroma_write_store.py:685",
+      "shadow_inventory_ref": "chroma_write_store.py:685"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "convmem.py:699",
+      "owner": "allowlisted_direct",
+      "route_id": "convmem.py:699",
+      "shadow_inventory_ref": "convmem.py:699"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "file_generation_store.py:97",
+      "owner": "allowlisted_direct",
+      "route_id": "file_generation_store.py:97",
+      "shadow_inventory_ref": "file_generation_store.py:97"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "shadow_replay.py:177",
+      "owner": "allowlisted_direct",
+      "route_id": "shadow_replay.py:177",
+      "shadow_inventory_ref": "shadow_replay.py:177"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "shadow_canary.py:528",
+      "owner": "allowlisted_direct",
+      "route_id": "shadow_canary.py:528",
+      "shadow_inventory_ref": "shadow_canary.py:528"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "shadow_canary.py:635",
+      "owner": "allowlisted_direct",
+      "route_id": "shadow_canary.py:635",
+      "shadow_inventory_ref": "shadow_canary.py:635"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "shadow_canary.py:649",
+      "owner": "allowlisted_direct",
+      "route_id": "shadow_canary.py:649",
+      "shadow_inventory_ref": "shadow_canary.py:649"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "propose_decision.py:424",
+      "owner": "open_chroma_for_read",
+      "route_id": "propose_decision.py:424",
+      "shadow_inventory_ref": "propose_decision.py:424"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "propose_decision.py:433",
+      "owner": "open_chroma_for_read",
+      "route_id": "propose_decision.py:433",
+      "shadow_inventory_ref": "propose_decision.py:433"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "cg2_rehearsal.py:199",
+      "owner": "allowlisted_direct",
+      "route_id": "cg2_rehearsal.py:199",
+      "shadow_inventory_ref": "cg2_rehearsal.py:199"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "cg2_rehearsal.py:199",
+      "owner": "allowlisted_direct",
+      "route_id": "cg2_rehearsal.py:199",
+      "shadow_inventory_ref": "cg2_rehearsal.py:199"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "mixed_mode_control.py:44",
+      "owner": "allowlisted_direct",
+      "route_id": "mixed_mode_control.py:44",
+      "shadow_inventory_ref": "mixed_mode_control.py:44"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "mixed_mode_proof.py:193",
+      "owner": "allowlisted_direct",
+      "route_id": "mixed_mode_proof.py:193",
+      "shadow_inventory_ref": "mixed_mode_proof.py:193"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "mediated_native",
+      "entrypoint": "chroma_write_store.py:1262",
+      "owner": "open_production_write_store",
+      "route_id": "chroma_write_store.py:1262",
+      "shadow_inventory_ref": "chroma_write_store.py:1262"
+    },
+    {
+      "coverage_status": "promotion_blocker",
+      "disposition": "coverage_unqualified_raw_handle",
+      "entrypoint": "chroma_write_store.py:1077",
+      "owner": "incremental_jsonl",
+      "route_id": "chroma_write_store:_IndexWriteGuardedChromaStore._collection"
+    },
+    {
+      "coverage_status": "shadow_observed",
+      "disposition": "nested_session_inherits_attempt",
+      "entrypoint": "chroma_write_store.py:1009",
+      "owner": "session_tls",
+      "route_id": "nested_production_chroma_write_session"
+    },
+    {
+      "coverage_status": "coverage_unqualified",
+      "disposition": "coverage_unqualified_cross_thread_or_fork",
+      "entrypoint": "incremental_mutation_proof.py:293",
+      "owner": "shadow_proof_session",
+      "route_id": "thread_fork_attempt_token_copy"
+    },
+    {
+      "coverage_status": "coverage_unqualified",
+      "disposition": "coverage_unqualified_stale_client",
+      "entrypoint": "chroma_store.py:168",
+      "owner": "chroma_store",
+      "route_id": "stale_chroma_client_outside_reload"
+    }
+  ],
+  "schema": "scoped_proof_writer_inventory_v1"
+}

@@ -415,7 +415,7 @@ def test_malformed_provider_attempt_events_fail_before_transport(
         with pytest.raises(BootstrapGrantError, match="unsupported provider"):
             journal.consume_provider_http_attempt(
                 {
-                    "provider": "openai",
+                    "provider": "anthropic",
                     "operation": "generate",
                     "model": "m",
                     "base_url": "https://provider.invalid",
