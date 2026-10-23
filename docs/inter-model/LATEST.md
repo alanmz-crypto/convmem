@@ -306,5 +306,5 @@ its existing archive/reference location. Use
 
 <!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
 <!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
-<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design review pickup -->
-<!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->
+<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 Claude design and implementation review pickup -->
+<!-- src: ../../cpu_tripwire.py — fault policy and candidate acknowledgment integration -->

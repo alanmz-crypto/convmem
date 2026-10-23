@@ -2,6 +2,7 @@
 
 **Arc:** Codex (priority #1: the deployment's doctor-acceptance criterion)
 **Date:** 2026-10-22
+**Updated:** 2026-10-23
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
@@ -546,7 +547,7 @@ because nothing caches the file:
 
 ## 11. Decisions made here, and those left to Ryan
 
-**Decided by this design** (Kiro may challenge any of them):
+**Specified by this design** (Claude may challenge any of them):
 
 - WARN, never PASS, for acknowledged faults.
 - A five-part key per journal entry, with the boot boundary built in.
@@ -562,15 +563,16 @@ because nothing caches the file:
 
 **Left to Ryan:**
 
-1. Whether to implement this at all, or take the no-code fallback (option 0):
-   accept doctor exit 1 as a known FAIL until the next reboot.
-2. The Execute, promotion and live-use grants in §10.1. Each is separate.
+1. Whether to merge and deploy the implemented candidate, or continue the
+   no-code fallback (option 0): accept doctor exit 1 as a known FAIL until reboot.
+2. The remaining PR/merge, promotion and live-use decisions in §10.1. Ryan
+   already granted branch-only implementation; each later gate remains separate.
 3. Whether an exit 0 that includes the acknowledged WARN satisfies the
    deployment's acceptance criterion (§10.1 step 7).
 4. Whether this stays a priority-#1 sub-deliverable of Arc Codex, as drafted,
    or becomes its own arc with a STATUS file.
 
-## 12. Residual risks (accepted, visible)
+## 12. Residual risks and limits
 
 - **A rewritten journal entry can strand an acknowledgment.** If the cursor
   changes (§5.2), the record goes inert and the FAIL returns; this is the safe

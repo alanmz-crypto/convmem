@@ -252,21 +252,67 @@ at least one test fail:
 
 ## A. Acceptance criteria (for G2)
 
-- [ ] T0–T51 pass. Existing policy assertions remain unchanged; the fake
+- [x] T0–T51 pass. Existing policy assertions remain unchanged; the fake
       journal runner serves JSON to the new reader and fixtures isolate HOME.
       `tests/test_doctor.py` also passes.
-- [ ] Every changed line is covered by a test (diff coverage), including the
-      error branches in `load_acks`, `write_ack` and the boot cross-check.
-- [ ] With no acknowledgment file, doctor's `cpu_tripwire` detail is
+- [x] Every changed executable production line is covered by a test (diff
+      coverage), including the error branches in `load_acks`, `write_ack` and the boot cross-check.
+- [x] With no acknowledgment file, doctor's `cpu_tripwire` detail is
       byte-identical to `main` for every T1 fixture.
-- [ ] The diff touches only `cpu_tripwire.py`, `cpu_tripwire_ack.py`,
+- [x] The diff touches only `cpu_tripwire.py`, `cpu_tripwire_ack.py`,
       `cpu_tripwire_events.py`, `cpu_tripwire_cli.py`, `convmem.py`, the tests,
-      the manifest, and the existing architecture/plan/review/status/routing docs. It touches none of the
-      §4 out-of-scope files.
-- [ ] ruff, the pylint gate, `git diff --check`, and the committed-manifest
-      pytest pass on a clean committed tree.
-- [ ] No test writes outside `tmp_path`, and no real `journalctl` or
+      the manifest, and the existing architecture/plan/review/status/routing
+      docs. It touches none of the §4 out-of-scope files.
+- [x] Scoped Ruff (and no new CLI findings), the pylint gate,
+      `git diff --check`, and the committed-manifest pytest pass
+      on a clean committed tree.
+- [x] Injected runtime inputs and outputs use `tmp_path`; no host log, live
+      config or network access occurs, and no real `journalctl` or
       `coredumpctl` runs (T0).
+
+### Verification evidence (Codex, 2026-10-23)
+
+Implementation and test code at `1768b4a94241853f12cb3fb19676178a9530ed14`
+was verified locally. The final review commit also carries documentation
+corrections and this evidence; Claude must use the exact full SHA in the
+accompanying handoff, not a moving branch.
+
+- Focused tests: **223 passed** across `tests/test_cpu_tripwire.py`,
+  `tests/test_cpu_tripwire_ack.py` and `tests/test_doctor.py` (Python 3.13.12,
+  pytest 9.1.1). Reproduce from the takeover checkout with the project virtual
+  environment and `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`, running `python -m pytest
+  -q -p no:cacheprovider tests/test_cpu_tripwire.py tests/test_cpu_tripwire_ack.py
+  tests/test_doctor.py`.
+- Committed-manifest guard: **1 passed**, not skipped, on the clean committed
+  tree. The existing `convmem.py` include hash matches its content.
+- Diff coverage: **639/639 changed executable production lines**, compared
+  with merged design `3d24c753a4b46132d349c34a2cd37b0fbba464c2`:
+  `convmem.py` 18, `cpu_tripwire.py` 97, `cpu_tripwire_ack.py` 304,
+  `cpu_tripwire_cli.py` 70, `cpu_tripwire_events.py` 150. Coverage was measured
+  during the focused suite with branch measurement enabled. This is line
+  coverage of the diff, not a claim that every possible branch is covered.
+- All **8 mutation checks were caught** by test assertions in temporary
+  copies: boot hash → T2; process-only/cursor-free matching → T45; false PASS
+  → T4/T5; incomplete-read acknowledgments → T43; partial store acceptance
+  → mixed-invalid-store; revoked-key reactivation → T31/T32; skipped durability
+  retry → post-replacement retry tests for both ack and revoke.
+- Ruff passes on the four tripwire modules and two tripwire test files.
+  The changed `convmem.py` lines have **0 Ruff findings**; that legacy file
+  retains 73 pre-existing findings. It was not broadly reformatted.
+- Scoped Pylint reports no findings in those tripwire modules/tests.
+  Repository-wide serial Pylint 4.0.6 regression gate: **PASS**, 437 findings
+  and 223 fingerprints, with no new/increased findings versus the base SHA.
+  CI's baseline remains unchanged. Local Python is 3.13.12; hosted CI uses
+  Python 3.12, so this is local verification, not a hosted-CI result.
+- `git diff --check` passes. No watcher, ingest, transform, checkpoint or
+  `doctor.py` code changed. The new manifest classifications grant no watch
+  scope. Six redundant CLI-local import statements were removed after added
+  usage text changed line-number-bearing Pylint fingerprints.
+
+No full-repository pytest, host tripwire invocation, hardware/power-loss test,
+runtime promotion, watcher restart or live acknowledgment was performed.
+The prior G0 FAIL and Claude's pending independent review remain separate
+from these verification results.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 
