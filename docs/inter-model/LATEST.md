@@ -50,14 +50,14 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — ON HOLD by Ryan (2026-10-19):**
-  Saved on `feat/2026-10-15-safe-harbor-rollout-evidence`; start with
-  [STATUS](../plans/STATUS-safe-harbor.md) for the resume checkpoint.
-  T1–T5 are merged; readiness and initializer-scope reviews are complete at their
-  pinned subjects. The initializer is unimplemented; no reviewer return is pending.
-  **Next lane: Ryan, explicit resume only.** Do not advance planning, review,
-  implementation or live work during the hold. Preserve the warning and existing
-  recovery/live gates. Revisit before maintenance that depends on those guarantees.
+- **Arc Safe Harbor — resumed; initializer implementation granted (2026-10-22, Claude):**
+  Ryan lifted the October 19 hold and approved Cursor building the legacy-source
+  initializer (EXECUTION §22, Kiro PASS at `c46fbc6`) in isolation.
+  **Next lane: Codex** (supervisor, driving Cursor's locked-down authoring) via the
+  [Cursor handoff](CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md) on
+  `feat/2026-10-22-safe-harbor-legacy-initializer`; state `NOT_STARTED`.
+  Results return for independent Kiro review. No PR, merge, deployment or live
+  work is granted; recovery facts stay open. See [STATUS](../plans/STATUS-safe-harbor.md).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -310,6 +310,7 @@ its existing archive/reference location. Use
 | Ryan-locked | A state that may be reviewed or prepared but cannot advance without Ryan’s explicit grant. |
 
 <!-- ref: ../plans/STATUS-safe-harbor.md — current Safe Harbor lane -->
+<!-- ref: ./CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — Safe Harbor initializer pickup -->
 <!-- src: ../plans/ROLLOUT-safe-harbor.md — returned preflight and remaining readiness -->
 <!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
 <!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->

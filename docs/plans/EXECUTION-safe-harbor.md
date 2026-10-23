@@ -1088,10 +1088,49 @@ There are no remaining scope-decision conditions from that review.
 
 **Deferred until explicit owner resume:** Ryan may grant Cursor the bounded isolated initializer
 implementation/evidence in this section, with Codex supervision and results
-returned for independent review. No such implementation grant has been received.
+returned for independent review. No such grant had been received when this scope
+was reviewed; Ryan granted it on 2026-10-22 (section 23).
 PR creation, live operations and deployment remain separate. Recovery inputs stay
 open for live apply. Kiro's PASS at `f45b051` continues to validate only the earlier
 readiness evidence; the new scope PASS does not establish implementation behavior.
 
+## 23. Legacy initializer implementation and isolated evidence — owner authorized
+
+**Arc: Safe Harbor. 2026-10-22. Recorded by Claude Opus 5.5 (resume check and
+handoff preparation). For: Cursor authoring under Codex supervision.**
+
+Ryan resumed the arc ("Yes, Safe Harbor. Can we pick that work up.") and, asked
+"Do you approve Cursor building the initializer, as Kiro approved the spec at
+`c46fbc6`?", answered: "yes". He named no supervisor, so STATUS's named
+supervisor, Codex, applies unless he says otherwise. This grants section 22
+exactly as reviewed. It changes no contract and grants no PR, hosted CI, merge,
+deployment, live run of the new command or recovery operation.
+
+**Base and handoff:** branch `feat/2026-10-22-safe-harbor-legacy-initializer`,
+created from this record's commit on `feat/2026-10-15-safe-harbor-rollout-evidence`
+(main `5c0a01b` merged at `7cea298`). The
+[Cursor handoff](../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md)
+holds the resume state, division of work, isolation, test order, stops and
+Codex's starting prompt. Permitted files, isolation and evidence are section 22's,
+with the section 15/18 authoring model.
+
+**Resume drift check (static, before selecting the base):** between `c6f0724`
+and `5c0a01b`, `chroma_write_guard.py` and `scripts/chroma_guard.py` are
+byte-identical and section 22's named helpers are unchanged, so Kiro's scope PASS
+applies to unchanged source. PR #395 added `purge_locks.index_write_flock` and a
+lock-ordering rule that the guard does not use; the recorder's reading is that
+section 22's locking is unaffected, and the supervisor confirms before authoring
+(a needed change returns under section 22). #395 also changed T4 helpers in the
+readiness selection, so the readiness PASS stays pinned to `f45b051` and the
+handoff's step 0 re-establishes the baseline. PR #403's manifest guard found
+three unclassified branch files and a stale `docs/RECOVER.md` hash; this record's
+commit fixes those and changes no other manifest entry. The pinned scratch Restic
+was missing from `/tmp`; the handoff names a local copy with the pinned digest.
+
+**Exit:** Codex returns code, evidence, corrections and limitations for
+independent Kiro review, then Ryan's acceptance. No self-acceptance; prior
+outage exceptions do not carry over.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
+<!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

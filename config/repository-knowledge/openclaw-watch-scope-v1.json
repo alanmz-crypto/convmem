@@ -2397,6 +2397,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/DECISION-REVIEW-GUARDRAILS.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -4240,6 +4245,11 @@
       "path": "docs/plans/README-openclaw-convmem-integration.md",
       "class": "include",
       "reason": "combined-system maintenance file"
+    },
+    {
+      "path": "docs/plans/ROLLOUT-safe-harbor.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "docs/plans/RUNBOOK-cg2-production-activation.md",
@@ -6287,6 +6297,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/_safe_harbor_rollout_evidence.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/_safe_harbor_t2_cli.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -7787,6 +7802,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_safe_harbor_rollout_legacy.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_safe_harbor_t1.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8659,7 +8679,7 @@
     },
     {
       "path": "docs/RECOVER.md",
-      "sha256": "0795b5d8ff103f1bb1ee0775150a2316c9da1d51c91d799a374ae7eab07670f5",
+      "sha256": "d14de97e3e8ab86c687bfd1f63bc5b0c75b7c267194fd1589e33fbbc795f40c8",
       "content_class": "markdown",
       "parser_mode": "markdown_heading_sections",
       "adapter_contract_version": "repository_knowledge_v1",

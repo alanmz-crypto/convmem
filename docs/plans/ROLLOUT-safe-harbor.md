@@ -1,10 +1,10 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**ON HOLD — Ryan, 2026-10-19.** This procedure remains an unexecuted draft.
-Preserve the warning and stop further work until explicit owner resume; start
-with [STATUS](STATUS-safe-harbor.md). Historical observations below are not current
-operational assurances. No service, corpus, backup/restore or deployment action
-is part of parking the arc.
+**RESUMED — Ryan, 2026-10-22, for isolated initializer implementation only**
+(EXECUTION §23). This procedure remains an unexecuted draft and nothing in it is
+granted; start with [STATUS](STATUS-safe-harbor.md). Historical observations below
+are not current operational assurances. No service, corpus, backup/restore or
+deployment action is authorized.
 
 **Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14

@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — ON HOLD at Ryan's request, 2026-10-19.** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. The initializer is unimplemented and operational readiness remains OPEN. Preserve this checkpoint; do not continue planning, review, implementation or live work until Ryan explicitly resumes the arc.
+> **Arc: Safe Harbor — RESUMED by Ryan 2026-10-22; initializer implementation granted (EXECUTION §23).** T1–T5 / V1–V6 remain accepted and merged through `c6f0724`; readiness PASS remains at `f45b051` and initializer-scope PASS at `c46fbc6`. Cursor builds the initializer in isolation under Codex supervision; it is not started. Operational readiness remains OPEN and no live work is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -35,51 +35,53 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **Parked checkpoint:** `feat/2026-10-15-safe-harbor-rollout-evidence`, in `.worktrees/feat-2026-10-15-safe-harbor-rollout-evidence`, is the GitHub-backed continuation branch. The pre-hold checkpoint is `b4eb03a8b3df8f9eacbf0d51c13ad0d5a302bda5`; this hold record follows it. Read this STATUS first on resume, then EXECUTION §22 and its pinned VERIFY review record. No new handoff file or scheduled reminder is needed.
+- **Continuation branches:** `feat/2026-10-15-safe-harbor-rollout-evidence` (worktree `.worktrees/feat-2026-10-15-safe-harbor-rollout-evidence`) holds the readiness evidence, the §22 scope and the §23 grant; main `5c0a01b` was merged into it at `7cea298`. Implementation happens on `feat/2026-10-22-safe-harbor-legacy-initializer`, created from the grant commit, per the [Cursor handoff](../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md). Neither branch has a PR.
 - **T1–T5 are on main:** incident retention/canonical identity (#387), target-bound preflight (#389), preservation and strict release (#391), serialized approval recovery (#392), and integrated evidence/operator handoff (#394).
 - **Latest squash:** `c6f07241ccf1a71d9d874fee963a37b04091b3ce`; its tree equals accepted PR #394 head `188184b28707eb87c042d579aa7bbcba043dd5d0`. [VERIFY closeout](VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping) records CI, pinned reviews and Ryan's exact-head outage exception.
 - **Historical deployed checkout:** the October 14 preflight observed runtime-main at `8a7cdab16420893fe26a2648d1d03f2b84d8589d`. October 17's bounded static inspection found it at `3e705e4197829f53ebbbd8433b59b60b648309d2`; the old deployment comparison is stale and has not been requalified. Disk identity does not establish loaded process identity.
 - **Operational preflight/draft:** [ROLLOUT](ROLLOUT-safe-harbor.md) records October 14 observations and a conditional sequence. Those service/timer observations are historical, not current guarantees. No rollout transition has been performed by this lane.
 - **Guard state at October 14 inspection:** two matching legacy snapshot generations lacked release evidence; no quarantine marker was present. Candidate reconciliation skips unchanged signatures, so it does not initialize these generations automatically. This lane performed no production validation/adoption.
 - **New isolated readiness evidence:** `tests/_safe_harbor_rollout_evidence.py` runs a fixed selection under the reviewed bootstrap; `tests/test_safe_harbor_rollout_legacy.py` rehearses representative old manifests. [VERIFY readiness](VERIFY-safe-harbor.md#isolated-rollout-readiness--installed-interpreter-and-legacy-state) records source pins, results and limitations. Runtime is unchanged; no production initialization command was added.
-- **Reviewed initializer scope:** EXECUTION §22 defines explicit preview/apply on the existing guard/CLI, durable originals, all-segment preparation before any CURRENT publication, no initializer pruning, and honest partial-completion reporting. [Kiro's scope PASS and delta](VERIFY-safe-harbor.md#legacy-initializer-scope--governing-review) are pinned to `8e0cfda` and `c46fbc6`. The initializer remains unimplemented; its future evidence matrix is not a passing test result.
+- **Reviewed initializer scope:** EXECUTION §22 defines explicit preview/apply on the existing guard/CLI, durable originals, all-segment preparation before any CURRENT publication, no initializer pruning, and honest partial-completion reporting. [Kiro's scope PASS and delta](VERIFY-safe-harbor.md#legacy-initializer-scope--governing-review) are pinned to `8e0cfda` and `c46fbc6`. Implementation is granted (§23) but not started; its evidence matrix is not yet a passing test result.
 
 ## 4. Completion State
 
-- **ON HOLD, not complete:** Ryan stopped further work on October 19. This is a clean planning boundary: scope review is complete, no initializer implementation has begun, and no live transition is underway in this lane. Remaining implementation, isolated evidence, independent review and operational qualification are substantial enough to defer rather than rush. Importance does not authorize continuation through the hold.
+- **Resumed 2026-10-22, not complete:** Ryan lifted the October 19 hold and granted §22's isolated implementation and evidence (EXECUTION §23). A static drift check found the initializer's two runtime files and named helpers unchanged on current main; one new lock from PR #395 awaits the supervisor's confirmation that §22's locking is unaffected. Implementation has not started and no live transition is underway.
 - Approved direction/name, every-restore owner disposition, execution plan and B-E4.1 remain settled. Ownership and gate exemptions are unchanged.
 - **Implementation and integrated verification complete:** T1–T5 / V1–V6 accepted and merged. BugBot reviewed no accepted SHA; each owner exception remains bound to its own candidate.
 - **Latest hosted evidence:** PR #394 head `188184b`, run `38668689296`, all six checks passed; Python 3.12 pytest 3,283 passed / 18 skipped / 252 passing subtests; critical collector exit 0; lint regression gate PASS against unchanged `fdc8da7` baseline. Raw lint status 30 is not a lint-clean result.
 - **Focused Python 3.11 evidence reviewed:** 83 existing safety cases and five new legacy cases passed, no skips/source drift. Kiro PASSed the bounded evidence with high confidence, correcting its initially overstated coverage before completion. Recorded logs were read, not rerun; hash maps were not independently recomputed by Kiro. This is not a full-suite or deployment PASS, or Ryan's acceptance.
 - **Deployment readiness OPEN:** old processes, timer routing, recovery inputs and an operational legacy initializer still require the named dispositions in ROLLOUT. The scratch refresh can create admissible evidence for synced state, but pending work still blocks release. Archival byte retention in tests is not a durable production archival procedure.
-- **Initializer planning/review complete:** Kiro's same-session delta closed B1–B3 (preview no-effect control, live/original source comparison, apply-time backend recheck). No scope-decision condition remains; isolated implementation/evidence still needs Ryan's grant. No new tests or production commands ran during this planning/review turn.
+- **Initializer planning/review complete:** Kiro's same-session delta closed B1–B3 (preview no-effect control, live/original source comparison, apply-time backend recheck). No scope-decision condition remains; Ryan granted isolated implementation/evidence on 2026-10-22. No new tests or production commands ran during the planning/review turn or the resume check.
 - At the October 14 preflight, the key-copy file was present on the mounted BIT-Brg drive; contents/equality/off-machine use were not checked. The ext4 destination was mounted and empty at top level. Those observations have not been refreshed. No current Rescuezilla artifact or accepted lost-work interval was established by that preflight.
 - Limits remain: historical T5-F1 exact causal timeline unproven; fixture restart/IO injection is not hardware power-loss proof; strict release may refuse recoverable states; auxiliary sink and incidental-writer limits remain as accepted.
 - **Startup exception (October 17):** doctor exited 1 on the retained Typora CPU-tripwire warning. Bounded read-only inspection established no ConvMem link or hardware cause. Ryan explicitly allowed static Safe Harbor planning/review to continue with the warning intact; this supplies no live-operation or healthy-host claim.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** explicitly resume Safe Harbor when ready. The next possible grant remains Cursor's bounded isolated initializer implementation/evidence under EXECUTION §22 at `c46fbc6`, with Codex supervision and independent review on return. A resume alone does not silently supply an implementation or live-operation grant.
+**Codex (supervisor) with Cursor (author):** implement and prove the initializer per the [Cursor handoff](../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md) and EXECUTION §22–§23. First confirm the index-write-lock drift note and re-establish the readiness baseline on the merged base. Return code, evidence, corrections and limitations for independent review. No PR, merge, deployment or production action.
 
-**All lanes:** preserve the branch and stop. No reviewer return is outstanding. On explicit resume, read this checkpoint and compare intervening source changes before selecting an implementation base; preserve existing PASSes at their exact subjects and review only material deltas. Do not restart settled architecture reviews or infer authority from earlier grants.
+**Kiro:** independent review of the returned candidate, on Ryan's review grant.
+
+**Ryan:** in parallel, the recovery facts in §6 item 1 (acceptable lost-work interval; newest Rescuezilla image, its location, independent access and restore-test history). They are needed before any live apply, not for the isolated build.
+
+**All lanes:** preserve existing PASSes at their exact subjects and review only material deltas. Do not restart settled architecture reviews or infer authority from earlier grants.
 
 ## 6. What Remains Before "Live" (sequential)
 
-**Deferred while on hold.** Resume cue: revisit this checkpoint before planning
-Safe Harbor deployment, legacy-source initialization, or hardware/recovery
-maintenance that depends on these guarantees. This is a saved reminder, not an
-automatic task or a live readiness claim. Recovery facts and runtime observations
-must be refreshed under the appropriate grant when work resumes.
+Resumed 2026-10-22. Recovery facts and runtime observations must be refreshed
+under the appropriate grant; nothing here is a live readiness claim. Revisit this
+list before hardware or recovery maintenance that depends on these guarantees.
 
 1. Resolve recovery artifact, independent access/custody and acceptable loss interval; any new capture or scratch restore needs its own bounded grant.
-2. Separately grant, implement and independently review EXECUTION §22's initializer; Kiro has passed the scope, but no public initializer or live procedure is qualified. Pending work is a refusal, not permission to flush or weaken release. Isolated implementation does not require guessing the still-open recovery facts.
+2. Implement (granted 2026-10-22, §23) and independently review EXECUTION §22's initializer; Kiro has passed the scope, but no public initializer or live procedure is qualified. Pending work is a refusal, not permission to flush or weaken release. Isolated implementation does not require guessing the still-open recovery facts.
 3. Review the complete operational procedure: all old clients/manual writers, timer routing, audit publication, guard preservation/adoption and conditional rollback. Keep watch stopped/disabled and retain other arcs' limits. No automatic first-write migration or generic reconcile fallback.
 4. Ryan grants only the named rollout transitions after those prerequisites pass. Record actual deployed identities and granted diagnostics afterwards. No implementation PASS or merge implies live recovery assurance.
 
 ## 7. Hard Stops (models cannot cross)
 
-- Ryan's October 19 hold takes precedence over earlier continuation instructions. This turn only saves/pushes the hold checkpoint, then stops. No new review, implementation, tests, PR, service change, backup/restore or deployment; retain the tripwire warning. The earlier static-only startup exception is not implementation/live authority.
-- EXECUTION §§20–21's evidence work and October 17's authorized §22 static review are complete. No service change, production corpus write, live backup/restore, deployment, runtime fix, PR creation, ledger write or session indexing. The reviewed §22 is not an Execute grant; no new tests are authorized.
+- Ryan's 2026-10-22 grant (EXECUTION §23) covers only isolated initializer implementation and evidence in the two named runtime files plus tests. No PR, hosted CI, merge, deployment, live run of the new command, service change, production corpus write, backup/restore or drive/key action; retain the tripwire warning.
+- EXECUTION §§20–21's evidence work and §22's static review are complete; §23 is the only open Execute grant. No ledger write or session indexing during execution, and no other new tests are authorized.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -107,6 +109,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-22 — Claude: recorded Ryan's resume and §23 initializer grant, merged main `5c0a01b` (initializer surface unchanged; one new lock for supervisor confirmation), fixed the manifest guard and wrote the Cursor handoff; Codex-supervised implementation next.
 
 - 2026-10-19 — Codex: parked Safe Harbor on its existing pushed branch and synchronized the saved handoff, including VERIFY's hold state and dated storage observations; scope review complete, initializer unimplemented, explicit owner resume required.
 
@@ -225,7 +229,8 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] ON HOLD by Ryan, October 19. The reviewed initializer scope and evidence are saved on the continuation branch; no review return is outstanding. Resume explicitly before implementation or further planning. Warning retained; recovery and live readiness remain unresolved.
+[Arc Safe Harbor] Resumed by Ryan on October 22. Cursor builds the reviewed legacy-source initializer in isolation under Codex supervision, then Kiro reviews it independently. Warning retained; recovery facts and live readiness remain unresolved, and no live work is granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
+<!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — current implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — accepted implementation, hosted evidence and merge mapping -->
