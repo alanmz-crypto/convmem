@@ -15,13 +15,39 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** the full 40-character SHA in Codex's accompanying completion
-message. That SHA includes this packet, the corrected architecture and execution
-plan, code, tests and routing. Do not review a moving branch or substitute its
-latest tip. In the checkout used for review, first compare `git rev-parse HEAD`
-with that SHA and inspect `git status --short` for changes to reviewed files.
-If the supplied SHA is missing or does not match, identify that exact evidence
-gap before judging the design. The branch is a location, not the review target.
+**Review target:** `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`.
+This immutable candidate includes the corrected architecture, execution plan,
+code, tests and the original review packet. Later reboot-checkpoint commits
+only make pickup self-contained; they do not advance the review target.
+
+Use a separate review checkout at that exact commit. First compare
+`git rev-parse HEAD` with the SHA above and inspect `git status --short` for
+changes to reviewed files. Do not substitute the latest branch tip or switch
+another lane's checkout. Read the binding design and implementation from the
+pinned revision. This updated packet supplies restart routing, not a new design.
+
+## Reboot checkpoint — 2026-10-23
+
+Ryan has requested preparation for shutdown/reboot; completion of the reboot
+has not been observed. All implementation, tests and verification summaries
+are committed and pushed on the branch above. There is no unfinished command
+or temporary-file dependency required to continue the review. Detailed local
+test results and reproduction instructions are in execution-plan §A.
+
+After restart:
+
+1. Resume **Claude's independent review** of the pinned SHA above. The local
+   worktree remains at the path above; GitHub holds the same task branch as
+   the recovery copy if the local checkout must be reconstructed.
+2. Treat host PIDs, service state and doctor results in the earlier evidence
+   as historical snapshots. Reboot is not evidence that hardware is healthy
+   or that the deployment's acceptance criterion has passed.
+3. Once the boot differs from `7f8e9d592ecc46c7aeb599df6b9457b2`, G5 for
+   Timeshift event `bab67b49aa4f` is moot. Do not replay its live acknowledgment
+   command against the new boot. The implementation review can still continue;
+   Ryan decides whether to merge/deploy it for future events.
+4. Preserve the pending independent review and all remaining Ryan gates.
+   No live acknowledgment, runtime promotion or acceptance was performed.
 
 The earlier packet recorded FAIL at merged design
 `3d24c753a4b46132d349c34a2cd37b0fbba464c2`. Codex re-reviewed the pushed revision
@@ -145,7 +171,7 @@ acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Codex implemented exact-entry acknowledgments and the
 required design corrections under Ryan's takeover grant. Claude reviews the
-accompanying exact SHA next. Earlier FAILs remain recorded; nothing is live.
+pinned exact SHA next; the reboot pickup is saved here. Earlier FAILs remain recorded; nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

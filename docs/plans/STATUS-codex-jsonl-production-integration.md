@@ -131,8 +131,15 @@ Start with the existing [review packet](../inter-model/KIRO-2026-10-22-doctor-fa
 (the historical KIRO filename is retained). It points to the binding
 [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), the
 [execution plan and test evidence](EXECUTION-doctor-fault-acknowledgment.md),
-and exact-revision pickup. Verify the checkout against Codex's accompanying
-full SHA before review.
+and self-contained reboot pickup. The fixed review target is
+`4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; verify the review checkout matches it.
+Later checkpoint documentation does not advance that candidate revision.
+
+Ryan has requested a shutdown/reboot checkpoint. No reboot completion has been
+observed in this session. All work is committed and pushed; resume with Claude's
+review after restart. The live-state descriptions below are dated evidence,
+not a guarantee about services or doctor results after reboot. Once the boot
+changes, skip the old Timeshift event's G5; any future live use needs its own grant.
 
 The implementation candidate:
 
@@ -386,6 +393,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
 
 | 2026-10-23 | Codex | Completed the branch-only doctor acknowledgment candidate under Ryan's takeover grant; Claude reviews design corrections and implementation; prior G0 FAIL and all live gates remain distinct |
+| 2026-10-23 | Codex | Saved Ryan's reboot checkpoint with the immutable review target and self-contained restart instructions; old-event G5 becomes moot when the boot changes |
 
 ## TL;DR
 

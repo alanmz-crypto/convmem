@@ -274,8 +274,9 @@ at least one test fail:
 
 Implementation and test code at `1768b4a94241853f12cb3fb19676178a9530ed14`
 was verified locally. The final review commit also carries documentation
-corrections and this evidence; Claude must use the exact full SHA in the
-accompanying handoff, not a moving branch.
+corrections and this evidence. Claude's fixed review candidate is
+`4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`, not a moving branch. Later reboot-checkpoint
+documentation leaves that review target unchanged.
 
 - Focused tests: **223 passed** across `tests/test_cpu_tripwire.py`,
   `tests/test_cpu_tripwire_ack.py` and `tests/test_doctor.py` (Python 3.13.12,
