@@ -92,6 +92,13 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Same-source publication fence | PR #411 (`6cacc1b`, reviewed tip `1916a15`) keeps the source lock through processed-row publication and journal cleanup. PR #412 (`1a68675`) records the merge. Ryan's exact-SHA grant was executed on 2026-10-22: the watcher now runs the fence. |
 | Effective watcher runtime | `.worktrees/runtime-main` is clean on branch `main` at granted SHA `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, fast-forwarded from `686d50e` after its indexing child completed. The watcher restarted once at `2026-10-22T13:52:35-05:00`, active under PID `904311`, invocation `db09e9881aa7454499a1ae117be5dac5`. Effective `MemoryMax` is `8589934592` bytes (8 GiB); live config SHA-256 remained `9719875a5906d0a708be2fc54640df74b9515c1be8e39e18401c8b25015db89c`. |
 
+The acknowledgment implementation on `feat/2026-10-22-cpu-tripwire-fault-ack`
+adds `cpu_tripwire_events.py` (classification/identity), `cpu_tripwire_ack.py`
+(strict store and atomic writers), and `cpu_tripwire_cli.py` (operator commands),
+with policy integration in `cpu_tripwire.py`. It is not on `main` or live.
+The revised [execution plan](EXECUTION-doctor-fault-acknowledgment.md) is the
+implementation and verification map for Claude's review.
+
 ## 4. Completion State
 
 | Milestone | State | Next gate |
@@ -104,116 +111,50 @@ granted `1a68675`; neither docs merge needs a deployment.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Design drafted, not reviewed, on `plan/2026-10-22-doctor-fault-ack`: [architecture](ARCHITECTURE-doctor-fault-acknowledgment.md), [execution plan](EXECUTION-doctor-fault-acknowledgment.md) and [Kiro pickup](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md). Acknowledgments are keyed per journal entry and bound to one boot; an acknowledged fault becomes a visible WARN, never PASS. No implementation exists. Ryan cannot reboot now. | Kiro design review (G0), then Ryan's Execute decision (G1). Promotion, live acknowledgment and acceptance are separate later gates (G4–G6) |
+| Doctor acknowledgment, priority #1 | Implemented on `feat/2026-10-22-cpu-tripwire-fault-ack` under Ryan's 2026-10-22 takeover grant to Codex. Five-field keys include the exact cursor; malformed reads preserve detected FAILs; same-key re-ack after revocation is refused. Design #415 is merged, the implementation is not. | Claude independent exact-tip review next. Merge, promotion, live acknowledgment and acceptance remain separate Ryan gates (G3–G6). Doctor acceptance remains unmet |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-Ryan granted promotion to exact SHA
-`1a686753d8fd1b710883050e8a4f9c45b7ae1e26` and one watcher restart under
-Part A of Claude's 2026-10-22 post-fence handoff on
-`origin/docs/2026-10-22-2026-10-22-arc-codex-post-fence-next-model`.
-Codex executed both after an idle-window check. That one-time grant is consumed;
-the next lane must not repeat the deployment under it.
+**The next lane is Claude, for independent review of the doctor acknowledgment
+implementation.** Ryan explicitly transferred implementation from Luna to Codex
+on 2026-10-22 and assigned Claude to review it. This is the current authorization;
+the original Kiro design-review pickup is historical.
 
-**The next lane is Kiro, for design review of priority #1.** The task is a
-reviewed acknowledgment of this specific crash that still flags new faults.
-A fresh design model (Claude) wrote the design on
-`plan/2026-10-22-doctor-fault-ack`, starting from the standalone
-[new-model handoff](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md),
-which Ryan squash-merged through PR #414 as `5c0a01b`. Pick up from the
-[Kiro review handoff](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-It links the binding
-[architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and the
-[execution plan](EXECUTION-doctor-fault-acknowledgment.md) with gates G0–G6.
-Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-under Ryan's PR Steward assignment; Ryan owns the merge.
+Review the exact pushed tip of `feat/2026-10-22-cpu-tripwire-fault-ack`, its
+[architecture](ARCHITECTURE-doctor-fault-acknowledgment.md) and
+[execution plan](EXECUTION-doctor-fault-acknowledgment.md). The earlier G0 FAIL
+remains historical evidence; it is not relabeled PASS by the implementation.
 
-The design itself:
+The binding behavior is:
 
-- **Key:** each acknowledgment is keyed to one kernel journal entry by boot ID,
-  realtime timestamp, kernel monotonic timestamp and message SHA-256.
-  Its ID is `4c6debf6cee1`.
-- **Result:** the matched fault becomes a visible WARN, never PASS.
-- **What it cannot hide:** new faults, machine checks and known-bad CPUs
-  coming back online keep FAILing.
-- **Failure handling:** a broken file or a boot mismatch never widens an
-  acknowledgment.
+- Exact identity includes boot ID, realtime timestamp, kernel monotonic
+  timestamp, message SHA-256 and the opaque cursor. The event ID is `bab67b49aa4f`.
+- An applied acknowledgment is a visible WARN, never PASS. New CPU faults,
+  machine checks and known-bad CPUs coming online retain FAIL.
+- Partial journal failures preserve detected faults and disable acknowledgments.
+- Revoked records retain their history. Re-ack of the same key is refused;
+  a changed cursor is a different key and requires a new operator action.
+- The file replacement is atomic. A directory-sync error after replacement
+  reports a complete new document with unconfirmed durability.
 
-Nothing is implemented. A Kiro PASS does not authorize implementation,
-promotion, live acknowledgment or acceptance; each is a separate Ryan gate.
-Ryan cannot reboot now. If he does reboot, the event leaves doctor's view and
-live use (G5) is moot.
-
-The fence is deployed and normal watcher activity has resumed, but full
-handoff acceptance is not claimed. The docs merges #413 (`75d8e2a`) and #414
-(`5c0a01b`) authorize no runtime or host changes.
-The promotion leaves the four checkpoint-safety files in §3 unchanged. Do not
-repeat the deployment, run protocol deployment, edit live configuration,
-bootstrap, clear quarantines, or initiate provider calls. Ryan also retains
-confirmation of Stage 1, Stage 2, and the residual-burn decision.
-
-Post-deployment doctor, run from `1a68675` with host access, exited 1 on the
-same CPU-tripwire report seen before deployment: a `timeshift` segfault on
-CPU 13 at `2026-10-22T13:01:22-05:00`. The first sandboxed diagnostic was
-interrupted after its backup query stalled; the host retry completed and both
-local/offsite backup checks passed. Ryan waived the session startup rules;
-that waiver does not establish the handoff's separate doctor-exit-0 acceptance
-check. Do not change the tripwire or repair unrelated runtime state in this task.
-
-The deployed-runtime recheck completed before `15:36:46 CDT` on 2026-10-22
-with exactly one failed check: the same Timeshift event; local/offsite backup,
-index, and native-crash checks passed. `cpu_tripwire.check()` rereads boot-scoped
-evidence rather than storing a failure latch. The standalone handoff pins the
-event's boot ID and journal timestamp, records the unresolved design questions,
-and preserves the later ingestion/retrieval queue. No acknowledgment mechanism
-has been designed or approved here; no failure was cleared, logs deleted,
-CPU configuration changed, or reboot performed.
-
-Host disposition: Ryan confirmed deliberate external-USB removal for testing
-while Timeshift was writing to its configured volume, UUID
-`b742a9e3-bc28-445b-b37f-e68fa959e70f` (`BIT-Brg-larch-7t`). USB loss at
-`13:01:18 CDT` preceded backup I/O failures and the `13:01:22` segfault.
-Storage-loss error handling is the leading crash hypothesis; the exact
-Timeshift software failure and any CPU defect remain unproven. No
-machine-check event was found in the checked boot journal. The retained
-CPU-attribution policy still classifies this event FAIL.
-
-Backup disposition: failed snapshot `2026-10-22_13-00-00` is absent;
-replacement `2026-10-22_13-03-52` has hourly/daily completion metadata and a
-journal success at `13:07:24 CDT`. The `14:00` check recognized it as the latest
-hourly/daily snapshot. Normal backup completion is established; restore and
-filesystem integrity were not tested.
-
-Stale-mount cleanup is complete. The retention script had selected the old
-`/run/timeshift/835726/backup` mount on disconnected `/dev/sdb2`, marked
-`emergency_ro,shutdown`, and exited 1 at `13:11:44 CDT`. Ryan's local root
-`fuser -v -m -M` check showed only the kernel mount entry, with no process PIDs;
-he then ran a normal `umount` of that exact path. Codex's `14:48:28 CDT`
-verification found the old mount absent and the same backup UUID still mounted
-read-write at `/run/media/lauer/BIT-Brg-larch-7t` on `/dev/sde2` (mount ID
-`1557`). The watcher remains active with PID `904311` and its original
-`13:52:35` activation timestamp. The one-time cleanup grant is consumed.
-Retention still records its earlier failed run; no retry, reset, snapshot
-deletion, or further watcher restart occurred. This cleanup does not change
-the recorded doctor failure or the tripwire policy.
-
-Stop and write a new-model handoff if further work requires a different lock
-order, transform contract, gate, or deployment model. Kiro bootstrap execution
-and unproven canary outcomes remain separate from this fence deployment.
+Only hermetic implementation and tests were authorized here. Claude's review,
+Ryan's PR/merge decision, exact-SHA runtime promotion, Ryan's one-event live
+acknowledgment, and acceptance remain distinct. The watcher still runs `1a68675`;
+its prior restart and Timeshift mount-cleanup grants are consumed. No further
+restart, bootstrap, quarantine clearing, provider call or live-config change is
+part of this work. Stage 1/Stage 2 and residual burn remain Ryan to confirm.
 
 ## 6. What Remains Before Live (sequential)
 
 Codex admission and the same-source publication fence are live.
 
-1. Kiro reviews the priority-#1 acknowledgment design (G0). Then come Ryan's
-   Execute decision (G1), hermetic Cursor implementation, exact-tip
-   verification, audit and review (G2), merge (G3), and a runtime promotion
-   with no watcher restart (G4). After that, Ryan acknowledges the one event
-   himself (G5) and decides on acceptance (G6). The original doctor criterion
-   still records FAIL until then. The no-code fallback, accepting the known
-   FAIL until a reboot, remains Ryan's option.
+1. Claude independently reviews the exact implementation tip and the revised
+   decoding/revocation contract. After review, Ryan decides the PR and merge
+   (G3), runtime promotion without a watcher restart (G4), one-event live
+   acknowledgment from his terminal (G5), and acceptance (G6). None has occurred.
+   If the host reboots first, the old event is inert and G5 is moot.
 2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
    records; keep unsupported outcomes **Ryan to confirm**. Review the reported
    quarantines and old wedged transaction without clearing them. Do not repeat
@@ -233,8 +174,8 @@ Codex admission and the same-source publication fence are live.
 
 | Stop | Owner | What it blocks |
 |---|---|---|
-| Architecture/plan review | Kiro | Cursor implementation before independent design review |
-| Execute grant | Ryan | Any production-code implementation |
+| Independent review of this implementation | Claude, per Ryan | PR/merge disposition before independent review |
+| Execute grant | Ryan | Granted to Codex for this hermetic acknowledgment implementation only |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
 | Implementation evidence review | Kiro | PR disposition and any production canary |
@@ -288,6 +229,7 @@ visible to readers.
 | Incremental coordinator | `incremental_jsonl.py` |
 | Kiro adapter | `adapters/kiro_session_jsonl.py` |
 | Production writer/store | `chroma_write_store.py`, `chroma_store.py` |
+| 2026-10-22 | Codex | Implemented scoped doctor acknowledgment under Ryan's takeover grant, with cursor identity, partial-read FAIL preservation and terminal same-key revocation; Claude review next, no live change. |
 
 ## 10. How to Update This Brief
 
@@ -392,14 +334,14 @@ Keep this document a current-state snapshot, not a session diary.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: the design for acknowledging this one doctor fault awaits Kiro
-  review. It is not implemented, and doctor acceptance remains unmet.
+- Priority #1: acknowledgment implementation is on its feature branch for Claude
+  review. It is not merged or deployed; doctor acceptance remains unmet.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
 <!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->
 <!-- ref: ./ARCHITECTURE-doctor-fault-acknowledgment.md, ./EXECUTION-doctor-fault-acknowledgment.md, ../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design and Kiro pickup -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
 <!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
-<!-- src: ../../cpu_tripwire.py, ../../doctor.py — boot-scoped failure and absence of a reset mechanism -->
+<!-- src: ../../cpu_tripwire.py, ../../cpu_tripwire_ack.py, ../../doctor.py — boot-scoped policy and scoped acknowledgment -->
 <!-- src: /etc/timeshift/timeshift.json — configured backup-volume identity -->
 <!-- src: /run/media/lauer/BIT-Brg-larch-7t/timeshift/snapshots/2026-10-22_13-03-52/info.json, /usr/local/bin/timeshift-enforce-retention.sh — replacement metadata and observed stale-mount selection -->

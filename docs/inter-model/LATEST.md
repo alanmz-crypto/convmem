@@ -9,29 +9,21 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
-  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
-  the specific Timeshift crash while continuing to flag new faults. A fresh
-  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
-  - Each acknowledgment is keyed to one exact kernel journal entry and bound
-    to one boot.
-  - The matched fault becomes a visible WARN, never PASS.
-  - New faults, machine checks and known-bad CPUs coming back online still
-    FAIL.
-  **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-  under Ryan's PR Steward assignment; Ryan owns the merge.
-  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
-  Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The input
-  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
-  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
-  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
-  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
-  promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
-  outcomes and residual burn remain **Ryan to confirm**. See the current
+- **[Arc Codex #286] Priority #1: acknowledgment implemented; Claude review next
+  (2026-10-22, Codex):** Ryan transferred implementation from Luna to Codex and
+  assigned Claude independent review. The branch is
+  `feat/2026-10-22-cpu-tripwire-fault-ack`; review its exact pushed tip using the
+  [execution plan](../plans/EXECUTION-doctor-fault-acknowledgment.md) and
+  [architecture](../plans/ARCHITECTURE-doctor-fault-acknowledgment.md).
+  The cursor revision from `2a138be` is retained. The implementation preserves
+  detected FAILs across malformed journal lines, refuses same-key re-ack after
+  revocation, and reports post-replacement durability uncertainty accurately.
+  Acknowledgments are exact, boot-bound WARNs. New faults, MCEs and known-bad
+  CPUs online still FAIL. This is implementation evidence, not independent
+  acceptance. **Next lane: Claude exact-tip review**, then Ryan's PR/merge
+  decision. No PR, merge, runtime promotion, watcher restart, live
+  acknowledgment or acceptance occurred. The live fence remains `1a68675`;
+  doctor acceptance and Stage 1/Stage 2 confirmation remain pending Ryan.
   [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**

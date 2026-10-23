@@ -10,12 +10,12 @@
 ```
 Planning Status
 
-Phase:        Revised after the first G0 review (FAIL, finding 3: add the journal
-              cursor to the event key); awaiting G0 re-review
-Lanes:        Claude design (this doc) -> independent G0 review (Codex, per Ryan;
-              Kiro originally) -> Ryan Execute grant -> Cursor
-Authority:    Design only. No implementation, live acknowledgment, runtime
-              promotion, or deployment acceptance is granted by this document.
+Phase:        Implementation authorized by Ryan on 2026-10-22 after G0 re-review
+Lanes:        Codex implementation -> Claude independent review (Ryan's assignment)
+Authority:    Ryan: "You can take over implementation for Luna. We'll have Claude
+              review your work. The baton is yours." This grants implementation
+              and its hermetic checks, not merge, promotion, live acknowledgment,
+              or deployment acceptance. The earlier G0 FAIL is not rewritten as PASS.
 ```
 
 ---
@@ -124,6 +124,19 @@ Current code ([`cpu_tripwire.py`](../../cpu_tripwire.py)):
 - The Arc Codex queue: #286 evidence reconciliation, Crush #393, and retrieval
   #320/#263.
 
+Implementation boundaries (one-way dependencies):
+
+- `cpu_tripwire_events.py`: classification, raw message decoding and event keys.
+- `cpu_tripwire_ack.py`: validation, matching, atomic storage and writer rules.
+- `cpu_tripwire.py`: evidence collection and verdict policy; retains the legacy
+  `Fault` and `parse_kernel_faults` import surface for existing callers/tests.
+- `cpu_tripwire_cli.py`: operator presentation and orchestration.
+- `convmem.py`: thin Typer handlers and command registration.
+
+This separates parsing and CLI orchestration from persistence without introducing
+an import cycle. These modules, their tests, the existing planning/routing docs,
+and repository-knowledge classifications are the implementation scope.
+
 ## 5. Event identity
 
 ### 5.1 Reading the journal
@@ -131,7 +144,7 @@ Current code ([`cpu_tripwire.py`](../../cpu_tripwire.py)):
 `read_kernel_faults()` switches to **one** read:
 
 ```text
-journalctl -k -b 0 -o json --output-fields=MESSAGE,_SOURCE_MONOTONIC_TIMESTAMP --no-pager -q
+journalctl -k -b 0 -o json --all --output-fields=MESSAGE,_SOURCE_MONOTONIC_TIMESTAMP,_HOSTNAME --no-pager -q
 ```
 
 `journalctl` always adds `__CURSOR`, `__REALTIME_TIMESTAMP`,
@@ -147,19 +160,26 @@ file present, doctor's verdict and detail must be byte-identical to today's
 A second read for identity was rejected: if a new fault were logged between
 the two reads, the classified list and the identity list would disagree.
 
-Decoding rules (each an explicit test):
+Decoding rules (each an explicit test; corrected after G0):
 
-- `MESSAGE` may be a JSON string or, when it is not valid UTF-8, an array of
-  byte values. Hash the raw bytes (string → UTF-8 encode; array → `bytes(arr)`).
-  Classify the text decoded with `errors="replace"`.
-- If **any** line is not valid JSON or is not an object, the whole read counts
-  as unreadable. The tripwire returns the existing "blind" WARN and applies no
-  acknowledgments. Skipping one bad line could hide a fault. Leaving blindness
-  as a WARN is the existing 2026-10-17 policy, and this design does not change
-  it.
-- If an entry is missing `_BOOT_ID`, `__REALTIME_TIMESTAMP`,
-  `_SOURCE_MONOTONIC_TIMESTAMP` or `__CURSOR`, it is still classified as usual, but it can
-  never be acknowledged. Its identity fields stay `None`.
+- Request `--all` so journalctl does not replace fields larger than 4096 bytes
+  with JSON `null`. A `MESSAGE` string is UTF-8 encoded; a byte array retains
+  its raw bytes. Classification uses replacement-decoded text, hashing uses
+  raw bytes. `evidence.message` stores a UTF-8 string or a byte array losslessly.
+- Malformed JSON, non-object entries, null/invalid messages, or repeated
+  `MESSAGE` values make the read incomplete. Keep every decodable fault,
+  disable **all** acknowledgments for that read, and add a blindness note.
+  A detected CPU-attributed fault, machine check, or known-bad CPU online
+  remains FAIL. In the absence of detected FAIL evidence, blindness is WARN.
+  Do not return early before evaluating the online-CPU signal.
+- Repeated `MESSAGE` values are classified individually when decodable;
+  their entry has no acknowledgeable identity. No error clears earlier faults.
+- Missing or invalid identity fields make that fault unacknowledgeable while
+  preserving classification. Invalid timestamps render as `unknown time`.
+  All observed entry boot IDs, including noise entries, participate in the
+  boot cross-check. A missing/invalid boot ID disables acknowledgments.
+- `JournalRead` carries faults, observed boot IDs and decoding problems together;
+  this avoids using `None` to discard a partially successful read.
 
 ### 5.2 The event key
 
@@ -290,11 +310,14 @@ binding.
 1. The file is UTF-8 JSON, ≤ 1 MiB, and `schema` and `version` match exactly.
    A higher version is rejected.
 2. Every record has exactly the keys above, with the right types. Hex fields
-   are lowercase and the right length; `boot_id` has no dashes; integers are
-   positive; `cursor` is a non-empty printable-ASCII string of at most 256
-   characters; `reason` and `acknowledged_by` are non-empty.
+   are lowercase and the right length; `boot_id` has no dashes; timestamps and PIDs are positive integers (booleans rejected); CPUs are
+   non-negative integers; `cursor` is a non-empty printable-ASCII string of at most 256
+   characters; operator text is printable and non-empty, reasons are at most
+   500 characters, timestamps use UTC ISO-8601 ending in `Z`, and
+   `authority_ref` is null or a relative repository path without traversal.
+   Duplicate JSON fields are rejected, as are non-regular files and symlinks.
 3. `ack_id` equals the hash of the key fields (§5.2).
-4. `sha256(evidence.message)` equals `event.message_sha256`, **and** running
+4. `sha256(raw bytes of evidence.message)` equals `event.message_sha256`, **and** running
    the current classifier on `evidence.message` gives exactly the stored
    `kind`, `cpu`, `process` and `pid`. A file that claims `cpu: 13` for a
    different message, or that is hand-edited to say `machine_check`, fails
@@ -316,7 +339,7 @@ limit for `convmem.py`: ≤ 15 lines of logic per handler).
 
 | Command | Writes? | Who may run it | Behavior |
 |---|---|---|---|
-| `convmem tripwire show [--json]` | No | Anyone, agents included | Lists this boot's classified faults with their full keys and current classification, and every stored acknowledgment with its state: `applied`, `inert (previous boot)`, `inert (entry not present)`, `inert (not needed: no longer a FAIL contributor)`, `revoked`, or `file invalid`. For each fault that can be acknowledged and has no active record, it prints the exact `ack` command line. |
+| `convmem tripwire show [--json]` | No | Anyone, agents included | Lists this boot's classified faults with their full keys and current classification, and every stored acknowledgment with its state: `applied`, `inert (previous boot)`, `inert (entry not present)`, `inert (not needed: no longer a FAIL contributor)`, `revoked`, or `file invalid`. For each eligible, unambiguous fault with no stored record for its key, it prints a shell-quoted `ack` command. Revoked same-key records are not eligible. Decoding/boot failures disable commands and appear as an explicit problem. |
 | `convmem tripwire ack --boot-id … --realtime-us … --source-monotonic-us … --message-sha256 … --cursor … --by … --reason … [--authority-ref …]` | Yes | **Ryan, in his own interactive terminal** | All key fields are required. There is no "latest" or by-process selector, so a fault that has just appeared cannot be acknowledged by accident. Steps are listed below. |
 | `convmem tripwire revoke <ack-id ≥12 hex> --by … --reason …` | Yes | Ryan, or an agent Ryan explicitly instructs | Sets the revocation fields and keeps the record. It does not require a TTY, because it can only bring back a FAIL. |
 
@@ -333,7 +356,11 @@ limit for `convmem.py`: ≤ 15 lines of logic per handler).
 6. It prints the new `cpu_tripwire` verdict.
 
 If an active record for the key already exists, `ack` prints its ID and exits
-0 without writing.
+0 without writing. If a record for that **same five-field key** is revoked,
+`ack` refuses with exit 1 and preserves the file byte-for-byte. Revocation is
+terminal for that key; it is never overwritten or deleted by the CLI. A changed
+cursor produces a different key and ID, so a fresh acknowledgment can coexist
+with the retained revoked record. An ambiguous revoke ID prefix is refused.
 
 **How strong the authority is (honest statement):** this is a single-user host,
 and any process running as `lauer` could write the file. The TTY check and the
@@ -357,11 +384,15 @@ This is the same model as the repo's other local-only guards, such as
   `~/.config/convmem/.cpu-tripwire-acknowledgments.lock`. If the lock is
   busy, they refuse with exit 1 and write nothing.
 - **Write steps:** the writer loads and validates the current file. An
-  invalid file blocks *ack* but not *revoke*. Revoke still refuses to rewrite
-  a file it cannot parse; the fix there is to move the file aside (§10.3).
+  invalid or unreadable file blocks both *ack* and *revoke* without rewriting
+  it; the emergency alternative remains moving the file aside (§10.3).
   The writer then builds the new document and writes a temp file in the same
   directory (`O_EXCL`, mode `0600`). It fsyncs the file, runs `os.replace()`,
-  then fsyncs the directory. If anything fails, it removes its own temp file.
+  then fsyncs the directory. Before replacement, failure leaves the old document
+  unchanged (or absent). After replacement, a directory-open/fsync failure
+  leaves a complete new document and reports that durability is unconfirmed;
+  it does not claim the old document survived. The writer removes only its
+  own remaining temp file in either case.
 - **Reader (doctor):** opens only the exact path and takes no lock, because
   replacement is atomic. Stray `*.tmp` files are ignored.
 - **Interruption:** whatever point an `ack` dies at, the path holds either the
@@ -378,7 +409,8 @@ This is the same model as the repo's other local-only guards, such as
 
 ### 9.1 Changes to `evaluate()`
 
-The signature gains two optional parameters, `acks` and `current_boot_id`.
+The signature gains keyword-only acknowledgment context: `acks`,
+`current_boot_id` and `ack_problem`.
 With `acks=None` the behavior is today's.
 
 1. Compute `hardware_faults` exactly as today.
@@ -433,19 +465,20 @@ change.
 | Record whose entry is gone | that record: none | unchanged, with an inert note |
 | Record revoked | that record: none | the fault FAILs again, with an inert note |
 | Key appears in > 1 entry | that key: none | FAIL stands, with a note |
-| Journal unreadable or a malformed JSON line | none | today's blind WARN |
+| Journal unreadable, incomplete or malformed | none | Preserve detected FAILs and online-CPU failures; otherwise WARN, with a blindness note |
 | Boot ID unreadable or mismatched | none | unchanged or PASS→WARN, with a note |
-| Writer interrupted | the previous file | the previous verdict |
+| Writer interrupted before replacement | the previous file | the previous verdict |
+| Directory durability fails after replacement | complete new document (durability unconfirmed) | writer reports uncertainty; next read evaluates the complete document |
 
 ## 10. Deployment, live use, rollback
 
 ### 10.1 Separate authorizations (no gate implies the next)
 
-1. Kiro's design review of this packet at an exact commit.
-2. Ryan's Execute grant for a hermetic Cursor implementation.
-3. Exact-tip verification: Claude diff-coverage verification, a targeted
-   Copilot safety audit (this changes a safety gate), and Kiro's
-   implementation review.
+1. Earlier G0 review returned FAIL; its cursor finding is resolved by `2a138be`.
+2. Ryan explicitly handed Codex implementation on 2026-10-22, including the
+   remaining decoding and revocation corrections described above.
+3. Exact-tip hermetic verification by Codex, then Claude's independent review
+   under Ryan's assignment. No self-review substitutes for Claude's verdict.
 4. Ryan's PR and merge decision.
 5. Ryan's **runtime promotion grant** at an exact SHA. The `convmem` CLI and
    the watcher's index children both run from
@@ -521,9 +554,9 @@ because nothing caches the file:
   direction, and the fix is a revoke and a fresh `ack`.
 - **Same-user writes.** A process running as `lauer` can write the file. This
   is mitigated by visibility and attribution (§7), not prevented.
-- **Tripwire blindness stays a WARN** under the existing policy. A malformed
-  journal read now causes this blind WARN, as an unreadable journal already
-  did.
+- **Unreadable evidence remains uncertain.** Blindness is WARN only when no
+  retained FAIL contributor is detected. Acknowledgments are disabled on an
+  incomplete read; this can restore an already acknowledged FAIL.
 - **PID reuse within one boot can explain away an orphan dump.** This
   weakness already exists and is not changed here.
 - **The acknowledgment does not:**
