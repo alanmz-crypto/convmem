@@ -198,7 +198,8 @@ or canary PASS does not enable production indexing.
 ## 8. Relationship to ConvMem
 
 Arc Codex changes ingestion efficiency and recovery for the selected JSONL
-adapters; #393 is its separately scoped Crush cost follow-up. It does not change ConvMem's source/projection authority direction,
+adapters; #393 is its separately scoped Crush cost follow-up. It does not
+change ConvMem's source/projection authority direction,
 retrieval scoring, semantic calibration, or other active arcs.
 
 - The source transcript remains authoritative input.
@@ -258,7 +259,6 @@ Keep this document a current-state snapshot, not a session diary.
 
 | Date | Who | Change |
 |---|---|---|
-| 2026-10-23 | Codex | Parked acknowledgment after the original event left the current boot; scoped #393 with Codex implementation/Claude review ownership and separate design/Execute gates |
 | 2026-09-09 | Codex | Created Arc Codex production-integration architecture, bounded Execute plan, and Kiro review boundary after merged scratch/canary evidence |
 | 2026-09-09 | Codex | Applied Kiro C1–C3 precision review: accurate processed-state sidecar/source-lock interval, named source-before-export invariant, and explicit new incremental prune trigger |
 | 2026-09-10 | Codex | Finalized C1 to preserve the standalone processed-state critical section after releasing the source-locked apply; C2/C3 remain confirmed |
@@ -332,25 +332,23 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-22 | Codex | Recorded Ryan's PR #413 squash merge and no-reboot constraint; prepared the standalone priority-#1 acknowledgment handoff for a fresh model, preserving the product queue and leaving implementation and acceptance incomplete. |
 | 2026-10-22 | Codex / PR Steward | Opened handoff delivery PR #414 under Ryan's assignment; fresh-model acknowledgment design remains unstarted, with no live changes or merge authority. |
 | 2026-10-22 | Claude | After Ryan merged #414 as `5c0a01b`, drafted the priority-#1 design: per-entry, boot-bound acknowledgments shown as WARN, gates G0–G6, and tests T0–T44. Kiro design review is next; nothing is implemented or live. |
+| 2026-10-23 | Codex | Parked acknowledgment after the original event left the current boot; scoped #393 with Codex implementation/Claude review ownership and separate design/Execute gates |
 
 ## TL;DR
 
-- [Arc Codex] The publication fence is deployed at clean runtime `1a68675`;
-  the watcher restarted once under Ryan's exact grant and is active with an
-  effective 8 GiB limit. Live configuration is unchanged.
-- Promotion carried #410–#412 without changing the transform contract.
-  The ten-minute journal is clear, and a normal admitted Codex run committed
-  afterward. Host-access doctor exited **1** on the pre-existing CPU-tripwire
-  report; full handoff acceptance remains unmet despite the startup waiver.
-- Stage 1/Stage 2 results and the pre-activation residual-burn decision are
-  **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
-  retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: the design for acknowledging this one doctor fault awaits Kiro
-  review. It is not implemented, and doctor acceptance remains unmet.
+- **[Arc Codex] Doctor acknowledgment is parked by Ryan.** Its original
+  Timeshift event is absent after reboot; the separate CPU-7 startup waiver
+  changes no tripwire policy or deployment acceptance criterion.
+- **#393 is the current scoped follow-up.** Proposed direction: session-local
+  Crush chunks with durable provider-result reuse. Codex plans and implements;
+  Claude independently reviews. Binding design/review and Ryan's Execute
+  decision remain before code; no live operation or model-cost grant exists.
+- Codex admission and the publication fence were verified live at `1a68675`.
+  Stage 1/Stage 2 and residual-burn acceptance remain **Ryan to confirm**.
 
 <!-- ref: ../inter-model/LATEST.md, ./SCOPE-crush-indexing-cost-reuse.md — current Arc Codex routing and #393 scope -->
-<!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->
-<!-- ref: ./ARCHITECTURE-doctor-fault-acknowledgment.md, ./EXECUTION-doctor-fault-acknowledgment.md, ../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design and Kiro pickup -->
+<!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — parked acknowledgment context and subsequent queue -->
+<!-- ref: ./ARCHITECTURE-doctor-fault-acknowledgment.md, ./EXECUTION-doctor-fault-acknowledgment.md, ../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — preserved parked design and historical pickup -->
 <!-- src: ../inter-model/CODEX-LUNA-2026-10-21-issue-286-fence-ci-fixes-handoff.md — reviewed fence and verification context -->
 <!-- src: ../../incremental_jsonl.py, ../../incremental_jsonl_formats.py — current production routing -->
 <!-- src: ../../cpu_tripwire.py, ../../doctor.py — boot-scoped failure and absence of a reset mechanism -->

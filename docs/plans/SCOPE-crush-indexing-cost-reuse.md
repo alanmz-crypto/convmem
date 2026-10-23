@@ -1,9 +1,13 @@
 # [Arc Codex] Scope — stop paying again for unchanged Crush history
 
-**Date:** 2026-10-23  
-**Owner:** Codex, planning and future implementation; Claude, independent review.  
-**Issue:** #393, changed Crush databases repeat historical summary/distill calls.  
-**Baseline:** `origin/main` at `3d24c753a4b46132d349c34a2cd37b0fbba464c2`.  
+**Date:** 2026-10-23
+
+**Owner:** Codex, planning and future implementation; Claude, independent review.
+
+**Issue:** #393, changed Crush databases repeat historical summary/distill calls.
+
+**Baseline:** `origin/main` at `3d24c753a4b46132d349c34a2cd37b0fbba464c2`.
+
 **State:** scope proposal; no architecture approval or implementation grant.
 
 ## Outcome and authority
@@ -84,14 +88,21 @@ the cross-session part of #393 open.
 The next architecture must specify all of the following before Execute:
 
 1. **Consistent source capture.** A read-only, bounded SQLite snapshot includes
-   committed WAL data, never checkpoints or changes the source, and records a
-   verifiable logical identity. Define behavior for a busy/corrupt database,
+   committed WAL data, never checkpoints or changes source database/WAL
+   contents, and records a verifiable logical identity. Define the permitted
+   shared-memory (`-shm`) interaction instead of assuming `mode=ro` has no
+   filesystem effects. Define behavior for a busy/corrupt database,
    concurrent commits, replacement, rollback, and unsupported schema. A
    selected source must not silently fall through to a paid legacy rebuild.
+   Place selected-Crush admission before, or explicitly replace, the unchanged
+   main-file-hash skip in `_index_one_file`; otherwise a WAL-only change never
+   reaches this capture.
 2. **Stable session and message identity.** Retain the native session/message
    IDs and content fingerprints. Specify deterministic order for equal times,
    edits, late inserts, deletions, filtered parts, mixed timestamp units and
-   session compaction. An ID alone is not evidence that content is unchanged.
+   session compaction. Retaining native IDs changes the adapter contract;
+   define how null/invalid session IDs are refused or grouped. An ID alone is
+   not evidence that content is unchanged.
 3. **Session-local work selection.** Chunks do not cross session boundaries.
    A new or changed session cannot shift another session's input windows.
    Changes near a boundary revisit the necessary overlap/tail. Hash the actual
@@ -114,16 +125,32 @@ The next architecture must specify all of the following before Execute:
    bounded storage, lock scope/order and same-source races. No provider call
    under a production write lease. A corrupt/missing entry must not silently
    count as a hit; whether a miss may spend requires a reviewed budget/refusal
-   rule. Preserve purge/exclusion and the source-to-processed publication fence.
+   rule. Preserve the source-to-processed publication fence. Define a private
+   cache location, permissions and retention; purge/exclusion must delete or
+   invalidate affected cache entries themselves, not just serving rows. Use
+   digests instead of storing full prompts unless reconstruction needs them.
+   The crash-safe paid-attempt budget introduced for the opt-in Kiro route
+   through PR #406 is a reference, not an inherited Crush spending grant.
 7. **Adoption and read compatibility.** Session-local chunk addresses differ
    from today's global offsets. Specify summary/unit IDs, before-images,
    replacement/pruning, transcript expansion, and provenance locators before
-   changing them. Existing stores and `processed.json` are not proof of a
+   changing them. Two sessions both have offset zero; include session identity
+   in addresses rather than colliding on a global-offset ID. The existing
+   `bootstrap_required` outcome is the adoption precedent. Existing stores
+   and `processed.json` are not proof of a
    populated new cache. Any warm-up/backfill cost, migration or rebuild needs
    its own exact-source proposal and Ryan decision.
 8. **Explicit admission.** Decide the disabled default, exact source selection,
-   feature setting, rollback and refusal behavior. Keep unselected formats and
+   feature setting, rollback and refusal behavior. Explicit `index --file`
+   requests for Crush databases outside watch roots are the initial target.
+   Specify interactions with CLI watch deferral and the watcher's own hash-based
+   skip/trigger gates. No automatic WAL-only watch-trigger guarantee is claimed
+   by this scope; such support needs an explicit design rather than assuming
+   the later SQLite capture creates an event. Keep unselected formats and
    current Codex/Kiro settings unchanged. Do not reuse their live grants.
+
+Capture hardening and cost reuse may be phased, but capture-only work cannot
+be reported as closing #393.
 
 There is an unavoidable gap between a provider completing a billable request
 and the local result becoming durable. The design must state that crash window
@@ -158,6 +185,9 @@ production path access. Real host databases are not test fixtures.
 - Reproduce first index, unchanged repeat and one appended message. Report
   actual summarize and distill HTTP-attempt counters separately, plus cache
   hits and embeddings. Historical paid calls remain zero for unchanged inputs.
+  Pin concrete chunk sizes, overlap and expected per-stage attempt counts for
+  the affected session's tail/new windows; also assert the appended content is
+  present so a skipped capture cannot satisfy the zero-call claim vacuously.
 - Use two sessions; append to the earlier-sorting one. The other session's
   chunks remain unchanged and require zero historical summary/distill calls.
 - Edit an existing message without changing its ID, add a late message, remove
@@ -180,8 +210,11 @@ These are required future checks, not passing test results from this scope.
 
 ## Next deliverable and review gate
 
-Codex authors a binding architecture and execution plan after the scope has
-been independently reviewed by Claude and Ryan has chosen the direction.
+The recommended next planning task is for Codex to draft a binding
+architecture and execution plan for option 3 after Claude scope review.
+This scope proposes the direction; it does not approve that future design.
+No additional direction-choice hard gate is created here: Ryan can steer the
+proposal, and design review plus his separate Execute decision still apply.
 Resolve the capture identity, chunk/address compatibility, cache contract,
 corruption/spending policy, and adoption questions in those documents; do not
 leave them for the implementer to guess. Continue using this Arc Codex STATUS
