@@ -113,12 +113,13 @@ def read_kernel_faults(runner: Runner = _run) -> JournalRead:
         output = exc.stdout or ""
         if isinstance(output, bytes):
             output = output.decode("utf-8", errors="replace")
-        result = parse_kernel_journal(output.splitlines())
+        result = parse_kernel_journal(line for line in output.split("\n") if line)
         result.problems.append("journalctl timed out")
         return result
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return JournalRead(problems=["journalctl failed"])
-    result = parse_kernel_journal(done.stdout.splitlines())
+    # JSON strings may contain raw Unicode separators; only LF ends a record.
+    result = parse_kernel_journal(line for line in done.stdout.split("\n") if line)
     if done.returncode != 0:
         result.problems.append("journalctl failed")
     return result
@@ -146,7 +147,7 @@ def read_coredumps(
                 f"@{since_epoch}",
             ]
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError, UnicodeError):
         return None
     if done.returncode != 0:
         # coredumpctl exits 1 with "No coredumps found." when the list is empty.
