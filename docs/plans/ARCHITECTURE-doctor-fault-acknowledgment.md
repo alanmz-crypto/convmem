@@ -10,8 +10,10 @@
 ```
 Planning Status
 
-Phase:        Architecture drafted; awaiting Kiro design review
-Lanes:        Claude design (this doc) -> Kiro review -> Ryan Execute grant -> Cursor
+Phase:        Revised after the first G0 review (FAIL, finding 3: add the journal
+              cursor to the event key); awaiting G0 re-review
+Lanes:        Claude design (this doc) -> independent G0 review (Codex, per Ryan;
+              Kiro originally) -> Ryan Execute grant -> Cursor
 Authority:    Design only. No implementation, live acknowledgment, runtime
               promotion, or deployment acceptance is granted by this document.
 ```
@@ -155,13 +157,13 @@ Decoding rules (each an explicit test):
   acknowledgments. Skipping one bad line could hide a fault. Leaving blindness
   as a WARN is the existing 2026-10-17 policy, and this design does not change
   it.
-- If an entry is missing `_BOOT_ID`, `__REALTIME_TIMESTAMP` or
-  `_SOURCE_MONOTONIC_TIMESTAMP`, it is still classified as usual, but it can
+- If an entry is missing `_BOOT_ID`, `__REALTIME_TIMESTAMP`,
+  `_SOURCE_MONOTONIC_TIMESTAMP` or `__CURSOR`, it is still classified as usual, but it can
   never be acknowledged. Its identity fields stay `None`.
 
 ### 5.2 The event key
 
-An acknowledgment matches one journal entry, and only if **all four** of these
+An acknowledgment matches one journal entry, and only if **all five** of these
 match exactly:
 
 | Component | Normalization | Why it is in the key |
@@ -170,21 +172,28 @@ match exactly:
 | `realtime_us` | integer | The time journald received the entry. Stored with the entry and stable. |
 | `source_monotonic_us` | integer | The kernel's own timestamp. journald does not set it, so it cannot be copied from the realtime field. |
 | `message_sha256` | 64 lowercase hex characters | Covers the PID, IP, SP, error code, CPU and mapping offsets. Changing one byte breaks the match. |
+| `cursor` | The `__CURSOR` string, compared byte for byte; never parsed | Identifies this entry's position in the journal. The other four fields could in principle be shared by a second entry (same boot, microsecond and message). The cursor is what systemd documents as the value that uniquely identifies an entry, so a record cannot silently move to a different entry if the original is vacuumed and a look-alike remains. Revised after the G0 review (finding 3). |
 
-`ack_id = sha256("cpu_tripwire_ack_v1|" + boot_id + "|" + realtime_us + "|" + source_monotonic_us + "|" + message_sha256)`,
+`ack_id = sha256("cpu_tripwire_ack_v1|" + boot_id + "|" + realtime_us + "|" + source_monotonic_us + "|" + message_sha256 + "|" + cursor)`,
 lowercase hex. Commands and doctor display the first 12 characters. For this
 event:
 
-- `ack_id` is `4c6debf6cee1d3ee263c07860eb49deafaa26378714dd18a913c555739235ed8`.
-- The short form is `4c6debf6cee1`.
+- `ack_id` is `bab67b49aa4f5178700bbab29af53533a3bc4da7a74c6bdde16c051c2902675b`.
+- The short form is `bab67b49aa4f`.
 
 Fields that are **not** in the key:
 
 - The process name or PID: a PID can be reused within one boot.
 - The CPU: another real fault can land on CPU 13.
-- `__CURSOR`: its format is opaque and documented as unstable to parse. It is
-  stored as evidence only.
 - Coredumps: see §5.3.
+
+**How the cursor is used.** The design never parses it, because its format is
+opaque; it only tests two strings for equality. If journald rewrites an entry
+into another journal file (for example when it moves runtime logs to
+persistent storage), the entry's cursor may change. The record then no longer
+matches, the fault returns to FAIL, and `show` reports `inert (entry not
+present)`. That failure direction is safe: Ryan can revoke the record and
+acknowledge the entry again under its new key.
 
 ### 5.3 Matching kernel entries to coredumps
 
@@ -242,12 +251,13 @@ config key for it; tests and CLI internals pass the path as a parameter.
   "version": 1,
   "acknowledgments": [
     {
-      "ack_id": "4c6debf6cee1d3ee263c07860eb49deafaa26378714dd18a913c555739235ed8",
+      "ack_id": "bab67b49aa4f5178700bbab29af53533a3bc4da7a74c6bdde16c051c2902675b",
       "event": {
         "boot_id": "7f8e9d592ecc46c7aeb599df6b9457b2",
         "realtime_us": 1792692082959438,
         "source_monotonic_us": 216789351540,
         "message_sha256": "5bcabab44b0af36b045e40b9371cfee06c04ae670e201f25a2494a28225b518d",
+        "cursor": "s=e02dcabee64b4080b72afc4344ccf25d;i=56398d5;b=7f8e9d592ecc46c7aeb599df6b9457b2;m=327a1c130d;t=65e71a6cbe44e;x=81580ac8b8a26341",
         "kind": "segfault",
         "cpu": 13,
         "process": "timeshift",
@@ -255,7 +265,6 @@ config key for it; tests and CLI internals pass the path as a parameter.
       },
       "evidence": {
         "message": "timeshift[835726]: segfault at 0 ip 0000557bdb8648da sp 00007ffe1ccb1ff0 error 4 in timeshift[168da,557bdb854000+40000] likely on CPU 13 (core 33, socket 0)",
-        "cursor": "s=e02dcabee64b4080b72afc4344ccf25d;i=56398d5;b=7f8e9d592ecc46c7aeb599df6b9457b2;m=327a1c130d;t=65e71a6cbe44e;x=81580ac8b8a26341",
         "hostname": "archlinux",
         "coredump": {"time_us": 1792692083077653, "pid": 835726, "sig": 11, "exe": "/usr/bin/timeshift"}
       },
@@ -282,7 +291,8 @@ binding.
    A higher version is rejected.
 2. Every record has exactly the keys above, with the right types. Hex fields
    are lowercase and the right length; `boot_id` has no dashes; integers are
-   positive; `reason` and `acknowledged_by` are non-empty.
+   positive; `cursor` is a non-empty printable-ASCII string of at most 256
+   characters; `reason` and `acknowledged_by` are non-empty.
 3. `ack_id` equals the hash of the key fields (§5.2).
 4. `sha256(evidence.message)` equals `event.message_sha256`, **and** running
    the current classifier on `evidence.message` gives exactly the stored
@@ -307,7 +317,7 @@ limit for `convmem.py`: ≤ 15 lines of logic per handler).
 | Command | Writes? | Who may run it | Behavior |
 |---|---|---|---|
 | `convmem tripwire show [--json]` | No | Anyone, agents included | Lists this boot's classified faults with their full keys and current classification, and every stored acknowledgment with its state: `applied`, `inert (previous boot)`, `inert (entry not present)`, `inert (not needed: no longer a FAIL contributor)`, `revoked`, or `file invalid`. For each fault that can be acknowledged and has no active record, it prints the exact `ack` command line. |
-| `convmem tripwire ack --boot-id … --realtime-us … --source-monotonic-us … --message-sha256 … --by … --reason … [--authority-ref …]` | Yes | **Ryan, in his own interactive terminal** | All key fields are required. There is no "latest" or by-process selector, so a fault that has just appeared cannot be acknowledged by accident. Steps are listed below. |
+| `convmem tripwire ack --boot-id … --realtime-us … --source-monotonic-us … --message-sha256 … --cursor … --by … --reason … [--authority-ref …]` | Yes | **Ryan, in his own interactive terminal** | All key fields are required. There is no "latest" or by-process selector, so a fault that has just appeared cannot be acknowledged by accident. Steps are listed below. |
 | `convmem tripwire revoke <ack-id ≥12 hex> --by … --reason …` | Yes | Ryan, or an agent Ryan explicitly instructs | Sets the revocation fields and keeps the record. It does not require a TTY, because it can only bring back a FAIL. |
 
 `ack` runs these steps:
@@ -392,10 +402,10 @@ With `acks=None` the behavior is today's.
 ### 9.2 Detail text (contract; exact wording may be polished in review)
 
 - **Only acknowledged:** `WARN`:
-  `1 acknowledged CPU-attributed fault, not cleared (hardware health unproven): timeshift[835726] segfault on CPU 13 at 2026-10-22T13:01:22-05:00 [ack 4c6debf6cee1 by <by> <acknowledged_at>: <reason, first 80 chars>]`
+  `1 acknowledged CPU-attributed fault, not cleared (hardware health unproven): timeshift[835726] segfault on CPU 13 at 2026-10-22T13:01:22-05:00 [ack bab67b49aa4f by <by> <acknowledged_at>: <reason, first 80 chars>]`
   The other WARN notes follow, separated by `; `.
 - **New fault as well:** `FAIL`: today's message for the unacknowledged
-  faults, then `; plus 1 acknowledged fault (ack 4c6debf6cee1) -- see: journalctl …`.
+  faults, then `; plus 1 acknowledged fault (ack bab67b49aa4f) -- see: journalctl …`.
 - **Inert records:** status is unchanged; the suffix is
   `; N inert acknowledgment(s) (previous boot / entry not present / revoked) -- see: convmem tripwire show`.
   A PASS stays PASS, and the `0 native faults this boot` text is kept only
@@ -461,7 +471,7 @@ change.
 These checks are read-only for any lane:
 
 - `convmem tripwire show --json` lists exactly one `applied` record, with key
-  `4c6debf6cee1`.
+  `bab67b49aa4f`.
 - `convmem doctor` lists `cpu_tripwire` as WARN with the §9.2 text, and exits
   0 if no other check fails.
 - The file is mode `0600` and passes the load validation.
@@ -471,7 +481,7 @@ These checks are read-only for any lane:
 Each of these takes effect on the next doctor run. None needs a restart,
 because nothing caches the file:
 
-- **Revoke the acknowledgment:** `convmem tripwire revoke 4c6debf6cee1 …`.
+- **Revoke the acknowledgment:** `convmem tripwire revoke bab67b49aa4f …`.
 - **Emergency:** Ryan moves the file aside, for example to
   `cpu-tripwire-acknowledgments.json.disabled-<UTC>`. The FAIL comes back
   immediately. Code from before this change ignores the file entirely.
@@ -483,7 +493,7 @@ because nothing caches the file:
 **Decided by this design** (Kiro may challenge any of them):
 
 - WARN, never PASS, for acknowledged faults.
-- A four-part key per journal entry, with the boot boundary built in.
+- A five-part key per journal entry, with the boot boundary built in.
 - One JSON journal read.
 - A whole file rejected if any part is invalid.
 - Machine checks and known-bad CPUs online cannot be acknowledged.
@@ -506,6 +516,9 @@ because nothing caches the file:
 
 ## 12. Residual risks (accepted, visible)
 
+- **A rewritten journal entry can strand an acknowledgment.** If the cursor
+  changes (§5.2), the record goes inert and the FAIL returns; this is the safe
+  direction, and the fix is a revoke and a fresh `ack`.
 - **Same-user writes.** A process running as `lauer` can write the file. This
   is mitigated by visibility and attribution (§7), not prevented.
 - **Tripwire blindness stays a WARN** under the existing policy. A malformed

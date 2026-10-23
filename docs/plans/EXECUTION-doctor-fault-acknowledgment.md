@@ -25,7 +25,7 @@ Authority:    None granted. Every gate in §G is separate; none implies another.
 | G2 | Exact-tip verification | Claude (diff coverage) + Copilot audit lane (targeted safety audit) + Kiro (implementation review) | A PR decision | Promotion |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
 | G4 | Runtime promotion grant at an exact SHA | Ryan | A fast-forward of `.worktrees/runtime-main`, **with no watcher restart** | Live acknowledgment |
-| G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `4c6debf6cee1` | Any other event; any acceptance claim |
+| G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `bab67b49aa4f` | Any other event; any acceptance claim |
 | G6 | Acceptance decision | Ryan | Deciding whether the deployment's doctor criterion is satisfied | n/a |
 
 If Ryan reboots before G5, G5 is moot (architecture §10.1, step 6). E1–E5
@@ -57,7 +57,7 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
 
 - `ACK_SCHEMA`, `ACK_VERSION = 1`, `DEFAULT_ACK_PATH`. The default path is
   resolved at call time from `Path.home()`.
-- `ack_id(boot_id, realtime_us, source_monotonic_us, message_sha256) -> str`.
+- `ack_id(boot_id, realtime_us, source_monotonic_us, message_sha256, cursor) -> str`.
 - `load_acks(path) -> AckSet`. An `AckSet` holds the records and a
   `problem: str | None` (`invalid: …` or `unreadable: …`). It never raises
   for file content. It enforces all seven checks in §6, rejecting the whole
@@ -138,17 +138,20 @@ Group 2: the intended acknowledgment.
 
 | ID | Case | Expected |
 |---|---|---|
-| T4 | The Timeshift entry with a valid acknowledgment for the same boot | Status `warn` (never `pass`). The detail contains `acknowledged`, `4c6debf6cee1`, the `by` value, and `hardware health unproven`. `doctor_exit_code` is 0 when this is the only finding. |
+| T4 | The Timeshift entry with a valid acknowledgment for the same boot | Status `warn` (never `pass`). The detail contains `acknowledged`, `bab67b49aa4f`, the `by` value, and `hardware health unproven`. `doctor_exit_code` is 0 when this is the only finding. |
 | T5 | T4 plus the acknowledged event's coredump (PID 835726, signal 11) | No orphan-dump note (architecture §5.3) |
 
 Group 3: recurrence, and faults that must still FAIL.
 
 | ID | Case | Expected |
 |---|---|---|
-| T6 | T4 plus a second Timeshift segfault on CPU 13: new PID, later times | `fail`. The detail names the new fault and adds `plus 1 acknowledged fault (ack 4c6debf6cee1)`. |
+| T6 | T4 plus a second Timeshift segfault on CPU 13: new PID, later times | `fail`. The detail names the new fault and adds `plus 1 acknowledged fault (ack bab67b49aa4f)`. |
 | T7 | A recurrence that reuses PID 835726 and the identical message text, with different `realtime_us` and `source_monotonic_us` | `fail` |
 | T8 | The same timestamps with a one-byte change to the message (the `ip`) | `fail` |
 | T9 | The acknowledged entry **and** an exact duplicate entry with the same key in one read | `fail` with an ambiguity note |
+| T45 | The acknowledged entry is gone (vacuumed) and a different entry with the same boot, `realtime_us`, `source_monotonic_us` and message remains, with a different `cursor` | `fail`; the survivor is not acknowledged and `show` reports `inert (entry not present)` (G0 finding 3) |
+| T46 | The acknowledged entry unchanged, same cursor, in a read where the original is the only match | `warn` (control for T45) |
+| T47 | An entry with no `__CURSOR` field that otherwise matches a record | `fail`; it can never be acknowledged |
 | T10 | T4 plus a machine-check line | `fail` with the machine-check text |
 | T11 | T4 plus a known-bad CPU online (`online = 0-23`, known-bad `[4, 5, 8, 9]`) | `fail` with `ONLINE again` |
 | T12 | T4 plus a segfault pinned to CPU 14 (healthy, unrelated) | `fail` |
@@ -223,7 +226,7 @@ at least one test fail:
 
 ## A. Acceptance criteria (for G2)
 
-- [ ] T0–T44 pass. The existing `tests/test_cpu_tripwire.py` and
+- [ ] T0–T47 pass. The existing `tests/test_cpu_tripwire.py` and
       `tests/test_doctor.py` pass unchanged, except for additions.
 - [ ] Every changed line is covered by a test (diff coverage), including the
       error branches in `load_acks`, `write_ack` and the boot cross-check.
@@ -268,7 +271,7 @@ G5, Ryan in his own terminal:
    - no other FAIL contributor exists.
    If any of these is wrong, stop.
 3. Paste the printed `ack` command with `--by ryan`, a reason, and
-   `--authority-ref` pointing at the G5 grant. Type the ID `4c6debf6cee1`.
+   `--authority-ref` pointing at the G5 grant. Type the ID `bab67b49aa4f`.
 4. Run `convmem doctor` and record the result.
 
 Any lane may then verify, read-only: architecture §10.2.
