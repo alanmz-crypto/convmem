@@ -1,12 +1,13 @@
 # Execution Plan — Safe Harbor
 
-**ON HOLD — Ryan, 2026-10-19.** Historical grants and next-step instructions below
-do not authorize continuation. The reviewed initializer scope remains at `c46fbc6`;
-implementation has not been granted or begun. Resume only on Ryan's explicit
-instruction, starting with [STATUS](STATUS-safe-harbor.md). This hold changes no
-reviewed contract and authorizes no live operation.
+**Current state — 2026-10-23.** Ryan resumed Safe Harbor. The §23 initializer
+implementation remains parked, unreviewed and unaccepted. Section 24 records the
+completed read-only post-deployment check and separately authorized correction
+of three scheduled service routes. Recovery confirmation and evidence from the
+next normal scheduled runs remain open. Start with [STATUS](STATUS-safe-harbor.md);
+historical grants below do not authorize additional work.
 
-> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** Section 19 records the bounded read-only deployment preflight/drafting grant. [ROLLOUT](ROLLOUT-safe-harbor.md) returns findings and the conditional procedure. No deployment, service change or backup/restore operation is authorized.
+> **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** The runtime is already live through other arcs' promotions. [ROLLOUT §7](ROLLOUT-safe-harbor.md#7-post-deployment-check-and-service-routing--2026-10-23) records actual observations and the bounded routing correction, without claiming the original rollout procedure was executed or recovery was qualified. No further live action follows from this record.
 
 ## 1. Source, authority and goal
 
@@ -16,11 +17,11 @@ reviewed contract and authorizes no live operation.
 
 ```text
 Planning Status
-Phase:        ON HOLD; T1–T5 merged, initializer scope reviewed
+Phase:        Operational check and routing correction complete; recovery inputs pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        None active; Ryan explicit resume required
-Authority:    Ryan hold (2026-10-19); prior grants do not authorize continuation
+Lanes:        Ryan for recovery facts; initializer remains parked
+Authority:    Section 24 grants completed; no further live work granted
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -1140,6 +1141,48 @@ look showed both live segments already carrying release evidence from ordinary
 capture. Ryan parked the candidate unreviewed and unaccepted; this grant is
 consumed. [VERIFY](VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22)
 holds the findings and what any resumption must cover.
+
+## 24. Post-deployment inspection and scheduled-service routing — completed
+
+**Arc: Safe Harbor. 2026-10-23. Codex operational lane, under Ryan's bounded
+grants.** First, Ryan authorized: “go: Authorize Codex’s bounded read-only Safe
+Harbor post-deployment check. No repairs, service changes, corpus writes, backups,
+restores or initializer execution.” The check read Git/process identities,
+installed unit configuration, guard files, saved segment hashes and existing
+journals. It did not open a Chroma client, run a new audit or query live SQLite.
+
+The check found local backup, external-copy and cross-project digest services
+still routed through the shared checkout. The two backup jobs selected system
+Python rather than the deployed environment. Runtime/process observations and
+guard evidence did not require initializer execution.
+
+Ryan then authorized: “go: Next step: Authorize the routing correction and confirm
+recovery inputs.” This was implemented only as three named user-unit drop-ins:
+`convmem-restic-local.service`, `convmem-restic-external.service`, and
+`convmem-cross-project-digest.service`, each at
+`~/.config/systemd/user/<service>.d/90-safe-harbor-routing.conf`. They bind the
+existing scripts and working directory to `.worktrees/runtime-main` and select
+the production conda Python. The digest also binds `CONVMEM_ROOT` and
+`CONVMEM_PY`. Existing base units, timer files, Restic executable/profile/repos,
+credentials, application source and warning policy were preserved.
+
+At 2026-10-23 23:26:43 CDT, the drop-ins were installed and the user manager
+reloaded. Configuration verification passed; effective properties matched;
+base-unit/timer hashes were unchanged; all three jobs remained inactive and
+their timers active/enabled. No job was started manually, no process restarted,
+and no backup, restore, corpus operation or initializer was executed by this
+lane. A manager reload can resample randomized next-trigger delays; calendar
+rules were unchanged. This is configuration evidence, not a completed scheduled
+run. [ROLLOUT §7](ROLLOUT-safe-harbor.md#7-post-deployment-check-and-service-routing--2026-10-23)
+contains the exact configuration, observations, limits and unexecuted rollback.
+
+Recovery confirmation was requested: newest completed image identity/date,
+the test actually performed, and whether an image drive plus a Restic password
+copy are unplugged and stored away. No answer had arrived at this checkpoint.
+October 22's recorded policy remains; a planned October 23 image is not evidence
+of completion. The parked initializer remains unreviewed/unaccepted. No PR,
+merge, further deployment, repair, release, drive/key action or extra test is
+granted by this record.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->

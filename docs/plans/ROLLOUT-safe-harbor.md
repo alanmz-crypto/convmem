@@ -1,20 +1,23 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**Unexecuted draft, overtaken by events — 2026-10-22.** The Safe Harbor runtime
+**Current operational checkpoint — 2026-10-23.** The Safe Harbor runtime
 (T1–T5, `c6f0724`) is already live: runtime-main reached it through ordinary
 promotions for other arcs (`3e705e4` by October 17; `1a68675` with the watcher
 restarted 2026-10-22 13:52 CDT), not through this procedure. Both live segments
-already carry release evidence, and the legacy initializer is parked. Nothing in
-this procedure is granted; start with [STATUS](STATUS-safe-harbor.md). The proposed
-next step is a read-only post-deployment check against the "acceptance after a
-permitted rollout" record in [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout). [Recovery inputs](#recovery-inputs--decided-2026-10-22) were decided on
-2026-10-22. No service, corpus, backup/restore or deployment action is authorized.
+already carry release evidence, and the legacy initializer is parked. The
+original rollout procedure was not executed. A separately granted read-only
+post-deployment check and three-service routing correction are now complete;
+[section 7](#7-post-deployment-check-and-service-routing--2026-10-23) records
+their exact effects and limits. [Recovery inputs](#recovery-inputs--decided-2026-10-22)
+retain the October 22 decisions; confirmation of the newer image/test and physical
+custody is pending. Start with [STATUS](STATUS-safe-harbor.md). No further live
+action is granted by this document.
 
-**Arc: Safe Harbor. DRAFT; NOT AN EXECUTION GRANT.** Codex prepared this procedure
+**Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
 (America/Chicago). T1–T5 are accepted and merged. Deployment readiness is **OPEN**.
-No production service change, corpus write, backup, restore, audit, repair or
-release was run. The later authorized synthetic readiness evidence is recorded
+At that preflight, no production service change, corpus write, backup, restore,
+audit, repair or release was run. The later authorized synthetic readiness evidence is recorded
 below; it changes neither the deployed runtime nor this draft's execution status.
 
 **October 17 qualification:** the observations and source/service comparisons
@@ -382,32 +385,154 @@ this drafting grant does not permit emergency service manipulation.
 
 ## 6. Completion and next bounded work
 
-The authorized preflight/draft and isolated readiness slice are complete. The
-installed-interpreter and legacy mechanisms now have focused evidence; recovery
-qualification, an operational initialization entrypoint and rollout approval remain
-open. These are concrete remaining steps, not a request to redo T1–T5 reviews.
+The preflight, isolated readiness evidence, read-only post-deployment inspection
+and three-service routing correction are complete. T1–T5 remain accepted and
+merged. The runtime is already live; repeating the historical rollout is not the
+next step. The initializer candidate remains parked, unreviewed and unaccepted.
 
-Kiro's bounded evidence and initializer-scope reviews are complete; the scope
-PASS is pinned to `c46fbc6` (EXECUTION §22). Next: Ryan's isolated implementation
-decision and recovery inputs
-(acceptable lost-work interval, newest image completion/scope/location,
-independent access and restore/check history). No recovery answer has been inferred. Later
-implementation and evidence must address durable preservation, multiple segments
-and refusal when the strict oracle cannot pass. Then finish operational review
-and request an exact execution decision. No further reviewer, PR, live operation
-or runtime fix is invoked by recording this recommendation. The static-only
-startup exception retains the warning and grants none of the live steps above.
+Open items are (1) Ryan's newest completed image and actual test, plus physical
+custody of an image drive and password copy; and (2) evidence from the next normal
+scheduled runs using the corrected routes. Existing configuration checks do not
+prove those jobs have executed successfully. Do not force a job, restore, release
+or initializer to close either item. Scope any necessary follow-up separately.
+No PR or merge is proposed for the parked implementation branch by this receipt.
 
-**Suggested documentation PR title:** Prepare Safe Harbor rollout against the current runtime
+## 7. Post-deployment check and service routing — 2026-10-23
 
-**Prepared body (not a PR-creation grant):** Codex records Ryan's T5 merge and the
-read-only deployment preflight, then drafts the rollout/rollback sequence. It
-identifies old MCP processes, shared-checkout backup routing, missing audit units,
-legacy generations without release evidence. Follow-up synthetic checks give 83
-installed-Python safety passes and five legacy-state passes, with explicit limits.
-No runtime or live state changed. Read this procedure, STATUS and VERIFY before
-granting review or later work. **TL;DR:** deployment remains gated on recovery
-qualification and a reviewed, preserved legacy-state initialization procedure.
+**Who/authority:** Codex, after Ryan's read-only inspection grant and subsequent
+explicit routing-correction grant ([EXECUTION §24](EXECUTION-safe-harbor.md#24-post-deployment-inspection-and-scheduled-service-routing--completed)).
+All times below are America/Chicago unless marked UTC. Observations are a bounded
+October 23 snapshot, not standing guarantees. No application runtime was changed.
+
+### Read-only findings
+
+- **Runtime/process identity:** clean deployed checkout
+  `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`, last fast-forward October 22
+  13:52:31 CDT. The watcher (PID 1149, started October 23 13:14:52 CDT) and ten
+  observed MCP servers used `runtime-main` with production conda Python; all
+  started after that code update. The host process scan found no older client;
+  it does not prove every loaded module's bytes or constitute a writer freeze.
+- **Installed backend:** Python 3.11.15, Chroma 1.5.9, hnswlib 0.8.0, NumPy
+  2.4.6. Native binding SHA-256
+  `a9794735847c3a78c15931d869cee8368fddbb10048c3d098bc09a14130075ad`
+  matched the saved release-evidence identity. Core guard/CLI/Restic gate,
+  resolver/workflow and conflict-event files matched accepted `c6f0724`;
+  store/write-store/doctor/proposal files have later changes from other merged
+  PRs and were not independently re-reviewed in this operational check.
+- **Guard authority:** configured target is canonical
+  `/home/lauer/.local/share/convmem/chroma`; only the adjacent
+  `chroma.write-guard` authority was found, with no `QUARANTINE.json`. No Chroma
+  client, new audit or live SQLite query was used for this inspection.
+- **Saved generations:** summaries segment
+  `5cda8744-0eb5-4580-9ff2-c57e985abf68` points to
+  `g1792612804689283045-3913359` (October 21; recorded metadata/vector watermark
+  214400); knowledge segment `5e85bc5f-5bea-4129-9602-9afe15991cca` points to
+  `g1792774494736299479-171509` (October 23; recorded watermark 218447).
+  Both contain release evidence. All ten saved segment-file hashes matched
+  their manifests; pointers/manifests and file metadata were stable during the
+  read. This does not establish eligibility against current SQLite watermarks
+  or semantic correctness, and no release was attempted.
+- **Existing audit:** timer active/enabled; last record October 23 00:24:04 CDT,
+  PASS for two segments, 118,739 HNSW vectors, zero lost/extra IDs. Seven recorded
+  daily audits (October 17–23) passed. The read event log had no malformed line
+  or recorded restore/quarantine/release. ID coverage does not exclude stale
+  vectors or semantic corruption. No warning was cleared.
+- **Routing defect:** local Restic, external copy and cross-project digest
+  service commands still used the shared checkout. Backup PATH selected system
+  Python 3.14. The wrappers and inspected static backup import closure matched
+  runtime-main that day, but future feature-branch changes could change scheduled
+  behavior. Dynamic imports were not exhaustively proven.
+- **Existing backup journals:** local success October 23 00:19:59 CDT,
+  source `bc3c8d1521417ceb099c4611c5c5e31a9c432f9f1f47d185edfed6b7ebd70d1f`.
+  External destination
+  `6c5b372b753d6bcc94d226560e9856800f23edd912eecf96306562ee8348201d`
+  recorded that source as its original. External-copy attempts at 09:28,
+  11:03 and 13:02 found the repository config unavailable; later attempts
+  succeeded, most recently 23:04:06 CDT. The cause of that unavailability was
+  not established. These are pre-correction journal observations; this lane ran
+  no Restic command and did not qualify recovery.
+
+### Installed routing correction
+
+At **2026-10-23 23:26:43 CDT / 2026-10-24 04:26:43 UTC**, Codex installed
+`90-safe-harbor-routing.conf` under each of these user-unit drop-in directories:
+
+- `~/.config/systemd/user/convmem-restic-local.service.d/`:
+  script `restic-ensure-chroma-snapshot.sh`;
+  drop-in SHA-256 `12cd9571ce528999bdff62c50ce6a41a692b374b13530027643a99f7004f74e9`.
+- `~/.config/systemd/user/convmem-restic-external.service.d/`:
+  script `restic-copy-external.sh`;
+  drop-in SHA-256 `48b08bbdb59ac3512a9b6ddb37076d7bf9b1840fd19e5cf3a9103c84d75565ab`.
+- `~/.config/systemd/user/convmem-cross-project-digest.service.d/`:
+  script `cross-project-digest.sh`;
+  drop-in SHA-256 `40c5fb6bec1770e6570af4bdce19f801df2a7c7116e0a82ebc9dbd51bf614439`.
+
+All three use this configuration, with `<script>` replaced as listed:
+
+```ini
+[Service]
+WorkingDirectory=%h/Projects/convmem/.worktrees/runtime-main
+Environment="PATH=%h/.local/bin:%h/miniforge3/envs/convmem/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=
+ExecStart=%h/Projects/convmem/.worktrees/runtime-main/scripts/<script>
+```
+
+The digest additionally sets:
+
+```ini
+Environment="CONVMEM_ROOT=%h/Projects/convmem/.worktrees/runtime-main"
+Environment="CONVMEM_PY=%h/miniforge3/envs/convmem/bin/python"
+```
+
+Original units and timer files were retained byte-for-byte. Restic still resolves
+through the existing `~/.local/bin/restic`; profile `complete-data-v2`, local repo
+`/home/lauer/.local/share/convmem-restic`, external repo
+`/run/media/lauer/rxBUlauer-128Gfs/convmem-backups` and credential configuration
+were unchanged. No secret values were read into this record. Digest's existing
+environment file and fail-on-fallback setting remain in effect.
+
+### Checks and limits
+
+- Staged and installed `systemd-analyze --user verify --man=no` checks returned
+  0 for all three units. The installer refused changed originals, an existing
+  destination, active jobs, changed staged bytes or a changed deployed checkout.
+  Installed files/directories were synced before the manager reload.
+- After `systemctl --user daemon-reload`, effective working directories,
+  commands, PATH and digest ROOT/PY matched the intended configuration;
+  `NeedDaemonReload=no`. Python resolved to the production Python 3.11 path.
+- Installed drop-in hashes matched staged hashes. Original service/timer hashes
+  were unchanged. Services remained inactive/dead, with no main PID; timers
+  remained active/enabled. No service was manually started or restarted.
+- Calendar rules remain local `00:15`, external `01/2:00`, digest Monday `09:00`.
+  Reload resampled randomized delays: observed next triggers were October 24
+  00:17:50, October 24 01:00:58 and October 26 09:08:21 respectively. This does
+  not imply that those runs occurred or passed.
+- Existing jobs continue on their normal schedules. **No scheduled execution
+  under the new routing was observed at this checkpoint.** Configuration
+  validation is not a backup, copy or digest completion result. There was no
+  corpus operation, audit invocation, backup/restore, initializer, repair or
+  release initiated by this lane, and no application code change.
+
+### Rollback of this correction only — not executed
+
+If separately authorized, first inspect current drop-ins and active jobs. Refuse
+to discard later edits; compare against the three recorded hashes. Remove only
+the three `90-safe-harbor-routing.conf` files and reload the user manager, then
+inspect effective configuration and timers again. Do not use `systemctl revert`,
+which could remove unrelated overrides. No process start/restart is inherent in
+this rollback. It would restore the prior shared-checkout routing, including its
+known drift risk; it is not a data/runtime rollback or a recovery procedure.
+
+### Recovery confirmation still pending
+
+Ryan was asked which image is newest and completed, what test was actually
+performed, and whether an image drive plus a Restic password copy are unplugged
+and stored away from the workstation. No reply had arrived at this checkpoint.
+The October 22 loss-window policy remains recorded above. The October 23 image
+was planned, not confirmed; the general report “Clonezilla is restorable. Tested.”
+does not identify the tested image. No drive action, secret read, image check,
+backup or restore was performed to infer an answer.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
+<!-- ref: /home/lauer/.config/systemd/user/convmem-restic-local.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-restic-external.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-cross-project-digest.service.d/90-safe-harbor-routing.conf — installed October 23 routing -->

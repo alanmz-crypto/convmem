@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -50,18 +50,17 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — legacy initializer parked (2026-10-22, Claude):**
-  Cursor (not Codex) built `initialize-legacy` at `dd0c467`; it missed the
-  isolation model and four §22 cases, with no production effect. Both live
-  segments already carry release evidence, so Ryan parked it unreviewed.
-  Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`.
-  Recovery inputs are recorded (one-day loss for ConvMem data; image
-  `2026-10-20-05-img`, new tested image planned for 2026-10-23). The Safe Harbor
-  runtime is already live via runtime-main `1a68675`, not via ROLLOUT.
-  **Next lane: Ryan**: new image, off-workstation custody of one image drive
-  and a password copy, and a decision on a read-only post-deployment check. No
-  lane is active; no PR, review, merge or live work is granted. See
-  [STATUS](../plans/STATUS-safe-harbor.md).
+- **Arc Safe Harbor — post-deployment check and routing corrected (2026-10-23, Codex):**
+  Ryan's bounded inspection and subsequent three-service correction are complete.
+  Local backup, external copy and cross-project digest now route through deployed
+  runtime-main/production Python. Configuration checks passed; no jobs were
+  manually started, and scheduled-run results remain unobserved. **Next lane:
+  Ryan** for newest completed/tested-image and off-workstation custody facts;
+  bounded read-only follow-up for scheduled outcomes. The initializer remains
+  parked, unreviewed and unaccepted. No PR or further live action is granted.
+  Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
+  [STATUS](../plans/STATUS-safe-harbor.md) and the
+  [operational receipt](../plans/ROLLOUT-safe-harbor.md#7-post-deployment-check-and-service-routing--2026-10-23).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
