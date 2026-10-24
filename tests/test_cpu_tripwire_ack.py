@@ -417,6 +417,19 @@ def test_t29_directory_permissions_symlink_and_read_error(
     assert "EIO" in ack.load_acks(stored).problem
 
 
+def test_insecure_acknowledgment_file_is_not_applied(stored, monkeypatch):
+    stored.chmod(0o666)
+    assert "mode" in ack.load_acks(stored).problem
+    assert evaluate(stored).status == "fail"
+
+    stored.chmod(0o600)
+    actual_euid = os.geteuid()
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "geteuid", lambda: actual_euid + 1)
+        assert "owner" in ack.load_acks(stored).problem
+        assert evaluate(stored).status == "fail"
+
+
 def test_t30_stray_temp_files_are_ignored(stored):
     stored.with_name(stored.name + ".tmp-abandoned").write_text("garbage")
     assert evaluate(stored).status == "warn"
@@ -1143,6 +1156,45 @@ def test_cli_retry_sync_failure_reports_visible_document_without_new_write(
     assert "Document was written" not in response.output
     assert "Refused" not in response.output
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize("operation", ["ack", "revoke"])
+def test_cli_committed_write_survives_verdict_refresh_error(monkeypatch, operation):
+    import convmem
+
+    path = ack.default_ack_path()
+    if operation == "revoke":
+        write(path)
+    signals = tripwire.SignalRead(parsed(), [], set(), {4, 5, 8, 9})
+    reads = 0
+
+    def snapshot():
+        nonlocal reads
+        reads += 1
+        if operation == "ack" and reads == 1:
+            return signals, BOOT
+        raise RuntimeError("config disappeared after commit")
+
+    monkeypatch.setattr(cli, "_snapshot", snapshot)
+    monkeypatch.setattr(ack, "interactive_tty", lambda: "/dev/pts/test")
+    args = (
+        shlex.split(cli._ack_command(signals.journal.faults[0].key))[1:]  # pylint: disable=protected-access
+        if operation == "ack"
+        else ["tripwire", "revoke", ACK_ID[:12], "--by", "ryan", "--reason", "undo"]
+    )
+    response = CliRunner().invoke(
+        convmem.app, args, input=ACK_ID[:12] + "\n" if operation == "ack" else None
+    )
+    assert response.exit_code == 0, response.output
+    assert response.exception is None
+    assert "Current verdict unavailable" in response.output
+    assert "Refused" not in response.output
+    loaded = ack.load_acks(path)
+    assert loaded.problem is None
+    assert (loaded.records[0]["revoked_at"] is not None) == (operation == "revoke")
+    assert tripwire.evaluate_signals(signals, loaded, BOOT).status == (
+        "fail" if operation == "revoke" else "warn"
+    )
 
 
 @pytest.mark.parametrize("dumps", [[None], [{"pid": 1, "sig": []}], {"pid": 1}])

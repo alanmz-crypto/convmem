@@ -305,9 +305,18 @@ def load_acks(path: Path | None = None) -> AckSet:
         )
         fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, "rb") as stream:
+            opened = os.fstat(stream.fileno())
             _require(
-                stat.S_ISREG(os.fstat(stream.fileno()).st_mode),
+                stat.S_ISREG(opened.st_mode),
                 "acknowledgment path is not a regular file",
+            )
+            _require(
+                stat.S_IMODE(opened.st_mode) == 0o600,
+                "acknowledgment file mode is not 0600",
+            )
+            _require(
+                opened.st_uid == os.geteuid(),
+                "acknowledgment file owner is not the current user",
             )
             content = stream.read(MAX_FILE_BYTES + 1)
         _require(len(content) <= MAX_FILE_BYTES, "acknowledgment file exceeds 1 MiB")

@@ -112,7 +112,9 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
   or existing-document retry sync leaves durability unconfirmed. After a new
   replacement, the message says the document was written and the next read
   evaluates it. On retry, the message says the existing document is visible
-  without claiming that invocation wrote it.
+  without claiming that invocation wrote it. A failed verdict refresh after a
+  completed operation still exits 0, names the completed action, and says the
+  current verdict is unavailable; it does not say "refused" or invent a verdict.
 - Copyable commands use shell quoting for the opaque cursor. Revoked records
   do not receive an `ack` command. Mixed FAIL output includes the ack author.
 - Add the three commands to the usage block at the top of `convmem.py`.
@@ -251,6 +253,8 @@ Group 9: review corrections beyond T45–T47.
 | T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Numeric conversion failures retain the other known fault fields; malformed coredumps do not erase kernel faults. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
 | T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 3 states durability uncertainty. Retry also exits 3 while sync fails, keeps identical bytes/attribution without claiming a new write, and returns success only after file and directory fsync. |
 | T51 | Journal unreadable and a known-bad CPU online, with or without acknowledgments | FAIL with `ONLINE again`; the independent check always runs |
+| T52 | Valid acknowledgment file changed to mode `0666`, or owned by another effective user | Load rejects the whole file without applying the record; the fault remains FAIL |
+| T53 | Current-verdict refresh raises after a durable ack or revoke | CLI exits 0, names the completed action and says the verdict is unavailable; the stored ack/revocation remains effective |
 
 **Mutation sanity (verification lane, G2):** each of these mutations must make
 at least one test fail:
@@ -266,7 +270,7 @@ at least one test fail:
 
 ## A. Acceptance criteria (for G2)
 
-- [x] T0–T51 pass. Existing policy assertions remain unchanged; the fake
+- [x] T0–T53 pass. Existing policy assertions remain unchanged; the fake
       journal runner serves JSON to the new reader and fixtures isolate HOME.
       `tests/test_doctor.py` also passes.
 - [x] Every changed executable production line is covered by a test (diff

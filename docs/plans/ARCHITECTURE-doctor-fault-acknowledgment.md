@@ -291,6 +291,9 @@ config key for it; tests and CLI internals pass the path as a parameter.
   already forbidden to edit live configuration (Arc Codex §7 and the lane
   rules), so the same rule covers this file.
 - Mode `0600`.
+- On load, verify mode `0600` and ownership by the effective user on the opened
+  file descriptor. A mismatch invalidates the whole document, so no stored
+  acknowledgment applies.
 - When the file is missing, behavior is exactly today's.
 
 **Schema version 1.** Unknown keys at any level make the file invalid.
@@ -421,7 +424,8 @@ This is the same model as the repo's other local-only guards, such as
   directory (`O_EXCL`, mode `0600`). It fsyncs the file, runs `os.replace()`,
   then fsyncs the directory. Before replacement, failure leaves the old document
   unchanged (or absent). After replacement, a directory-open/fsync failure
-  leaves a complete new document and reports that durability is unconfirmed;
+  leaves a complete new document and returns exit 3, reporting that durability
+  is unconfirmed;
   it does not claim the old document survived. The writer removes only its
   own remaining temp file in either case.
 - **Retry:** after a post-replacement error, `show` reports the visible state,
@@ -434,6 +438,11 @@ This is the same model as the repo's other local-only guards, such as
   that nothing changed. A revoked-key `ack` still refuses unchanged.
 - **Reader (doctor):** opens only the exact path and takes no lock, because
   replacement is atomic. Stray `*.tmp` files are ignored.
+- **Post-commit display:** after a durable `ack` or `revoke`, the CLI attempts
+  to refresh the current doctor verdict. If that read fails, the command still
+  exits 0 for the completed operation and says the current verdict is
+  unavailable. It never calls the committed operation a refusal or claims a
+  WARN/FAIL verdict it could not read.
 - **Interruption:** whatever point an `ack` dies at, the path holds either the
   old document or the complete new one. With the old document, the FAIL is
   still there; that is the safe direction. With the new one, the record is
@@ -561,7 +570,8 @@ These checks are read-only for any lane:
   `bab67b49aa4f`.
 - `convmem doctor` lists `cpu_tripwire` as WARN with the §9.2 text, and exits
   0 if no other check fails.
-- The file is mode `0600` and passes the load validation.
+- The file is mode `0600`, is owned by the effective user, and passes load
+  validation.
 
 ### 10.3 Rollback
 

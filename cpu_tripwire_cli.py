@@ -138,8 +138,15 @@ def _run_write(operation: Callable[[], tuple[str, bool]], verb: str) -> int:
         typer.echo(f"Refused: {exc}", err=True)
         return 1
     typer.echo(f"{verb if changed else 'Already ' + verb.lower()}: {identifier}")
-    signals, boot_id = _snapshot()
-    verdict = evaluate_signals(signals, load_acks(), boot_id)
+    try:
+        signals, boot_id = _snapshot()
+        verdict = evaluate_signals(signals, load_acks(), boot_id)
+    except Exception as exc:  # noqa: BLE001  # pylint: disable=broad-exception-caught
+        # The operation already committed; a failed display refresh cannot undo it.
+        typer.echo(
+            f"Current verdict unavailable after completed command: {exc}", err=True
+        )
+        return 0
     typer.echo(f"{verdict.status.upper()}: {verdict.detail}")
     return 0
 
