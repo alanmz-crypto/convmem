@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: acknowledgment passed G2; Ryan owns G3
+- **[Arc Codex #286] Priority #1: acknowledgment PR #416 is open for Ryan's G3 decision
   (2026-10-24, Codex):** The sole takeover branch is
   `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
   target is `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`**. Claude's R4
@@ -19,13 +19,14 @@ cross-arc snapshot and the linked arc brief below.
   were reproduced and corrected at the new target. A fresh shell-capable
   Opus session independently PASSed the full implementation at the exact
   SHA, and the separate safety reviewer PASSed the corrective delta. **Next
-  lane:** Ryan decides G3 PR/merge; G4–G6 remain his gates. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  lane:** Ryan reviews [PR #416](https://github.com/alanmz-crypto/convmem/pull/416)
+  for G3 merge; G4–G6 remain his gates. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
   records the evidence and review boundary. The retired
   `cpu-tripwire-fault-ack` branch remains preserved.
   The old Timeshift event's live acknowledgment is moot after reboot. The
   required 2026-10-24 protocol doctor exited 0 with zero native faults this
   boot; formal acceptance is still Ryan's decision.
-  No PR, merge, promotion, watcher restart or live acknowledgment followed.
+  The PR is open; no merge, promotion, watcher restart or live acknowledgment followed.
   Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
   See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 

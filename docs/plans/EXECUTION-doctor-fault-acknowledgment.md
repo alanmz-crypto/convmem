@@ -10,7 +10,7 @@
 ```
 Planning Status
 
-Phase:        G2 PASS at corrected content SHA; Ryan G3 decision next
+Phase:        G2 PASS; PR #416 open for Ryan's G3 decision
 Lanes:        Ryan G3–G6
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```

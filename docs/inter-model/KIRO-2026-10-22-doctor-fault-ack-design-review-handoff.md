@@ -5,6 +5,7 @@
 **For:** Ryan's G3 PR/merge decision after completed G2 reviews
 **State:** `G2_PASS`; all required independent reviews cover the final content SHA
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
+**G3 PR:** [#416](https://github.com/alanmz-crypto/convmem/pull/416), open for Ryan's merge decision
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
 The historical KIRO filename is retained so existing links continue to work.
@@ -14,7 +15,9 @@ delta and R4 checks.
 Ryan assigned Claude the review role and directed Codex: “You take over,
 beginning, now, then.” Codex implemented in an isolated worktree, preserving
 the earlier writer's checkout. This grant covers implementation and hermetic
-verification. It grants no PR creation, merge, promotion or live acknowledgment.
+verification. It granted no PR creation, merge, promotion or live
+acknowledgment. Ryan subsequently assigned Codex the bounded PR Steward task
+for this branch; that grant opened PR #416 and does not grant merge or live use.
 
 ## Exact revision first
 
@@ -47,8 +50,9 @@ returned **PASS** with no required findings or new advisories. It passed 258
 focused and 25 inventory tests, verified the 39-route R2b inventory, and
 confirmed both retry/durability fixes preserve the safety contract. Together
 with Claude's preceding diff-coverage and R4 reviews, these complete G2 on
-the final immutable content SHA. Ryan owns G3–G6; no PR, merge, promotion,
-watcher restart or live acknowledgment was performed.
+the final immutable content SHA. PR #416 was subsequently opened for G3;
+Ryan owns merge and G4–G6. No promotion, watcher restart or live
+acknowledgment was performed.
 
 ## First Opus implementation review at `1a825d0` — 2026-10-24
 
@@ -178,9 +182,10 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next task:** Ryan decides G3 PR/merge disposition for the G2-PASSed content
-revision. The independent implementation and safety rechecks are complete.
-No PR, merge, promotion or live use is authorized by the reviews alone.
+**Next task:** Ryan reviews PR #416 and decides G3 merge disposition for the
+G2-PASSed content revision. The independent implementation and safety rechecks
+are complete. The PR Steward grant opened the PR; no merge, promotion or live
+use is authorized by the reviews alone.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
 
@@ -274,7 +279,7 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owner:** Ryan decides G3 PR/merge disposition. Final independent Opus
+**Next owner:** Ryan decides whether to merge PR #416. Final independent Opus
 and safety PASSes cover `1a7676b`; Codex's corrective tests remain separate
 author evidence. Ryan retains promotion, live-use and acceptance decisions.
 
@@ -448,7 +453,7 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Fresh shell-capable Opus
+`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. PR #416 is open. Fresh shell-capable Opus
 implementation review and independent safety delta recheck both PASSed the
 final content, completing G2. Ryan owns G3–G6. Nothing is live.
 

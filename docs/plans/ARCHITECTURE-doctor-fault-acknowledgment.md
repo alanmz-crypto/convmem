@@ -12,7 +12,7 @@
 ```
 Planning Status
 
-Phase:        G2 PASS at corrected content SHA; Ryan G3 decision next
+Phase:        G2 PASS; PR #416 open for Ryan's G3 decision
 Lanes:        Ryan G3–G6
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
@@ -42,7 +42,7 @@ that Codex reproduced and corrected at the current target. Ryan assigned a
 fresh Claude Opus-class session to the original Kiro G2 implementation-review
 slot. Its shell-capable independent review PASSed the corrected content SHA,
 and the separate safety reviewer PASSed the final delta. G2 is complete;
-Ryan decides G3 next.
+PR #416 is open for Ryan's G3 merge decision.
 
 ---
 

@@ -97,7 +97,8 @@ Claude's R4 recheck PASSed. A first Opus implementation review there was
 shell-restricted but identified two retry/durability defects. Codex reproduced
 and corrected them at the current target. Fresh shell-capable Opus
 implementation review and a separate safety delta recheck both PASSed the
-exact revision, completing G2. Ryan owns the G3 PR/merge decision. The prior
+exact revision, completing G2. [PR #416](https://github.com/alanmz-crypto/convmem/pull/416)
+is open for Ryan's G3 merge decision. The prior
 recorded doctor failure was an
 unacknowledged CPU 7 fault; current acceptance is unproven. No runtime
 change or live acknowledgment was made.
@@ -127,7 +128,7 @@ change or live acknowledgment was made.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. The required 2026-10-24 protocol doctor later exited **0** with zero native faults this boot. | Deployment is executed; the later doctor result does not itself grant formal acceptance, which remains Ryan's decision |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; the earlier CPU-tripwire failure is historical after reboot, and formal acceptance remains Ryan-owned |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Branch-only content target `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` corrects two retry/durability defects exposed by a shell-restricted Opus review of `1a825d0`. A fresh shell-capable Opus implementation review and independent safety delta recheck both PASSed that exact target; the [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records the evidence and Ryan's policy decisions. G2 is complete. No PR, merge, promotion or live acknowledgment occurred. | Ryan decides G3 PR/merge; G4–G6 remain his separate gates |
+| Doctor acknowledgment, priority #1 | Branch-only content target `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` corrects two retry/durability defects exposed by a shell-restricted Opus review of `1a825d0`. A fresh shell-capable Opus implementation review and independent safety delta recheck both PASSed that exact target; the [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records the evidence and Ryan's policy decisions. G2 is complete. [PR #416](https://github.com/alanmz-crypto/convmem/pull/416) is open; no merge, promotion or live acknowledgment occurred. | Ryan decides G3 merge; G4–G6 remain his separate gates |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -140,7 +141,7 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-**The next lane is Ryan's G3 PR/merge decision** on content revision
+**The next lane is Ryan's G3 merge decision on PR #416** for content revision
 `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Claude's R4 recheck and
 the replacement safety review PASSed the preceding `1a825d0` content. Fresh
 shell-capable Opus implementation review and a separate safety delta recheck
@@ -172,8 +173,8 @@ The original implementation branch is retired from use under Ryan's 2026-10-23
 instruction and remains preserved. This takeover branch is the merge line.
 
 Reboot completion is confirmed by boot ID `4a99c57d-3478-4811-9218-6b681f64687c`.
-The corrected implementation is committed and pushed; Ryan's G3 decision is
-next. The
+The corrected implementation is committed and pushed in PR #416; Ryan's G3
+merge decision is next. The
 live-state descriptions below are dated evidence, not current service or doctor
 results. The old Timeshift event's G5 is now moot; any future live use needs
 its own grant.
@@ -258,7 +259,7 @@ and unproven canary outcomes remain separate from this fence deployment.
 Codex admission and the same-source publication fence are live.
 
 1. G2 independent reviews have PASSed pinned revision
-   `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Ryan decides PR/merge (G3), runtime
+   `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. PR #416 is open; Ryan decides merge (G3), runtime
    promotion without a watcher restart (G4), and acceptance (G6). G5 for the
    old Timeshift event is moot after reboot; future live acknowledgments need
    separate grants. Prior doctor failures remain historical; current
@@ -442,6 +443,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-24 | Claude / Ryan | Claude PASSed R4 at `1a825d0` after 391 targeted tests and a whole-tree main comparison with no branch-introduced failure; Ryan assigned a fresh Claude Opus-class session to the original Kiro G2 implementation-review slot |
 | 2026-10-24 | Claude / Codex | A shell-restricted Opus review exposed post-replace cleanup and retry defects at `1a825d0`; Codex corrected them and pushed `1a7676b` for independent G2 recheck |
 | 2026-10-24 | Claude Opus / independent safety reviewer | Shell-capable implementation review and final safety delta recheck both PASSed exact content `1a7676b`; G2 complete and Ryan owns G3–G6 |
+| 2026-10-24 | Codex PR Steward | Opened PR #416 for Ryan's G3 merge decision; content target remains `1a7676b`, with no runtime or live action |
 
 ## TL;DR
 
@@ -457,7 +459,8 @@ Keep this document a current-state snapshot, not a session diary.
   retry of stale proposal `c5fec18c…79c81`.
 - Priority #1: the corrected acknowledgment review target is `1a7676b`.
   Fresh shell-capable Opus implementation review and an independent safety
-  delta recheck PASSed that exact content. G2 is complete; Ryan owns G3–G6.
+  delta recheck PASSed that exact content. PR #416 is open for Ryan's G3
+  merge decision; G4–G6 remain separate.
   No runtime promotion or live
   acknowledgment occurred; current acceptance remains unproven.
 
