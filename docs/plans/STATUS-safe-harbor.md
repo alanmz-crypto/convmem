@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — operational follow-up, 2026-10-24.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Both corrected backup jobs passed on October 24 (local 00:19:52 CDT, external 01:01:15); actual runtime identity and copy lineage were confirmed. Doctor refreshed after 01:05 exited 0 with both backup checks PASS. The corrected digest is pending Monday. Read-only inspection now identifies `2026-10-23-13-img`: its log records successful boot/root imaging, but no image-check or restore-test result was found. Ryan reports all drives plugged in and no separate offline password copy known. Recovery qualification and independent custody remain open. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
+> **Arc: Safe Harbor — operational follow-up, 2026-10-24.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Both corrected backup jobs passed on October 24 (local 00:19:52 CDT, external 01:01:15); actual runtime identity and copy lineage were confirmed. Doctor refreshed after 01:05 exited 0 with both backup checks PASS. The corrected digest is pending Monday. After Ryan authenticated locally, both boot/root partition images in `2026-10-23-13-img` passed Zstandard decoding and Partclone checks at 09:03:12 CDT; source identity records matched before/after. This is image-integrity evidence, not a restore or boot test. Ryan reports all drives plugged in and no separate offline password copy known. Recovery qualification and independent custody remain open. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -44,7 +44,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 4. Completion State
 
-- **Image-integrity check authorized, awaiting local authentication:** Ryan said “check for me” for `2026-10-23-13-img`. Both payloads are root-owned mode `0600`; Codex's first open was denied and noninteractive sudo requires a password. No partition scan started. A verified temporary Partclone checker and terminal helper are prepared; Ryan authenticates locally, then Codex inspects results. This is neither an integrity FAIL nor a PASS. See the [check handoff](ROLLOUT-safe-harbor.md#authorized-image-check--local-authentication-needed).
+- **Image-integrity check PASS:** Ryan ran the authorized helper with local authentication October 24, 08:49:51–09:03:12 CDT. Codex inspected both completed Partclone logs, empty Zstandard error logs and all six pipeline exits (zero). Boot/root source device, inode, size, mtime and ctime matched before/after. The initial permission refusal is retained as history; it is superseded by this completed check. Restore/boot/application recovery remains untested for this exact image. See the [check receipt](ROLLOUT-safe-harbor.md#image-integrity-result--october-24-0903-cdt).
 - Approved direction/name, every-restore disposition, execution plan, B-E4.1 and T1–T5 / V1–V6 acceptance remain settled. Ownership and index/plain-add exemptions are unchanged. Owner BugBot exceptions stay pinned to their individual candidates.
 - **Post-deployment inspection complete:** the observed processes used the deployed route; stored guard evidence and existing audits were inspected. This does not re-review later runtime changes from other arcs or establish semantic integrity/recoverability.
 - **Routing correction complete:** at October 23 23:26:43 CDT, Codex installed three user-unit drop-ins and reloaded the manager. Effective commands/environment and unit validation passed. Services remained inactive and timers active/enabled. **Local and external scheduled execution passed October 24; digest remains pending Monday.** No corpus write, backup/restore, initializer, audit invocation or restart was initiated by this lane.
@@ -56,7 +56,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** run the prepared image-check helper in a local terminal and authenticate there; do not send a password in chat. **Codex:** inspect its result and both partition logs; do not infer PASS from startup or one completed partition. The existing image-check grant is sufficient; no repeated approval is needed. Independent image/key custody follows separately. An image integrity check is narrower than a demonstrated restore.
+**Ryan:** arrange independent image/key custody and decide any separately scoped restore qualification. **Codex:** preserve the completed image-integrity receipt and inspect Monday's scheduled digest when results exist. Do not rerun the completed image scan or infer restore/boot success from it. Agent drive/key operations and restores remain ungranted.
 
 **Next operational follow-up:** Ryan authorized the bounded read-only recovery/scheduled-results check. Both backup routes are now confirmed through scheduled runs. The remaining scheduled observation is digest after Monday October 26 09:08:21 CDT, allowing for completion. Do not start jobs to manufacture evidence. Any failure returns for a scoped correction decision; do not infer repair, restore or service-change authority from this receipt.
 
@@ -64,7 +64,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before Operational Closeout (sequential)
 
-1. Complete the authorized October 23 image-integrity check after local authentication, then disposition its limited result and remaining restore/custody evidence. Retain the one-day loss policy; backups, restores, permission changes and drive/key actions remain ungranted.
+1. Resolve remaining restore qualification and independent image/key custody using the completed October 23 image-integrity receipt. Retain the one-day loss policy; backups, restores, permission changes and agent drive/key actions remain ungranted.
 2. Observe the corrected digest after its Monday scheduled run. Configuration validation and both corrected backup runs are complete. Keep repository availability failures distinct from routing failures.
 3. Reconcile any concrete residual deployment-readiness gap from those facts. Do not repeat the historical rollout against an already-live runtime or promote the parked initializer automatically.
 4. Record the closeout decision with its actual scope. No implementation PASS, merge, audit PASS or incidental runtime promotion implies demonstrated recovery.
@@ -73,7 +73,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 - The §23 initializer grant is consumed and its result parked. Section 24's inspection and three-service routing correction are complete. No initializer review/rerun, PR, hosted CI, merge, further deployment/service change, corpus write, backup/restore or drive/key action is granted; retain the warning.
 - EXECUTION §§20–21's evidence work and §22's static review are complete; no Execute grant is open. No ledger write or session indexing during any future execution, and no new tests are authorized.
-- **October 24 narrow exception:** Ryan authorized an integrity check of the named October 23 image. This permits reading its compressed partition data through the checker and saving results; it grants no restore, source-permission change, system-package installation, service change or drive/key operation. Application test suites remain outside this grant.
+- **October 24 narrow exception completed:** Ryan authorized the integrity check of the named October 23 image; both partition scans passed and results are saved. This grants no repeat scan, restore, source-permission change, system-package installation, service change or drive/key operation. Application test suites remain outside this grant.
 - Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
@@ -102,7 +102,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
-- 2026-10-24 — Codex: both corrected backup routes passed; recorded custody answers and identified the October 23 image. Ryan authorized its integrity check; preparation is complete but root-only payloads require local authentication before scanning. Custody and Monday digest remain open.
+- 2026-10-24 — Codex: both corrected backup routes passed; recorded custody answers and identified the October 23 image. After local authentication, both partition-integrity checks passed with matching before/after source identities. Restore qualification, custody and Monday digest remain open.
 
 - 2026-10-23 — Codex: read-only follow-up found corrected jobs not yet due, October 20 image drive unmounted and configured password copy still mounted; recorded exact next checks and kept image-test/custody answers pending.
 
@@ -233,7 +233,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Both corrected backup jobs passed. The October 23 image is identified and its integrity check authorized, but payload reading needs local sudo authentication; no scan has started. Independent custody and Monday's digest observation remain open. The initializer stays parked; restore and further live mutations remain ungranted.
+[Arc Safe Harbor] Both corrected backup jobs and the October 23 image's boot/root integrity checks passed. Restore qualification, independent custody and Monday's digest observation remain open. The initializer stays parked; restore and further live mutations remain ungranted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — parked implementation handoff -->

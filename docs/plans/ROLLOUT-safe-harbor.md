@@ -11,9 +11,10 @@ post-deployment check and three-service routing correction are now complete;
 their exact effects and limits. [Recovery inputs](#recovery-inputs--decided-2026-10-22)
 retain the October 22 decisions. The [October 24 inspection](#recovery-preparation-inspection--october-24-0150-cdt)
 identifies a newer completed image; exact-image qualification and independent custody remain open. Start with
-[STATUS](STATUS-safe-harbor.md). Ryan subsequently authorized the named image's
-[integrity check](#authorized-image-check--local-authentication-needed); local
-authentication is needed before it can start. No restore or live mutation follows.
+[STATUS](STATUS-safe-harbor.md). Ryan subsequently authenticated locally for the
+authorized [integrity check](#image-integrity-result--october-24-0903-cdt): both
+partition images passed at 09:03:12 CDT. Restore/boot qualification remains open;
+no restore or live mutation follows.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -719,6 +720,8 @@ an agent by this record. The parked initializer remains out of scope.
 
 ### Authorized image check — local authentication needed
 
+Historical preparation and first-attempt outcome; the completed result follows.
+
 Ryan then said “check for me,” authorizing the integrity check of
 `2026-10-23-13-img`. Doctor refreshed October 24 and exited 0. The image volume
 still matched UUID `cce6ae9a-b6ce-49da-8dd9-feb94b817777`; available memory was
@@ -752,18 +755,67 @@ run as Ryan with idle I/O / nice 19. Each complete compressed partition stream
 must decode and pass checksums, with all three pipeline exits checked. Source
 device/inode/size/mtime/ctime are compared before and after. No restore output or
 extracted filesystem is written; checker logs stay in the temporary directory.
-Shell syntax checked successfully; the helper itself has not run against the
-payloads. It is temporary and may need preparation again after cleanup/reboot.
+Shell syntax checked successfully before execution. The helper was then awaiting
+local authentication. It is temporary and may disappear after cleanup/reboot.
 
-Codex should inspect `terminal-result.txt`, both `*.terminal-partclone.log`
-files and the before/after source records after Ryan starts it. A started or
-partial run is not PASS. Coverage is compressed-stream and saved-partition
+Acceptance requires inspecting `terminal-result.txt`, both `*.terminal-partclone.log`
+files and the before/after source records. A started or partial run is not PASS.
+Coverage is compressed-stream and saved-partition
 checksum integrity; it is not a boot test, an application restore or a full
 Clonezilla metadata validation. No source permission change, system installation,
 backup, restore, service change, secret copy or drive removal is granted.
+
+### Image integrity result — October 24, 09:03 CDT
+
+Ryan authenticated locally and ran the prepared helper as the normal user.
+Codex inspected its existing output at 09:04 CDT; no scan was repeated.
+**PASS for the two compressed partition images in
+`/run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img`.** The original
+`result.json` records the earlier permission refusal, not this terminal run.
+The completed `terminal-result.txt` reads:
+
+```text
+STARTED 2026-10-24T08:49:51-05:00
+nvme1n1p1.vfat-ptcl-img.zst reader=0 zstd=0 checker=0
+nvme1n1p2.ext4-ptcl-img.zst reader=0 zstd=0 checker=0
+PARTITION_INTEGRITY_PASS 2026-10-24T09:03:12-05:00
+```
+
+Both Partclone 0.3.50 logs reached `100.00% completed!` and
+`Partclone successfully checked the image (-)`. The FAT32 check took 2 seconds;
+EXTFS took 13 minutes 19 seconds. Both Zstandard stderr files are empty.
+All three stages for each partition exited zero; no checksum-ignore option was
+used. The before/after source records are identical for device, inode, byte size,
+mtime and ctime:
+
+- Boot image: device `2097`, inode `37224451`, size `385527721`,
+  mtime_ns `1792763827459998869`, ctime_ns `1792763830543998851`.
+- Root image: device `2097`, inode `37224452`, size `325504749164`,
+  mtime_ns `1792764478783994954`, ctime_ns `1792764482139994933`.
+
+Evidence stays in `/tmp/safe-harbor-image-check-vDJNmR`; this receipt retains the
+result when temporary files are removed. SHA-256 identities:
+
+- `run-check.sh`: `4bde9e6f87b6d19ec5dd943de0d1043febee9dfb6f8178d303575972cb2592e5`.
+- `terminal-result.txt`: `9143bd2cf205d4c604d341eed617d75f32ea2778af356f16135e41ea8b68dcfc`.
+- Both `terminal-source-before.json` and `terminal-source-after.json`:
+  `4debe908a8c9bff2d165f4890b5f2aa3743be4447f3b839a6c4e748dadfb6601`.
+- `nvme1n1p1.vfat-ptcl-img.zst.terminal-partclone.log`:
+  `ecba80a874b8c056dcbac839802053522e138c4b20436ce1a75629026bf9c6cc`.
+- `nvme1n1p2.ext4-ptcl-img.zst.terminal-partclone.log`:
+  `a061868ad74671785ff2beb8f68597c226c3edeb0e88b683230081bb248af496`.
+
+This closes compressed-stream and saved-partition integrity checking for this
+exact image. It does not establish full Clonezilla metadata/GPT/MBR validation,
+successful restore/boot/application recovery, retrieval of the embedded password
+or independent custody. No restore, source permission change, system package
+installation, service change, key copy or drive removal occurred in this check.
+The next agent observation is Monday's normal digest result; restore qualification
+and physical custody remain owner decisions. The initializer remains parked.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
 <!-- ref: /home/lauer/.config/systemd/user/convmem-restic-local.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-restic-external.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-cross-project-digest.service.d/90-safe-harbor-routing.conf — installed October 23 routing -->
 <!-- src: /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/clonezilla-img, /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/blkid.list — image completion and saved filesystem identity -->
 <!-- ref: /tmp/safe-harbor-image-check-vDJNmR/run-check.sh — temporary local-authentication image-check helper -->
+<!-- src: /tmp/safe-harbor-image-check-vDJNmR/terminal-result.txt, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-before.json, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-after.json — completed image check and source identity -->

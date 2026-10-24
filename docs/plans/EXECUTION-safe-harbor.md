@@ -4,8 +4,9 @@
 implementation remains parked, unreviewed and unaccepted. Section 24 records the
 completed read-only post-deployment check and separately authorized correction
 of three scheduled service routes. Both scheduled backup routes passed; Monday's
-digest remains pending. Ryan's recovery answers are recorded; exact-image
-qualification and independent custody remain open. Start with [STATUS](STATUS-safe-harbor.md);
+digest remains pending. Ryan's recovery answers are recorded; the October 23
+image's boot/root integrity checks passed October 24. Restore qualification and
+independent custody remain open. Start with [STATUS](STATUS-safe-harbor.md);
 historical grants below do not authorize additional work.
 
 > **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** The runtime is already live through other arcs' promotions. [ROLLOUT §7](ROLLOUT-safe-harbor.md#7-post-deployment-check-and-service-routing--2026-10-23) records actual observations and the bounded routing correction, without claiming the original rollout procedure was executed or recovery was qualified. No further live action follows from this record.
@@ -1218,10 +1219,13 @@ identification gap only. Qualification, independent custody and Monday's digest
 result remain open; no additional operation is granted.
 
 **Named image-check grant, October 24:** Ryan's “check for me” authorizes the
-integrity check of `2026-10-23-13-img`. The [check handoff](ROLLOUT-safe-harbor.md#authorized-image-check--local-authentication-needed)
-records the verified temporary checker and root-only file-access stop. No
-partition scan started; Ryan must authenticate locally, after which Codex may
-inspect the existing check's results without another approval. The grant excludes
+integrity check of `2026-10-23-13-img`. The [preparation receipt](ROLLOUT-safe-harbor.md#authorized-image-check--local-authentication-needed)
+retains the verified temporary checker and initial root-only file-access stop.
+Ryan subsequently authenticated locally; both partition checks completed at
+09:03:12 CDT. Codex inspected the [completed result](ROLLOUT-safe-harbor.md#image-integrity-result--october-24-0903-cdt):
+reader, decoder and checker exits were zero for both images, with matching
+before/after source identities. This grants no repeat scan and demonstrates
+image integrity only, not restore/boot/application recovery. The grant excludes
 restores, source permission changes, system installation, service/drive/key
 actions and unrelated tests; it does not reopen the parked initializer.
 

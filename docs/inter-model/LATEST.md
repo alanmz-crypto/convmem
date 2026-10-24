@@ -54,15 +54,15 @@ cross-arc snapshot and the linked arc brief below.
   Local backup and external copy completed automatically through production
   Python/runtime-main; source/destination lineage matched. Doctor refreshed after
   01:05 CDT passed both backup checks. No job was manually started. Ryan's recovery
-  answers and the newer image's completion metadata are now recorded;
-  qualification and independent custody remain open.
-  **Next lane: Ryan** for local sudo authentication to the authorized image-check
-  helper; Codex for its results and the read-only digest observation after Monday's
-  normal run. No partition scan has started. The initializer remains
+  answers and the newer image's completed integrity check are recorded;
+  restore qualification and independent custody remain open.
+  **Next lane: Ryan** for physical recovery preparation and any restore-qualification
+  decision; Codex for the read-only digest observation after Monday's normal run.
+  Both boot/root image checks passed; no repeat scan is needed. The initializer remains
   parked, unreviewed and unaccepted. No PR or mutation authority follows.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
   [STATUS](../plans/STATUS-safe-harbor.md) and the
-  [image-check handoff](../plans/ROLLOUT-safe-harbor.md#authorized-image-check--local-authentication-needed).
+  [image-check receipt](../plans/ROLLOUT-safe-harbor.md#image-integrity-result--october-24-0903-cdt).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
