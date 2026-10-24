@@ -1192,6 +1192,15 @@ in ROLLOUT §7 without implying a restore test or physical custody. Continue onl
 the read-only observation scope when normal results exist; no job start, repair,
 configuration correction, backup/restore or initializer execution is granted.
 
+**Scheduled results returned, October 24:** Codex observed the normal local
+backup complete at 00:19:52 CDT and external copy at 01:01:15, with production
+Python/runtime-main identity and matching source/destination lineage. Doctor
+refreshed after 01:05 exited 0 with both backup checks PASS. No job was manually
+started. The [receipt](ROLLOUT-safe-harbor.md#external-scheduled-copy-and-final-health--october-24-after-0105-cdt)
+retains the midnight freshness failure, later passes and limits. Monday's digest
+and Ryan's image-specific test/custody confirmation remain open; no recovery
+qualification, warning clearance or further mutation authority follows.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

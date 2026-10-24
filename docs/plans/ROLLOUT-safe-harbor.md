@@ -391,10 +391,12 @@ merged. The runtime is already live; repeating the historical rollout is not the
 next step. The initializer candidate remains parked, unreviewed and unaccepted.
 
 Open items are (1) Ryan's newest completed image and actual test, plus physical
-custody of an image drive and password copy; and (2) evidence from the next normal
-scheduled runs using the corrected routes. Existing configuration checks do not
-prove those jobs have executed successfully. Do not force a job, restore, release
-or initializer to close either item. Scope any necessary follow-up separately.
+custody of an image drive and password copy; and (2) the normal Monday digest
+run using its corrected route. October 24's local and external scheduled backup
+runs passed, including observed runtime identity and copy lineage (§7). Those
+results establish execution/availability, not demonstrated recovery. Do not force
+a job, restore, release or initializer to close an open item. Scope any necessary
+correction separately.
 No PR or merge is proposed for the parked implementation branch by this receipt.
 
 ## 7. Post-deployment check and service routing — 2026-10-23
@@ -608,6 +610,46 @@ automation, manual backup, service change or initializer was created/run.
 and Ryan's image-specific test/custody answers. Local routing/execution is now
 demonstrated for this invocation. The snapshot has not been restored or otherwise
 qualified as a recovery artifact by this check.
+
+### External scheduled copy and final health — October 24, after 01:05 CDT
+
+The external timer started its normal invocation at **01:01:01 CDT**; it completed
+at **01:01:15**, `Result=success`, with journal output `offsite copy OK` and
+`original==source`:
+
+- Local source:
+  `0295cf8e4922568d4b9633ee9fc8f2246939f3c116ff75f69919f38428cda26d`.
+- External destination:
+  `ba581a75bb7bc07b0fc83b04fea200643ca597b54046fb230d56bab8acc6ec7b`.
+
+The structured journal identifies PID 942406's executable as
+`/home/lauer/miniforge3/envs/convmem/bin/python3.11` and command as
+`python3 /home/lauer/Projects/convmem/.worktrees/runtime-main/backup_workflows.py copy-offsite --env-file /home/lauer/.config/convmem/restic.env`.
+The process had exited before the `/proc` inspection; journal identity, not a
+live cwd observation, is the external-run evidence. Deployed checkout remained
+clean at `1a686753d8fd1b710883050e8a4f9c45b7ae1e26` before that invocation.
+
+At **01:05 CDT**, Codex started the requested final doctor refresh. It exited
+**0**, with both `restic_gate` and `restic_external` PASS for the exact source and
+destination above. Password-copy match, Chroma guard (no quarantine, two restore
+points), daily audit (118,977 vectors, zero lost) and CPU tripwire (zero native
+faults this boot) passed. Existing nonfatal warnings about legacy embedding
+metadata, incremental refusals/transactions, standing checks and stale arcs were
+not repaired or suppressed. Doctor's overall success does not close those warnings.
+
+All three timers remained active/enabled. Observed next triggers: local October
+25 00:16:43 CDT, external October 24 03:01:40, digest October 26 09:08:21.
+**Both corrected backup routes have now executed successfully on their normal
+schedules.** The digest has not yet run under its correction. No job was manually
+started, no repair/configuration change was made during the observation, and no
+backup/restore/initializer was launched by this lane.
+
+Recovery facts remain partly unavailable: the October 20 image drive was still
+absent from mounts; the configured password-copy volume remained mounted at the
+01:01 inspection. Doctor's matching-copy PASS does not establish unplugged or
+off-workstation custody. No reply identifying a newer completed image, its actual
+test or independent custody had arrived. No image payload was opened or restored;
+successful scheduled backup/copy is not recovery qualification.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
