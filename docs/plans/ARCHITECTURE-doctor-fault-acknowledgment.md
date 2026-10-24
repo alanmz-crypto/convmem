@@ -5,14 +5,14 @@
 **Updated:** 2026-10-24
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
-**Current review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`
+**Current review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 
 ```
 Planning Status
 
-Phase:        Claude R4 and safety PASS; implementation review pending
+Phase:        corrected content pushed; implementation recheck pending
 Lanes:        fresh Claude Opus-class session in Kiro slot -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
@@ -34,10 +34,13 @@ Copilot reached its limit, Ryan directed Codex to choose another agent; a
 separate Codex safety reviewer found two required fixes at `e419810`. File
 mode/owner load validation and accurate post-commit CLI reporting are corrected
 at `49d9d67`, which the safety reviewer PASSed. Claude's final delta review
-then found a stale scoped-proof inventory. Its one-file regeneration is at the
-current target. The replacement safety reviewer and Claude's R4 recheck both
-PASSed that exact revision. Ryan assigned a fresh Claude Opus-class session to
-the original Kiro G2 implementation-review slot; that review remains open.
+then found a stale scoped-proof inventory, repaired at `1a825d0`. The
+replacement safety reviewer and Claude's R4 recheck PASSed that revision.
+A first Opus implementation review at `1a825d0` was restricted to static
+reading. It identified post-replace cleanup and existing-record retry defects
+that Codex reproduced and corrected at the current target. Ryan assigned a
+fresh Claude Opus-class session to the original Kiro G2 implementation-review
+slot; a shell-capable recheck of the corrected content remains open.
 
 ---
 

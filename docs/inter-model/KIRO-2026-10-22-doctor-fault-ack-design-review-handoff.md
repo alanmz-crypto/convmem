@@ -3,7 +3,7 @@
 **Updated:** 2026-10-24
 **Author:** Codex, implementation takeover under Ryan's direct instruction
 **For:** fresh Claude Opus-class implementation review in Ryan's assigned G2 slot
-**State:** `IMPLEMENTATION_REVIEW_PENDING`; Claude R4 and safety rechecks PASSed the content SHA
+**State:** `IMPLEMENTATION_REVIEW_PENDING`; final implementation-review delta needs a shell-capable independent recheck
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -18,12 +18,33 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`.
-This immutable content revision includes the corrected architecture, execution
-plan, code and tests. It adds only a regenerated scoped-proof inventory to the
-previously reviewed content. Later documentation-only routing commits point to
-it. The replacement safety reviewer and the first Claude reviewer PASSed this
-exact SHA. The fresh implementation reviewer should review it, not a moving tip.
+**Review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`.
+This immutable content revision corrects two retry/durability defects found
+by a first, shell-restricted Opus implementation review: post-replacement
+temp-path cleanup could mask exit 3 with "Refused", and an existing-record
+retry required a readable journal before syncing the stored file. It includes
+new regressions, the aligned §7–§8 contract, and a regenerated R2b inventory.
+The preceding `1a825d0` candidate passed Claude's R4 recheck and the
+replacement safety review. Those passes do not cover this new code delta.
+Later documentation-only routing commits point to this target; review the
+immutable SHA, not a moving tip.
+
+## First Opus implementation review at `1a825d0` — 2026-10-24
+
+Claude Opus 5.5 session `fa887e6b-03fc-4398-b340-2dc5b3b18533` returned a
+static **PASS** but its restricted CLI permissions denied every shell command,
+including its own SHA/clean-tree check, tests, and `/tmp/tangles` notice.
+It identified two issues as advisories. Codex reproduced both against the
+documented §8 retry contract: three new regression cases failed at `1a825d0`
+and passed after correction. A post-replace cleanup error had caused real
+Typer ack and revoke commands to exit 1 with "Refused" after the new document
+was visible. An idempotent ack retry could not finish durability once its
+journal read failed. The corrected content and regenerated R2b inventory are
+at the target above. Author checks: 262 focused tests plus 5 subtests, 43
+shadow/R2b/scoped-proof tests, 27 documentation tests plus 120 subtests, the
+clean-tree manifest guard, Ruff and scoped Pylint passed. The first static
+PASS is not final G2 approval; a fresh shell-capable independent recheck is
+required on the new exact SHA.
 
 ## Claude R4 recheck at `1a825d0` — 2026-10-24
 
@@ -136,8 +157,9 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next task:** The fresh Claude Opus-class reviewer independently checks the
-full implementation at the pinned SHA in Ryan's reassigned G2 slot.
+**Next task:** A fresh Claude Opus-class reviewer independently rechecks the
+full implementation and the two corrective paths at the pinned SHA in Ryan's
+reassigned G2 slot, with shell access confirmed for the SHA/clean-tree check.
 No PR, merge, promotion or live use is authorized by this review.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
@@ -233,8 +255,8 @@ three issues; it supplies no technical approval:
   review findings.
 
 **Next owner:** A fresh Claude Opus-class session reviews the implementation
-on the pinned candidate. The earlier Claude and replacement safety reviews
-PASSed this exact SHA.
+on the pinned candidate. Earlier Claude and replacement safety PASSes apply
+to `1a825d0`; the new corrective delta has author evidence only so far.
 Ryan retains PR/merge, promotion, live-use
 and acceptance decisions. Codex's corrective tests are author evidence only.
 
@@ -257,7 +279,7 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Review `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` in a separate clean
+1. Review `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` in a separate clean
    checkout. The local worktree remains at the path above; GitHub holds the
    same task branch as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
@@ -355,9 +377,10 @@ it is not a tamper-proof authority ledger.
 ## Verification and limits
 
 Codex ran the focused hermetic tests and the checks recorded in the execution
-plan. The unchanged code passed 257 focused tests; the current target passed
-44 scoped-proof, shadow, R2b and manifest tests on a clean tree. Scoped Ruff,
-Pylint and `git diff --check` passed on the preceding code revision.
+plan. The preceding `1a825d0` code passed 257 focused and 44 scoped-proof,
+shadow, R2b and manifest tests. The current target passed 262 focused tests
+plus 5 subtests, 43 scoped-proof/shadow/R2b tests, and the clean-tree manifest
+guard. Scoped Ruff, Pylint and `git diff --check` passed on the new code.
 Its CLI tests inject post-replacement and retry sync failures for both verbs,
 check exit 3 and distinct written-versus-visible messages, then confirm the
 acknowledgment or revocation is effective. The preserved reader-fix branch
@@ -406,9 +429,10 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`. Claude and the replacement
-safety reviewer PASSed this content SHA. Ryan's fresh-Claude implementation
-review remains open. Nothing is live.
+`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Its cleanup and retry
+corrections have author tests; Claude and the replacement safety reviewer
+PASSed the preceding `1a825d0` content. A shell-capable independent
+implementation recheck remains open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

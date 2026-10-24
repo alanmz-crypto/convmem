@@ -12,13 +12,13 @@ cross-arc snapshot and the linked arc brief below.
 - **[Arc Codex #286] Priority #1: acknowledgment awaits the final G2
   implementation review (2026-10-24, Codex):** The sole takeover branch is
   `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
-  target is `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`**. Claude's R4
-  recheck returned **PASS** with 391 targeted tests and no takeover-branch
-  failure in the whole-tree comparison with main. The replacement safety
-  reviewer also PASSed this SHA. Ryan assigned a fresh Claude Opus-class
-  session to the original Kiro implementation-review slot. **Next lane:**
-  that independent reviewer checks the full implementation at the same SHA;
-  G2 remains open. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  target is `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`**. Claude's R4
+  recheck and the replacement safety reviewer PASSed the preceding `1a825d0`
+  revision. A first Opus implementation review at that SHA was limited to
+  static reading by CLI permissions; its two retry/durability observations
+  were reproduced and corrected at the new target. **Next lane:** a fresh
+  shell-capable Opus reviewer checks the corrective delta and full
+  implementation at that exact SHA; G2 remains open. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
   records the evidence and review boundary. The retired
   `cpu-tripwire-fault-ack` branch remains preserved.
   The old Timeshift event's live acknowledgment is moot after reboot. The

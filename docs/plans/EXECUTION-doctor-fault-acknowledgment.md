@@ -4,13 +4,13 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `IMPLEMENTATION_REVIEW_PENDING`. Claude's R4 recheck and the replacement safety review PASSed the current exact content SHA. Ryan assigned a fresh Claude Opus-class session to the original Kiro G2 implementation-review slot. That independent review remains open. Earlier G0 and Claude findings remain historical.
-**Current review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` (immutable content revision; later routing edits are documentation only).
+**Resume state:** `IMPLEMENTATION_REVIEW_PENDING`. Claude's R4 recheck and the replacement safety review PASSed the preceding `1a825d0` content. A first Opus implementation review was shell-restricted and exposed two retry/durability defects, corrected at the new content SHA. Ryan's reassigned G2 slot requires a shell-capable independent recheck. Earlier G0 and Claude findings remain historical.
+**Current review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` (immutable corrective content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        Claude R4 and safety PASS; implementation review pending
+Phase:        corrected content pushed; implementation recheck pending
 Lanes:        fresh Claude Opus-class session in Kiro slot -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
@@ -45,7 +45,10 @@ Codex reviewer found two safety/correctness gaps at that SHA. The fixes at
 `fb1d251`, with the regenerated writer inventory at `49d9d67`, PASSed the
 replacement safety review. Claude later PASSed the R4 repair at `1a825d0`.
 Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
-implementation-review slot. Only that independent review remains open in G2.
+implementation-review slot. Its first pass at `1a825d0` was static because
+shell permissions were denied. It exposed two retry/durability issues that
+Codex reproduced and corrected at the current target. An independent,
+shell-capable implementation recheck remains open in G2.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
