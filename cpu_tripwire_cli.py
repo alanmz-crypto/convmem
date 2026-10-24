@@ -127,9 +127,12 @@ def _run_write(operation: Callable[[], tuple[str, bool]], verb: str) -> int:
         typer.echo(str(exc), err=True)
         return 2
     except DurabilityUnconfirmed as exc:
-        typer.echo(
-            f"Document was written, but durability is unconfirmed: {exc}", err=True
+        visibility = (
+            "Document was written"
+            if exc.was_written
+            else "Existing document is visible"
         )
+        typer.echo(f"{visibility}, but durability is unconfirmed: {exc}", err=True)
         return 3
     except (AckError, OSError, EOFError) as exc:
         typer.echo(f"Refused: {exc}", err=True)

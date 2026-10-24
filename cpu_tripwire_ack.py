@@ -69,6 +69,10 @@ class TtyRequired(AckError):
 class DurabilityUnconfirmed(AckError):
     """The visible document is valid, but crash durability was not confirmed."""
 
+    def __init__(self, message: str, *, was_written: bool = True) -> None:
+        super().__init__(message)
+        self.was_written = was_written
+
 
 @dataclass(frozen=True)
 class Operator:
@@ -388,8 +392,9 @@ def _sync_existing(path: Path) -> None:
         _sync_directory(path.parent)
     except OSError as exc:
         raise DurabilityUnconfirmed(
-            "existing document is visible but durability is unconfirmed; "
-            "inspect with tripwire show and retry the same command"
+            "retry sync of existing document failed; "
+            "inspect with tripwire show and retry the same command",
+            was_written=False,
         ) from exc
 
 

@@ -426,8 +426,9 @@ This is the same model as the repo's other local-only guards, such as
   already-active `ack` or already-revoked `revoke` validates the file, fsyncs
   the existing file and then its directory, preserving all bytes and attribution.
   Success is reported only after both syncs succeed. Another sync failure
-  returns exit 1 with an explicit durability-uncertain message, never "refused"
-  or a claim that nothing changed. A revoked-key `ack` still refuses unchanged.
+  returns exit 3, saying the existing document is visible but durability is
+  unconfirmed; the retry did not write it. It never says "refused" or claims
+  that nothing changed. A revoked-key `ack` still refuses unchanged.
 - **Reader (doctor):** opens only the exact path and takes no lock, because
   replacement is atomic. Stray `*.tmp` files are ignored.
 - **Interruption:** whatever point an `ack` dies at, the path holds either the

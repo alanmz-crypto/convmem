@@ -664,7 +664,8 @@ def test_t44_show_json_states_and_shell_quoted_command(monkeypatch):
 @pytest.mark.parametrize("shell", ["bash", "zsh"])
 def test_printed_ack_command_survives_real_shell_parsing(shell):
     shell_path = shutil.which(shell)
-    assert shell_path is not None, f"{shell} is required for this CLI contract"
+    if shell_path is None:
+        pytest.skip(f"{shell} is not installed on this test host")
     command = cli._ack_command(parsed().faults[0].key)  # pylint: disable=protected-access
     script = "convmem() { printf '%s\\0' \"$@\"; }\n" + command
     done = subprocess.run([shell_path, "-c", script], capture_output=True, check=True)
@@ -1082,6 +1083,66 @@ def test_cli_post_replace_failure_has_distinct_exit_and_applied_ack(monkeypatch)
     assert "Refused" not in response.output
     assert ack.load_acks().records[0]["ack_id"] == ACK_ID
     assert tripwire.evaluate_signals(signals, ack.load_acks(), BOOT).status == "warn"
+
+
+def test_cli_revoke_post_replace_failure_has_distinct_exit_and_effect(monkeypatch):
+    import convmem
+
+    write(ack.default_ack_path())
+    signals = tripwire.SignalRead(parsed(), [], set(), {4, 5, 8, 9})
+    monkeypatch.setattr(cli, "_snapshot", lambda: (signals, BOOT))
+
+    def failed_directory_sync(_directory):
+        raise OSError("directory fsync failed")
+
+    monkeypatch.setattr(ack, "_sync_directory", failed_directory_sync)
+    response = CliRunner().invoke(
+        convmem.app,
+        ["tripwire", "revoke", ACK_ID[:12], "--by", "ryan", "--reason", "undo"],
+    )
+    assert response.exit_code == 3, response.output
+    assert "Document was written, but durability is unconfirmed" in response.output
+    assert "Refused" not in response.output
+    assert ack.load_acks().records[0]["revoked_at"] is not None
+    assert tripwire.evaluate_signals(signals, ack.load_acks(), BOOT).status == "fail"
+
+
+@pytest.mark.parametrize("operation", ["ack", "revoke"])
+def test_cli_retry_sync_failure_reports_visible_document_without_new_write(
+    monkeypatch, operation
+):
+    import convmem
+
+    path = ack.default_ack_path()
+    write(path)
+    if operation == "revoke":
+        ack.revoke_ack(ACK_ID[:12], OPERATOR, path=path, now=lambda: NOW)
+    before = path.read_bytes()
+    signals = tripwire.SignalRead(parsed(), [], set(), {4, 5, 8, 9})
+    monkeypatch.setattr(cli, "_snapshot", lambda: (signals, BOOT))
+    monkeypatch.setattr(ack, "interactive_tty", lambda: "/dev/pts/test")
+
+    def failed_directory_sync(_directory):
+        raise OSError("directory fsync failed")
+
+    def no_replace(*_args):
+        raise AssertionError("retry must not replace the document")
+
+    monkeypatch.setattr(ack, "_sync_directory", failed_directory_sync)
+    monkeypatch.setattr(os, "replace", no_replace)
+    args = (
+        shlex.split(cli._ack_command(signals.journal.faults[0].key))[1:]  # pylint: disable=protected-access
+        if operation == "ack"
+        else ["tripwire", "revoke", ACK_ID[:12], "--by", "ryan", "--reason", "undo"]
+    )
+    response = CliRunner().invoke(convmem.app, args)
+    assert response.exit_code == 3, response.output
+    assert (
+        "Existing document is visible, but durability is unconfirmed" in response.output
+    )
+    assert "Document was written" not in response.output
+    assert "Refused" not in response.output
+    assert path.read_bytes() == before
 
 
 @pytest.mark.parametrize("dumps", [[None], [{"pid": 1, "sig": []}], {"pid": 1}])

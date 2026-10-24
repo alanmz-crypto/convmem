@@ -35,11 +35,11 @@
     "source_purge.py:341"
   ],
   "production_chroma_write_session_call_sites": [
-    "convmem.py:1884",
-    "convmem.py:1914",
-    "convmem.py:504",
-    "convmem.py:547",
-    "convmem.py:609",
+    "convmem.py:1920",
+    "convmem.py:1950",
+    "convmem.py:507",
+    "convmem.py:550",
+    "convmem.py:611",
     "incremental_jsonl.py:940",
     "ingest.py:1287",
     "ingest.py:1326",
@@ -57,7 +57,7 @@
     {
       "class": "mutates_units",
       "file": "convmem.py",
-      "line": 1884,
+      "line": 1920,
       "required_routing": "production_chroma_write_session",
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.forget\") as session:",
       "uses_open_chroma_for_write": false,
@@ -66,7 +66,7 @@
     {
       "class": "mutates_units",
       "file": "convmem.py",
-      "line": 504,
+      "line": 507,
       "required_routing": "production_chroma_write_session",
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.add\") as session:",
       "uses_open_chroma_for_write": false,
@@ -75,7 +75,7 @@
     {
       "class": "mutates_units",
       "file": "convmem.py",
-      "line": 609,
+      "line": 611,
       "required_routing": "production_chroma_write_session",
       "snippet": "with production_chroma_write_session(entrypoint=\"convmem.verify\") as session:",
       "uses_open_chroma_for_write": false,

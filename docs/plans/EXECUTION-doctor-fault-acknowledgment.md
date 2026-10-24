@@ -107,9 +107,11 @@ imports from `doctor`, `convmem`, or any ingest or watcher module:
   anything that cannot be acknowledged, and requires the operator to type the
   ID.
 - Exit codes: 0 when durable or durably confirmed already present; 1 when
-  refused or the lock is busy; 2 for bad usage or no TTY; 3 when replacement
-  succeeded but durability is unconfirmed. The exit-3 message says the
-  document was written and the next read evaluates it.
+  refused or the lock is busy; 2 for bad usage or no TTY; 3 when a replacement
+  or existing-document retry sync leaves durability unconfirmed. After a new
+  replacement, the message says the document was written and the next read
+  evaluates it. On retry, the message says the existing document is visible
+  without claiming that invocation wrote it.
 - Copyable commands use shell quoting for the opaque cursor. Revoked records
   do not receive an `ack` command. Mixed FAIL output includes the ack author.
 - Add the three commands to the usage block at the top of `convmem.py`.
@@ -227,7 +229,7 @@ module function, with an injected runner, path and TTY check).
 | T35 | Key names an MCE, a fault pinned to a known-bad CPU, a fault with no CPU, or a `kernel_oops` | Exit 1, no file |
 | T36 | Wrong typed short ID | Exit 1, no file |
 | T37 | Success | Exit 0. The file has mode `0600`, passes `load_acks` with no problem, and `check()` then gives the T4 verdict. The coredump evidence is filled in when the fake coredump list has a match, and null otherwise. |
-| T38 | Run again for the same active key | Fsync existing file and directory under lock; exit 0, "already acknowledged", with byte-identical content. Sync failure exits 1 with uncertainty. |
+| T38 | Run again for the same active key | Fsync existing file and directory under lock; exit 0, "already acknowledged", with byte-identical content. Sync failure exits 3 with existing-document visibility and uncertainty, without claiming a write. |
 | T39 | Lock held by another file descriptor | Exit 1, and the file is unchanged |
 | T40 | Failure at file fsync or replacement, before replacement succeeds | The original file is byte-identical (or still absent), and the writer's temp file is removed; test ack and revoke. Post-replacement failures are T50. |
 
@@ -246,7 +248,7 @@ Group 9: review corrections beyond T45–T47.
 |---|---|---|
 | T48 | Re-ack the same key after revocation, including CLI/show | Exit 1, file byte-identical and still valid, FAIL remains, no copyable re-ack command |
 | T49 | An oversized MESSAGE; repeated MESSAGE values or duplicate JSON members; journal timeout/nonzero exit with partial stdout | Long messages are fully classified. Numeric conversion failures retain the other known fault fields; malformed coredumps do not erase kernel faults. Retain all decodable FAIL evidence; ambiguous/incomplete input disables acknowledgments. Timeout tests cover bytes and string stdout. |
-| T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 1 states durability uncertainty. Retry keeps identical bytes/attribution and returns success only after file and directory fsync. |
+| T50 | Directory open/fsync failure after replace, for ack and revoke; retry while failure persists, then retry successfully | Complete valid new document remains visible; exit 3 states durability uncertainty. Retry also exits 3 while sync fails, keeps identical bytes/attribution without claiming a new write, and returns success only after file and directory fsync. |
 | T51 | Journal unreadable and a known-bad CPU online, with or without acknowledgments | FAIL with `ONLINE again`; the independent check always runs |
 
 **Mutation sanity (verification lane, G2):** each of these mutations must make
