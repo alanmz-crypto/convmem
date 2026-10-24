@@ -5,26 +5,26 @@
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "convmem.py:1884",
+      "entrypoint": "convmem.py:1920",
       "owner": "production_chroma_write_session",
-      "route_id": "convmem.py:1884",
-      "shadow_inventory_ref": "convmem.py:1884"
+      "route_id": "convmem.py:1920",
+      "shadow_inventory_ref": "convmem.py:1920"
     },
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "convmem.py:504",
+      "entrypoint": "convmem.py:507",
       "owner": "production_chroma_write_session",
-      "route_id": "convmem.py:504",
-      "shadow_inventory_ref": "convmem.py:504"
+      "route_id": "convmem.py:507",
+      "shadow_inventory_ref": "convmem.py:507"
     },
     {
       "coverage_status": "shadow_observed",
       "disposition": "mediated_native",
-      "entrypoint": "convmem.py:609",
+      "entrypoint": "convmem.py:611",
       "owner": "production_chroma_write_session",
-      "route_id": "convmem.py:609",
-      "shadow_inventory_ref": "convmem.py:609"
+      "route_id": "convmem.py:611",
+      "shadow_inventory_ref": "convmem.py:611"
     },
     {
       "coverage_status": "shadow_observed",
