@@ -533,6 +533,49 @@ was planned, not confirmed; the general report “Clonezilla is restorable. Test
 does not identify the tested image. No drive action, secret read, image check,
 backup or restore was performed to infer an answer.
 
+### Read-only follow-up — October 23, 23:53–23:55 CDT
+
+Ryan authorized: “go: Next step: Confirm recovery facts and inspect the next
+scheduled results.” Codex ran the required doctor/brief/unresolved orientation
+(doctor exit 0), then inspected timer/service properties, existing journals,
+mount metadata and top-level image metadata on mounted external volumes. No
+job start, configuration change, restore, image verification or initializer was
+performed. Doctor's logical read path may perform incidental Chroma bookkeeping;
+this is not a claim that every storage byte was unchanged.
+
+- **No post-correction execution yet:** the three service journals have no entry
+  since the 23:26:43 routing change. Timers retain the next triggers recorded
+  above: October 24 00:17:50 and 01:00:58 for local/external, October 26 09:08:21
+  for digest. All three remain active/enabled. Effective service commands still
+  use runtime-main; `NeedDaemonReload=no`. `Result=success` with missing/older
+  timestamps is not evidence of a new run. The last external success is still
+  October 23 23:04:06, before the correction.
+- **Existing availability checks pass:** doctor reported the same local source
+  and external destination IDs recorded above, a matching configured password
+  copy, no Chroma quarantine and the previous daily audit. CPU tripwire reported
+  zero native faults this boot. Other nonfatal warnings remain; this follow-up
+  did not clear or reclassify any warning.
+- **Image visibility:** `/run/media/lauer/ext-ex4-1T-NVMe/` is not mounted and
+  its mountpoint is absent. The previously recorded October 20 image is therefore
+  unavailable to this inspection; absence does not prove unplugging or remote
+  custody. A top-level scan of mounted external volumes found
+  `/run/media/lauer/rszl-larch-5t-fs/2026-10-11-06-img`. Its small metadata files
+  name a saved whole `nvme1n1` disk with boot/root partitions and a 254 GiB-class
+  image. That metadata is not integrity or restore-test evidence; image payloads
+  were not scanned or restored. No newer completed/tested image was established.
+- **Password-copy custody:** the configured copy at
+  `/run/media/lauer/BIT-Brg-larch-7t/convmem-secrets/restic.password` exists on a
+  currently mounted volume. File contents were not printed or manually opened;
+  doctor's existing check reported a match. This particular copy is not unplugged
+  or physically separated. Another independently stored copy remains possible
+  but unconfirmed.
+
+Ryan's image-specific test and physical-custody questions are pending. The next
+useful backup-result inspection is after October 24 01:05 CDT, subject to actual
+job completion; digest evidence cannot be checked before its Monday run. Keep
+this read-only follow-up scope: observe normal runs, report failures before any
+correction, and do not force jobs to satisfy the checkpoint.
+
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
 <!-- ref: /home/lauer/.config/systemd/user/convmem-restic-local.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-restic-external.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-cross-project-digest.service.d/90-safe-harbor-routing.conf — installed October 23 routing -->

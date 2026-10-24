@@ -1184,6 +1184,14 @@ of completion. The parked initializer remains unreviewed/unaccepted. No PR,
 merge, further deployment, repair, release, drive/key action or extra test is
 granted by this record.
 
+**Follow-up authorized, October 23:** Ryan said “go: Next step: Confirm recovery
+facts and inspect the next scheduled results.” The first inspection at
+23:53–23:55 CDT was before the scheduled runs; no post-correction service journal
+entry exists. Image-drive visibility and password-copy mount state were recorded
+in ROLLOUT §7 without implying a restore test or physical custody. Continue only
+the read-only observation scope when normal results exist; no job start, repair,
+configuration correction, backup/restore or initializer execution is granted.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->

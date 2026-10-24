@@ -54,9 +54,10 @@ cross-arc snapshot and the linked arc brief below.
   Ryan's bounded inspection and subsequent three-service correction are complete.
   Local backup, external copy and cross-project digest now route through deployed
   runtime-main/production Python. Configuration checks passed; no jobs were
-  manually started, and scheduled-run results remain unobserved. **Next lane:
-  Ryan** for newest completed/tested-image and off-workstation custody facts;
-  bounded read-only follow-up for scheduled outcomes. The initializer remains
+  manually started. The authorized read-only follow-up at 23:53–23:55 found
+  jobs not yet due; inspect backup results after October 24 01:05 CDT and digest
+  after Monday's run. **Next lane: Ryan** for image-specific test/custody facts;
+  Codex for the granted read-only follow-up. The initializer remains
   parked, unreviewed and unaccepted. No PR or further live action is granted.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
   [STATUS](../plans/STATUS-safe-harbor.md) and the
