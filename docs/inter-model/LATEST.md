@@ -56,13 +56,15 @@ cross-arc snapshot and the linked arc brief below.
   01:05 CDT passed both backup checks. No job was manually started. Ryan's recovery
   answers and the newer image's completed integrity check are recorded;
   restore qualification and independent custody remain open.
-  **Next lane: Ryan** for physical recovery preparation and any restore-qualification
-  decision; Codex for the read-only digest observation after Monday's normal run.
+  Ryan owns physical custody follow-up; it stays unverified without repeated prompts.
+  **Next lane: Codex** for the read-only digest observation after today's additional
+  **18:00 CDT** run. Ryan authorized it; the one-time timer is enabled/waiting and
+  the weekly schedule remains enabled. Scheduling is not completed-run evidence.
   Both boot/root image checks passed; no repeat scan is needed. The initializer remains
   parked, unreviewed and unaccepted. No PR or mutation authority follows.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
   [STATUS](../plans/STATUS-safe-harbor.md) and the
-  [image-check receipt](../plans/ROLLOUT-safe-harbor.md#image-integrity-result--october-24-0903-cdt).
+  [schedule receipt](../plans/ROLLOUT-safe-harbor.md#additional-digest-run--october-24-1800-cdt).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its

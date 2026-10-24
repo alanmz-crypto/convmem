@@ -14,7 +14,9 @@ identifies a newer completed image; exact-image qualification and independent cu
 [STATUS](STATUS-safe-harbor.md). Ryan subsequently authenticated locally for the
 authorized [integrity check](#image-integrity-result--october-24-0903-cdt): both
 partition images passed at 09:03:12 CDT. Restore/boot qualification remains open;
-no restore or live mutation follows.
+no restore follows. Ryan also authorized an [additional digest run today at
+18:00 CDT](#additional-digest-run--october-24-1800-cdt); its one-time timer is
+enabled and waiting. Results remain pending; the weekly schedule is retained.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -810,8 +812,75 @@ exact image. It does not establish full Clonezilla metadata/GPT/MBR validation,
 successful restore/boot/application recovery, retrieval of the embedded password
 or independent custody. No restore, source permission change, system package
 installation, service change, key copy or drive removal occurred in this check.
-The next agent observation is Monday's normal digest result; restore qualification
-and physical custody remain owner decisions. The initializer remains parked.
+The next agent observation is the digest result (subsequently brought forward
+under the separate grant below). Restore qualification and physical custody
+remain owner decisions. The initializer remains parked.
+
+### Additional digest run — October 24, 18:00 CDT
+
+Ryan asked to bring Monday's work forward to later today, then chose “6:00” in
+response to the explicit offer of one additional digest run at 18:00 CDT with
+the weekly schedule retained. This authorizes the named one-time timer and the
+existing service's usual digest generation, including its configured synthesis
+and report output. It does not authorize `--propose`, corpus indexing, repairs,
+backups/restores, runtime changes or automatic retries. Ryan also clarified
+that the physical storage steps were not literally performed; physical custody
+remains unverified and owner-managed, not a prerequisite for this observation.
+
+Codex refreshed doctor (exit 0, existing nonfatal warnings), read the installed
+service and deployed entrypoint, and confirmed the service was inactive. Runtime
+remained clean at `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`; today's digest report
+did not yet exist. The staged timer passed `systemd-analyze --user verify`, and
+calendar normalization confirmed October 24 18:00 CDT = 23:00 UTC.
+
+At 09:42:42 CDT, Codex installed and enabled only:
+`~/.config/systemd/user/convmem-safe-harbor-digest-once-20261024.timer`
+
+```ini
+[Unit]
+Description=Safe Harbor: one additional cross-project digest on October 24
+
+[Timer]
+OnCalendar=2026-10-24 18:00:00 America/Chicago
+AccuracySec=1s
+RandomizedDelaySec=0
+Persistent=false
+Unit=convmem-cross-project-digest.service
+
+[Install]
+WantedBy=timers.target
+
+# ref: ./convmem-cross-project-digest.service — run the existing deployed digest once
+```
+
+Installed SHA-256:
+`b202f349e2e361f973e0367a8f6c1545d807fee93e91f25ff7c3082a20099d01`.
+The matching `timers.target.wants` symlink was created. At 09:42:59 the effective
+timer was loaded/enabled/active/waiting, targeting the existing digest service
+at **Saturday October 24 18:00:00 CDT**, accuracy 1 second, random delay zero,
+`Persistent=no`, no prior trigger. The service remained inactive; enabling this
+timer did not run it immediately.
+
+The weekly timer, base service and routing drop-in retained their respective
+SHA-256 hashes:
+
+- Weekly timer: `8913b60452a6123d97a22fcd2344b5e15cc08a5b4d25af22cddf7c14db33389c`.
+- Base service: `259a56457f0a42fb3f492025a1287101d62e1225d2bf377588aca87ad8361752`.
+- Routing drop-in: `40c5fb6bec1770e6570af4bdce19f801df2a7c7116e0a82ebc9dbd51bf614439`.
+
+The user-manager reload resampled weekly jitter: next Monday became October 26
+09:01:21 CDT, still within the unchanged Monday 09:00 + 0–10 minute rule.
+The one-time timer is enabled across a restart before its deadline but does not
+catch up if the user manager was down at 18:00. It does not wake a powered-off
+machine. No completion claim follows from successful scheduling.
+
+After the run, inspect the timer/service journal, service exit and actual process
+route where available, and `~/.local/share/convmem/digests/2026-10-24.md`. A
+service failure, missing result or missed trigger returns for review, not an
+automatic retry. No Codex automation was created; return to this session for
+the read-only result inspection. To cancel before the deadline if Ryan requests
+it, disable/stop only `convmem-safe-harbor-digest-once-20261024.timer`; that
+cancellation has not been executed. The initializer remains parked.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
@@ -819,3 +888,4 @@ and physical custody remain owner decisions. The initializer remains parked.
 <!-- src: /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/clonezilla-img, /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/blkid.list — image completion and saved filesystem identity -->
 <!-- ref: /tmp/safe-harbor-image-check-vDJNmR/run-check.sh — temporary local-authentication image-check helper -->
 <!-- src: /tmp/safe-harbor-image-check-vDJNmR/terminal-result.txt, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-before.json, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-after.json — completed image check and source identity -->
+<!-- ref: /home/lauer/.config/systemd/user/convmem-safe-harbor-digest-once-20261024.timer — owner-authorized additional digest at 18:00 CDT -->

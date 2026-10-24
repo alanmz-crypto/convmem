@@ -3,8 +3,9 @@
 **Current state — 2026-10-24.** Ryan resumed Safe Harbor. The §23 initializer
 implementation remains parked, unreviewed and unaccepted. Section 24 records the
 completed read-only post-deployment check and separately authorized correction
-of three scheduled service routes. Both scheduled backup routes passed; Monday's
-digest remains pending. Ryan's recovery answers are recorded; the October 23
+of three scheduled service routes. Both scheduled backup routes passed; Ryan's
+additional digest is scheduled for October 24 18:00 CDT, with its result pending
+and the weekly schedule retained. Ryan's recovery answers are recorded; the October 23
 image's boot/root integrity checks passed October 24. Restore qualification and
 independent custody remain open. Start with [STATUS](STATUS-safe-harbor.md);
 historical grants below do not authorize additional work.
@@ -1228,6 +1229,20 @@ before/after source identities. This grants no repeat scan and demonstrates
 image integrity only, not restore/boot/application recovery. The grant excludes
 restores, source permission changes, system installation, service/drive/key
 actions and unrelated tests; it does not reopen the parked initializer.
+
+**Additional digest grant, October 24:** Ryan asked to bring Monday's work forward
+and chose 18:00 CDT for one additional run of the existing digest service, keeping
+the regular Monday schedule. Codex installed/enabled
+`convmem-safe-harbor-digest-once-20261024.timer`, with
+`OnCalendar=2026-10-24 18:00:00 America/Chicago`, targeting
+`convmem-cross-project-digest.service`. Effective scheduling and unchanged existing
+unit hashes were verified; no digest invocation had started. The [schedule
+receipt](ROLLOUT-safe-harbor.md#additional-digest-run--october-24-1800-cdt) records
+the exact timer, normal synthesis/report effects, restart/missed-run limits and
+weekly jitter resampling. This is a narrow exception to the prior observation-only
+scope; it grants no other service change, proposal publication, corpus indexing,
+automatic retry, repair, backup/restore or initializer action. Inspect results
+read-only after completion; successful scheduling is not successful execution.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
