@@ -5,15 +5,15 @@
 **Updated:** 2026-10-23
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
-**Current review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421`
+**Current review target:** `49d9d67805e7f15ffd55fc6507953279184144df`
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 
 ```
 Planning Status
 
-Phase:        Claude delta PASS; Copilot and Kiro exact-revision G2 reviews pending
-Lanes:        Copilot audit + Kiro implementation review -> Ryan decision
+Phase:        Safety review PASS; Claude and Kiro G2 reviews pending
+Lanes:        Claude delta + Kiro implementation -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
@@ -28,10 +28,13 @@ errors. They are corrected in this takeover candidate. The existing
 records the historical result, new corrections, advisories and lane comparison.
 Claude's full review at `132658d` verified the fault behavior and diff coverage,
 then required mechanical inventory repair, a consistent retry exit-code
-contract, and a portable shell test. These are corrected at the current review
-target. Claude's exact-SHA delta re-review returned PASS with no new required
-changes. Copilot safety audit and Kiro implementation review remain open; the
-takeover grant did not explicitly waive them.
+contract, and a portable shell test. These were corrected at `e419810`.
+Claude's exact-SHA delta re-review returned PASS there. After
+Copilot reached its limit, Ryan directed Codex to choose another agent; a
+separate Codex safety reviewer found two required fixes at `e419810`. File
+mode/owner load validation and accurate post-commit CLI reporting are corrected
+at the current target. The safety reviewer PASSed the exact current target;
+Claude's delta review and Kiro's implementation review remain open.
 
 ---
 

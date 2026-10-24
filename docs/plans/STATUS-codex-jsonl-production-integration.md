@@ -81,16 +81,19 @@ granted `1a68675` in that host snapshot; neither docs merge needs a deployment.
 The acknowledgment design subsequently merged through PR #415 as `3d24c75`.
 The 2026-10-23 corrective implementation is on
 `feat/2026-10-22-doctor-fault-ack-takeover` at review target
-`e419810c406bc0ea24b02c2fc16e98f05f13e421`, not `main` or the live runtime.
+`49d9d67805e7f15ffd55fc6507953279184144df`, not `main` or the live runtime.
 Claude's full review at `132658d` verified the fault behavior and diff coverage,
-then returned PASS-WITH-CHANGES for three follow-ups. They are corrected at the
-current target. Claude's exact-SHA delta re-review returned PASS with no new
-required changes. Ryan retired the separate
+then returned PASS-WITH-CHANGES for three follow-ups. Claude PASSed their
+correction at `e419810`. Ryan retired the separate
 `cpu-tripwire-fault-ack` branch after Claude's FAIL at `01e720e` and accepted
-two policy decisions for this takeover. Copilot safety audit and Kiro
-implementation review remain open. The 2026-10-23 session's
-`convmem doctor` exited 1 on an unacknowledged CPU 7 fault. No runtime change
-or live acknowledgment was made.
+two policy decisions for this takeover. When Copilot reached its limit, Ryan
+directed Codex to choose another agent. The separate safety reviewer required
+mode/owner validation and accurate post-commit CLI reporting at `e419810`;
+both are corrected at the current target, which the safety reviewer PASSed.
+Claude's final delta and Kiro's implementation reviews remain open. The prior
+recorded doctor failure was
+an unacknowledged CPU 7 fault; current acceptance is unproven. No runtime
+change or live acknowledgment was made.
 
 | Surface | Current state |
 |---|---|
@@ -117,7 +120,7 @@ or live acknowledgment was made.
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. | Deployment is executed, but the handoff's doctor-exit-0 acceptance criterion remains unmet; Ryan decides disposition of that existing failure |
 | Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Corrected branch-only review target `e419810c406bc0ea24b02c2fc16e98f05f13e421` passed 252 focused local tests, 25 affected inventory tests and the committed-manifest guard. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records Claude's exact-SHA delta PASS, its prior R1–R3 findings and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | Copilot performs the targeted safety audit; Kiro reviews implementation on the same SHA. Ryan owns G3–G6 |
+| Doctor acknowledgment, priority #1 | Corrected branch-only review target `49d9d67805e7f15ffd55fc6507953279184144df` passed 257 focused tests, 25 affected inventory tests and the committed-manifest guard. The replacement safety reviewer PASSed this SHA, resolving its two required findings. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records the evidence and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | Claude rechecks the final delta; Kiro reviews implementation on the same SHA. Ryan owns G3–G6 |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -130,9 +133,10 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-**The next lanes are Copilot's targeted safety audit and Kiro's implementation
-review** of `e419810c406bc0ea24b02c2fc16e98f05f13e421`. Claude has
-PASSed the exact-SHA delta and verified coverage. Ryan
+**The next lanes are Claude's final-delta recheck and Kiro's implementation
+review** of
+`49d9d67805e7f15ffd55fc6507953279184144df`. Claude's prior PASS covered
+`e419810`; it does not cover the new safety fixes. Ryan
 directly granted Codex the implementation takeover. The earlier G0 FAIL and
 Claude PASS-WITH-CHANGES at the prior revision remain historical; Claude's
 later FAIL on the retired branch was resolved by Ryan's policy decisions in
@@ -149,12 +153,12 @@ regression coverage. The routing-only pointer commit does not alter that
 content revision.
 
 The takeover packet incorrectly narrowed G2 to Codex verification plus Claude
-review. Ryan's explicit implementation and Claude-review assignments do not
-establish a waiver of the original Copilot safety audit or Kiro implementation
-review. The original three-lane G2 requirements are restored. Claude verified
-654/655 changed executable lines at `132658d`, probed the remaining branch,
-then PASSed the final delta with every changed line covered. Author test
-results do not replace the two remaining independent reviews.
+review. The original three-lane G2 requirements were restored. Ryan later
+delegated selection of a safety-audit replacement after Copilot reached its
+limit; a separate read-only Codex reviewer found C1–C2 at `e419810`.
+Claude verified 654/655 changed executable lines at `132658d`, probed the
+remaining branch, then PASSed the `e419810` delta. Author tests do not replace
+the final-revision independent reviews.
 
 The original implementation branch is retired from use under Ryan's 2026-10-23
 instruction and remains preserved. This takeover branch is the merge line.
@@ -245,14 +249,13 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Complete Copilot's targeted safety audit and Kiro's implementation review on
+1. Complete Claude's final-delta recheck and Kiro's implementation review on
    pinned revision
-   `e419810c406bc0ea24b02c2fc16e98f05f13e421` (G2). Codex's verification
+   `49d9d67805e7f15ffd55fc6507953279184144df` (G2). Codex's verification
    does not replace independent reviews. Ryan then decides PR/merge (G3), runtime
    promotion without a watcher restart (G4), and acceptance (G6). G5 for the
    old Timeshift event is moot after reboot; future live acknowledgments need
-   separate grants. The recorded pre-reboot doctor result remains FAIL;
-   today's post-reboot doctor remains FAIL on an unacknowledged CPU 7 fault;
+   separate grants. Prior doctor failures remain historical; current
    acceptance has not been established.
 2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
    records; keep unsupported outcomes **Ryan to confirm**. Review the reported
@@ -273,11 +276,11 @@ Codex admission and the same-source publication fence are live.
 
 | Stop | Owner | What it blocks |
 |---|---|---|
-| Architecture/plan review | Kiro by default; Claude assigned acknowledgment corrections review | Prior G0 FAIL and Claude PASS-WITH-CHANGES remain historical; Claude's final exact-SHA delta review PASSed |
+| Architecture/plan review | Kiro by default; Claude assigned acknowledgment corrections review | Prior G0 FAIL and Claude PASS-WITH-CHANGES remain historical; Claude PASSed `e419810`, before the latest safety fixes |
 | Execute grant | Ryan | Any production-code implementation outside the explicit acknowledgment takeover grant |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
-| Implementation evidence review | Claude coverage/review + Copilot targeted safety audit + Kiro implementation review for acknowledgment G2 | PR disposition; the takeover grant does not waive any of these requirements |
+| Implementation evidence review | Claude coverage/review + Ryan-directed independent safety substitute after Copilot limit + Kiro implementation review for acknowledgment G2 | PR disposition; all three must cover the corrected target |
 | Production canary | Ryan | Live source/Chroma/config/provider operation |
 | Activation | Ryan | Feature enablement and watcher participation |
 
@@ -427,6 +430,8 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-23 | Codex | Pinned corrective acknowledgment implementation at `132658d`; 249 focused tests pass, and Claude/Copilot/Kiro G2 reviews remain open |
 | 2026-10-23 | Claude / Codex | Claude verified fault behavior and coverage at `132658d` but required R1–R3; Codex pushed the inventory, retry-contract and shell-test corrections at `e419810`, pending Claude delta recheck |
 | 2026-10-23 | Claude | Exact-SHA delta re-review at `e419810` returned PASS with no new required changes; Copilot and Kiro G2 reviews remain open |
+| 2026-10-23 | Codex / independent safety reviewer | Ryan delegated replacement selection after Copilot's limit; Codex chose a separate safety reviewer, which required two fixes at `e419810`; Codex pushed both at `fb1d251` for final G2 delta review |
+| 2026-10-23 | Independent safety reviewer | PASSed final content `49d9d67`, including regenerated R2b inventory and both safety fixes; Claude and Kiro G2 reviews remain |
 
 ## TL;DR
 
@@ -440,11 +445,12 @@ Keep this document a current-state snapshot, not a session diary.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision are
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
-- Priority #1: the corrected acknowledgment review target is `e419810`.
-  Codex's 252 focused tests, 25 inventory tests and manifest guard pass;
-  Claude's delta re-review PASSed; Copilot/Kiro G2 requirements remain
-  open. No runtime promotion or live acknowledgment occurred. Today's doctor
-  check fails on an unacknowledged CPU 7 fault, so acceptance remains unmet.
+- Priority #1: the corrected acknowledgment review target is `49d9d67`.
+  Codex's 257 focused tests, 25 inventory tests and manifest guard pass.
+  The replacement safety reviewer PASSed this SHA. Claude's earlier PASS
+  applies to `e419810`; Claude's final delta and Kiro's implementation reviews
+  remain open. No runtime promotion or live
+  acknowledgment occurred; current acceptance remains unproven.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
 <!-- ref: ../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md — priority-#1 design pickup and subsequent queue -->

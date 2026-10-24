@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `COPILOT_KIRO_G2_PENDING`. Claude returned PASS-WITH-CHANGES at `132658d`, requiring R1–R3; the current candidate corrects them, and Claude's exact-SHA delta re-review returned PASS. Copilot and Kiro G2 reviews remain open. The earlier G0 FAIL and Claude's `4d1aedd` review remain historical.
-**Current review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421` (immutable content revision; later routing edits are documentation only).
+**Resume state:** `CLAUDE_KIRO_G2_PENDING`. Claude PASSed `e419810` after R1–R3 corrections. Ryan delegated replacement selection after Copilot reached its limit; Codex chose a separate safety reviewer, whose audit at `e419810` returned PASS-WITH-CHANGES for C1–C2. Both fixes are at the current target, which the safety reviewer PASSed. Claude's final delta check and Kiro's implementation review remain open. Earlier G0 and Claude reviews remain historical.
+**Current review target:** `49d9d67805e7f15ffd55fc6507953279184144df` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        Claude delta PASS; Copilot and Kiro exact-SHA G2 reviews pending
-Lanes:        Copilot audit + Kiro implementation review -> Ryan decision
+Phase:        Safety review PASS; Claude and Kiro G2 reviews pending
+Lanes:        Claude delta + Kiro implementation -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -23,7 +23,7 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 |---|---|---|---|---|
 | G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude's later PASS-WITH-CHANGES at `4d1aedd` led to reader fixes at the current target | No self-issued PASS |
 | G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
-| G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + Copilot audit lane (targeted safety audit) + Kiro (implementation review); Codex supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
+| G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + independent Codex safety reviewer (Ryan-directed replacement after Copilot limit) + Kiro (implementation review); Codex implementation owner supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
 | G4 | Runtime promotion grant at an exact SHA | Ryan | A fast-forward of `.worktrees/runtime-main`, **with no watcher restart** | Live acknowledgment |
 | G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `bab67b49aa4f` | Any other event; any acceptance claim |
@@ -39,8 +39,12 @@ Copilot's targeted safety audit and Kiro's implementation review. Ryan assigned
 Codex implementation and Claude review, but no explicit waiver of the other
 G2 requirements was found. They remain required. Claude's static
 PASS-WITH-CHANGES at the earlier SHA was evidence for its own review only.
-Claude's later exact-SHA PASS completes its review and diff-coverage leg, but
-the Copilot/Kiro reviews remain open. G2 is open.
+Claude's later exact-SHA PASS applies to `e419810`. Ryan then delegated the
+choice of a replacement after Copilot reached its limit. A separate read-only
+Codex reviewer found two safety/correctness gaps at that SHA. The fixes at
+`fb1d251`, with the regenerated writer inventory at `49d9d67`, PASSed the
+replacement safety review. Claude's final delta and Kiro's implementation
+reviews remain open. G2 is open.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
@@ -383,9 +387,35 @@ of final-delta coverage.
 Claude's exact-SHA delta re-review at `e419810` returned PASS with no new
 required changes. On Python 3.12.13, Claude reports 252 focused tests, 72
 inventory tests and 541 wider regression tests passing; every changed delta
-line was covered. Copilot/Kiro G2 reviews remain open. Hosted Python
-3.12 CI and the full repository suite were not run locally. No runtime or live
-acknowledgment action was performed.
+line was covered. This is historical evidence for that revision.
+
+### Safety-audit correctives (Codex, 2026-10-23)
+
+After Copilot reached its limit, Ryan directed Codex to choose another agent.
+An independent, read-only Codex safety reviewer returned PASS-WITH-CHANGES at
+`e419810`: C1 accepted a world-writable acknowledgment file as authority; C2
+reported exit 1 after a durable ack/revoke when the later verdict refresh
+raised. Both were reproduced in hermetic tests before correction.
+
+At `fb1d251`, the loader checks mode `0600` and current effective-user
+ownership on the opened inode, invalidating the whole file on mismatch. A
+failed post-commit verdict refresh exits 0 for the completed operation and
+reports that the current verdict is unavailable. CLI tests exercise both ack
+and revoke, verify stored effect, and prevent a false refusal. The four-file
+focused suite passed **257 tests**. Coverage reports **100% line and branch**
+for `cpu_tripwire_ack.py` and **100% line**, one pre-existing partial branch,
+for `cpu_tripwire_cli.py`. Scoped Ruff, format and Pylint passed; 27 doc tests
+and 120 subtests passed; the clean-tree manifest guard passed **1 test**.
+Those module changes rotated the R2b implementation identity. The existing
+inventory writer regenerated its committed JSON at `49d9d67`; all **25**
+affected inventory tests passed, with the route count unchanged at **39**.
+
+The replacement safety reviewer PASSed `49d9d67` after independently matching
+all 39 inventory routes and rerunning 25 inventory and 255 focused tests.
+Claude's final delta and Kiro's implementation reviews remain open. Hosted
+Python 3.12 CI and the full
+repository suite were not run locally. No runtime or live acknowledgment
+action was performed.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 
