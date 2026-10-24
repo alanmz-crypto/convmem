@@ -5,14 +5,14 @@
 **Updated:** 2026-10-23
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
-**Current review target:** `132658d924ed495fc4fdcfdc48d84cfb3c08f61a`
+**Current review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421`
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 
 ```
 Planning Status
 
-Phase:        Reader corrections implemented; exact-revision G2 reviews pending
+Phase:        Claude R1–R3 correctives implemented; exact-revision G2 reviews pending
 Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
@@ -26,9 +26,11 @@ two reader defects under §5.1: Unicode record splitting and uncaught decoding
 errors. They are corrected in this takeover candidate. The existing
 [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
 records the historical result, new corrections, advisories and lane comparison.
-Claude rechecks the new exact revision. The original G2
-diff-coverage, Copilot safety-audit and Kiro implementation-review requirements
-also remain open; the takeover grant did not explicitly waive them.
+Claude's full review at `132658d` verified the fault behavior and diff coverage,
+then required mechanical inventory repair, a consistent retry exit-code
+contract, and a portable shell test. These are corrected at the current review
+target. Claude's delta recheck, Copilot safety audit and Kiro implementation
+review remain open; the takeover grant did not explicitly waive them.
 
 ---
 

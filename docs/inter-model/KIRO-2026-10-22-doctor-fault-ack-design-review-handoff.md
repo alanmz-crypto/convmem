@@ -3,7 +3,7 @@
 **Updated:** 2026-10-23
 **Author:** Codex, implementation takeover under Ryan's direct instruction
 **For:** Claude, independent design and implementation review
-**State:** `CLAUDE_REVIEW_PENDING`; historical verdict PASS-WITH-CHANGES
+**State:** `CLAUDE_DELTA_REVIEW_PENDING`; full review at `132658d` was PASS-WITH-CHANGES
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -15,13 +15,43 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** `132658d924ed495fc4fdcfdc48d84cfb3c08f61a`.
+**Review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421`.
 This immutable content revision includes the corrected architecture, execution
 plan, code and tests. The following documentation-only routing commit points
 to it; it does not change the reviewed implementation. Claude should review
 this exact SHA, not a moving branch tip.
 
-## Independent review result — 2026-10-23
+## Claude full review at `132658d` — 2026-10-23
+
+Claude independently verified the post-replacement exit-3 behavior, blind-journal
+wording, both of Ryan's policy decisions, and preservation of a CPU fault plus
+MCE from timed-out partial stdout. Its earlier C1/C2 reader findings were
+resolved. It measured **654/655** changed executable lines against `origin/main`
+and directly probed the one unexecuted branch. This evidence applies to
+`132658d`, so the final delta still needs rechecking.
+
+The verdict was **PASS-WITH-CHANGES**, with three required corrections:
+
+1. **R1:** five shifted `convmem.py` writer coordinates left the shadow
+   inventory stale and the R2b derived inventory identity mismatched. Six
+   affected tests failed. The shadow coordinates were corrected, then the R2b
+   inventory was regenerated with its existing writer; all 25 tests in the
+   three affected files now pass, as does the committed-manifest guard.
+2. **R2:** architecture §8 and execution T38/T50 said exit 1 for retry sync
+   failure while the CLI returned exit 3, and the retry message claimed a
+   write that did not occur. The contract now consistently uses exit 3. New
+   CLI tests check retry failures for ack and revoke, post-replacement revoke,
+   messages, byte preservation and visible effect.
+3. **R3:** the bash/zsh test assumed both shells exist, but CI does not install
+   zsh. An absent shell now skips with an explicit reason; both arms pass
+   locally. Hosted CI has not been run on this branch.
+
+**Claude's next task:** review the `132658d`→current-target delta, verify R1–R3
+and any affected coverage, then return an exact-SHA verdict. Copilot's targeted
+safety audit and Kiro's implementation review remain separate G2 requirements.
+No PR, merge, promotion or live use is authorized by this review.
+
+## Earlier independent review at `4d1aedd` — 2026-10-23
 
 **Claude returned PASS-WITH-CHANGES at
 `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`.** The reviewer was the actual
@@ -137,7 +167,7 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Review `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` in a separate clean
+1. Review `e419810c406bc0ea24b02c2fc16e98f05f13e421` in a separate clean
    checkout. The local worktree remains at the path above; GitHub holds the
    same task branch as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
@@ -235,15 +265,16 @@ it is not a tamper-proof authority ledger.
 ## Verification and limits
 
 Codex ran the focused hermetic tests and the checks recorded in the execution
-plan. The corrective target passed 249 focused tests, scoped Ruff and Pylint,
-the committed-manifest guard, and `git diff --check`. Its CLI test injects a
-post-replacement sync failure, checks exit 3 and the written-document message,
-then confirms the acknowledgment is applied. The preserved reader-fix branch
+plan. The current target passed 252 focused tests, 25 affected inventory tests,
+scoped Ruff and Pylint, the committed-manifest guard, and `git diff --check`.
+Its CLI tests inject post-replacement and retry sync failures for both verbs,
+check exit 3 and distinct written-versus-visible messages, then confirm the
+acknowledgment or revocation is effective. The preserved reader-fix branch
 was compared read-only; its only useful unique coverage was the 9-case matrix
 for Unicode separators through complete and timed-out journal reads, now on
-this target. A timed-out journal with partial
-stdout containing both a CPU fault and an MCE remains FAIL. Actual bash and
-zsh parse the printed command without changing the cursor or `<reason>`.
+this target. A timed-out journal with partial stdout containing both a CPU
+fault and an MCE remains FAIL. Actual bash and zsh parse the printed command
+without changing the cursor or `<reason>`.
 The earlier eight planned mutations produced assertion failures in isolated
 copies, not collection errors. Their purpose was to prove that tests detect
 cross-boot/process/cursor widening, false PASS, incomplete-read acknowledgment,
@@ -282,9 +313,9 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`132658d924ed495fc4fdcfdc48d84cfb3c08f61a` for Claude's independent
-recheck. Codex's 249 local tests pass; Claude, Copilot and Kiro G2 reviews remain
-open. Nothing is live.
+`e419810c406bc0ea24b02c2fc16e98f05f13e421` for Claude's independent
+delta recheck. Codex's 252 focused tests pass; Claude, Copilot and Kiro G2
+reviews remain open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

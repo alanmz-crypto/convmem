@@ -4,13 +4,13 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at historical revision `4d1aedd8e213b2201f2fb0e0ff9df5e5efd2c30c`; the takeover candidate corrects the reader defects and Ryan's 2026-10-23 policy and durability requirements. Claude rechecks the new exact revision. The earlier G0 FAIL remains recorded.
-**Current review target:** `132658d924ed495fc4fdcfdc48d84cfb3c08f61a` (immutable content revision; later routing edits are documentation only).
+**Resume state:** `CLAUDE_DELTA_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at `132658d`, verifying the fault behavior and diff coverage but requiring R1–R3. The current candidate corrects those three findings. Claude rechecks the new exact revision; Copilot and Kiro G2 reviews remain open. The earlier G0 FAIL and Claude's `4d1aedd` review remain historical.
+**Current review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        Corrective implementation complete; exact-SHA G2 reviews pending
+Phase:        Claude R1–R3 correctives complete; exact-SHA G2 reviews pending
 Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
@@ -348,6 +348,36 @@ No full-repository pytest, host tripwire invocation, hardware/power-loss test,
 runtime promotion, watcher restart or live acknowledgment was performed.
 Claude's historical PASS-WITH-CHANGES did not cover these corrections. G2
 remains incomplete until independent review of the new immutable revision.
+
+### Claude R1–R3 follow-up (Codex, 2026-10-23)
+
+Claude's independent full review at `132658d` verified the requested fault
+behavior and measured **654/655** changed executable lines against `origin/main`;
+the one unexecuted branch was probed directly. Its verdict was
+PASS-WITH-CHANGES: six stale shadow/R2b inventory tests, contradictory retry
+exit-code text and missing CLI coverage, and a zsh test that assumed the shell
+was installed. This is historical coverage evidence for that SHA, not a claim
+of final-delta coverage.
+
+- The shadow inventory now names the five shifted `convmem.py` writer call
+  sites. The unchanged R2b generator refreshed its derived identity and digest
+  under isolated HOME/XDG/config paths; both inventory verifiers returned no
+  errors. The three affected test files passed **25 tests** on the committed
+  corrective content revision, including all six previously failing cases.
+- An existing-document retry sync failure now exits **3** and says the document
+  is visible without claiming the retry wrote it. New CLI tests cover retry
+  failures for ack and revoke, plus a post-replacement revoke failure. The
+  existing post-replacement ack test still verifies that the new document is
+  effective. Architecture §8 and E4/T38/T50 now use the same exit-code contract.
+- The bash/zsh command test skips an absent shell with an explicit reason;
+  both arms passed locally. The focused tripwire/doctor suite passed **252**
+  tests. Scoped Ruff, format and Pylint passed; `git diff --check` passed.
+  The committed-manifest guard passed **1 test** on the clean pushed content
+  revision.
+
+Claude's delta recheck and Copilot/Kiro G2 reviews remain open. Hosted Python
+3.12 CI and the full repository suite were not run locally. No runtime or live
+acknowledgment action was performed.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 
