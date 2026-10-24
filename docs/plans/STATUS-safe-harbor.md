@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — operational follow-up, 2026-10-23.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Configuration checks passed; corrected scheduled-run outcomes are not yet observed. Newest tested-image and off-workstation custody confirmation remain pending. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
+> **Arc: Safe Harbor — operational follow-up, 2026-10-24.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Configuration checks passed; the corrected local backup completed successfully at October 24 00:19:52 CDT. External-copy and digest scheduled outcomes remain pending. Newest tested-image and off-workstation custody confirmation remain pending. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -46,10 +46,10 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 - Approved direction/name, every-restore disposition, execution plan, B-E4.1 and T1–T5 / V1–V6 acceptance remain settled. Ownership and index/plain-add exemptions are unchanged. Owner BugBot exceptions stay pinned to their individual candidates.
 - **Post-deployment inspection complete:** the observed processes used the deployed route; stored guard evidence and existing audits were inspected. This does not re-review later runtime changes from other arcs or establish semantic integrity/recoverability.
-- **Routing correction complete:** at October 23 23:26:43 CDT, Codex installed three user-unit drop-ins and reloaded the manager. Effective commands/environment and unit validation passed. Services remained inactive and timers active/enabled. **Successful scheduled execution through the corrected routes has not yet been observed.** No corpus write, backup/restore, initializer, audit invocation or restart was initiated by this lane.
+- **Routing correction complete:** at October 23 23:26:43 CDT, Codex installed three user-unit drop-ins and reloaded the manager. Effective commands/environment and unit validation passed. Services remained inactive and timers active/enabled. **Local scheduled execution passed October 24; external-copy and digest results remain pending.** No corpus write, backup/restore, initializer, audit invocation or restart was initiated by this lane.
 - **Recovery policy recorded October 22:** Ryan delegated items 1–3 to Claude. Accepted loss interval is one day of ConvMem data and work since the latest disk image for the rest of the system. Whole-disk image `2026-10-20-05-img` completed without logged errors; `2026-10-11-06-img` is the older fallback. Policy is to keep at least one image drive and a Restic password copy unplugged and away from the workstation. [ROLLOUT recovery inputs](ROLLOUT-safe-harbor.md#recovery-inputs--decided-2026-10-22) retains provenance and locations.
 - **Recovery facts still pending:** the October 23 23:53–23:55 read-only follow-up found the October 20 image drive unmounted and the older October 11 image mounted. The configured password-copy volume remains mounted; doctor reports the copy matches. This establishes availability, not independent custody. October 23's planned new image is not confirmed completed/tested. Ryan's earlier “Clonezilla is restorable. Tested.” did not name an image. The new image/test/custody questions remain pending.
-- **Scheduled-result follow-up, October 23 23:53–23:55:** no service journal entry after the routing correction; jobs are not due yet. Next local/external triggers are October 24 00:17:50 / 01:00:58 CDT, digest October 26 09:08:21. Existing/default `Result=success` is not a post-correction success. Doctor exited 0; its existing local/external/password checks pass, with nonfatal warnings. CPU tripwire reports zero native faults this boot; no warning was cleared by this lane.
+- **Scheduled local result, October 24:** automatic invocation 00:17:51–00:19:52 CDT completed with exit 0 and source `0295cf8e4922568d4b9633ee9fc8f2246939f3c116ff75f69919f38428cda26d`. The running process used production Python 3.11 and runtime-main. Doctor's midnight freshness FAIL became local PASS after that job; overall exit 0 still carries external WARN until this new source is copied. Daily audit passed at 00:13:02 (two segments, 118,977 vectors, zero lost). Exact receipt and limits are in ROLLOUT §7.
 - **Initializer remains parked:** both observed live generations already carry release evidence. No new initializer review, implementation or execution is justified by this checkpoint. Older-image restore requirements may merit a separately scoped decision later.
 - Limits remain: existing audit ID coverage is not semantic integrity; gate PASS is not demonstrated recovery; current strict release eligibility was not tested. Fixture restart/fsync injection is not hardware power-loss proof. The retained tripwire warning was not cleared or reclassified by this work.
 
@@ -57,14 +57,14 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 **Ryan:** confirm the newest completed image, which test was performed, and actual off-workstation custody of one image drive and a Restic password copy. Existing policy need not be decided again.
 
-**Next operational follow-up:** Ryan authorized the bounded read-only recovery/scheduled-results check. The initial inspection was early: inspect backup results after October 24 01:05 CDT, allowing for actual completion; digest remains pending until Monday October 26. Do not start jobs to manufacture evidence. Any failure returns for a scoped correction decision; do not infer repair, restore or service-change authority from this receipt.
+**Next operational follow-up:** Ryan authorized the bounded read-only recovery/scheduled-results check. Local scheduled execution is confirmed. Inspect the external copy after October 24 01:05 CDT, allowing for actual completion; digest remains pending until Monday October 26. Do not start jobs to manufacture evidence. Any failure returns for a scoped correction decision; do not infer repair, restore or service-change authority from this receipt.
 
 **All lanes:** keep the initializer parked. Preserve pinned reviews and review only material deltas. No PR, merge or additional live work is granted. Any lane prompt starts with a lane check; do not repeat the earlier supervisor-routing mistake.
 
 ## 6. What Remains Before Operational Closeout (sequential)
 
 1. Obtain the missing recovery facts in §4, retaining the one-day loss policy. Agent-run image checks, backups, restores and drive/key actions require their own grant.
-2. Observe scheduled results for the three corrected routes. Configuration validation is complete; successful end-to-end scheduled execution is not yet recorded. Keep repository availability failures distinct from routing failures.
+2. Observe external-copy and digest scheduled results. Configuration validation and the first corrected local backup are complete. Keep repository availability failures distinct from routing failures.
 3. Reconcile any concrete residual deployment-readiness gap from those facts. Do not repeat the historical rollout against an already-live runtime or promote the parked initializer automatically.
 4. Record the closeout decision with its actual scope. No implementation PASS, merge, audit PASS or incidental runtime promotion implies demonstrated recovery.
 
@@ -99,6 +99,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-24 — Codex: observed corrected local backup succeed with production interpreter/checkout; doctor local freshness recovered, while external-copy/digest and image-test/custody confirmation remain pending.
 
 - 2026-10-23 — Codex: read-only follow-up found corrected jobs not yet due, October 20 image drive unmounted and configured password copy still mounted; recorded exact next checks and kept image-test/custody answers pending.
 
@@ -229,7 +231,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Post-deployment inspection and the three-service routing correction are complete. Runtime remains unchanged; no jobs were manually started. Scheduled-run outcomes and Ryan's newest tested-image/custody confirmation remain open. The initializer stays parked; no further live work is granted.
+[Arc Safe Harbor] Post-deployment inspection and the three-service routing correction are complete. Runtime remains unchanged; no jobs were manually started. The local scheduled backup passed; external-copy/digest and Ryan's newest tested-image/custody confirmation remain open. The initializer stays parked; no further live work is granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — parked implementation handoff -->

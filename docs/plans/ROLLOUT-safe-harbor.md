@@ -1,6 +1,6 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**Current operational checkpoint — 2026-10-23.** The Safe Harbor runtime
+**Current operational checkpoint — 2026-10-24.** The Safe Harbor runtime
 (T1–T5, `c6f0724`) is already live: runtime-main reached it through ordinary
 promotions for other arcs (`3e705e4` by October 17; `1a68675` with the watcher
 restarted 2026-10-22 13:52 CDT), not through this procedure. Both live segments
@@ -575,6 +575,39 @@ useful backup-result inspection is after October 24 01:05 CDT, subject to actual
 job completion; digest evidence cannot be checked before its Monday run. Keep
 this read-only follow-up scope: observe normal runs, report failures before any
 correction, and do not force jobs to satisfy the checkpoint.
+
+### Scheduled local backup and health refresh — October 24
+
+Ryan asked Codex to perform the follow-up after 01:05 CDT and suggested a doctor
+refresh. Codex remained in the session and observed the normal timers; no agent
+automation, manual backup, service change or initializer was created/run.
+
+- A doctor refresh after midnight exited 1 solely on local snapshot freshness:
+  October 23 source `bc3c8d15…` no longer covered the current local day. External
+  freshness was WARN; guard, audit and CPU checks passed. No bypass or repair
+  was applied.
+- The corrected local service started automatically at **00:17:51 CDT** and
+  completed at **00:19:52**, `Result=success`, `ExecMainStatus=0`. Journal output
+  identifies new `convmem-data-v2` source
+  **`0295cf8e4922568d4b9633ee9fc8f2246939f3c116ff75f69919f38428cda26d`**.
+- During that invocation, `/proc/864711/exe` resolved to
+  `/home/lauer/miniforge3/envs/convmem/bin/python3.11`; cwd was
+  `/home/lauer/Projects/convmem/.worktrees/runtime-main`; argv ran that checkout's
+  `backup_workflows.py ensure --env-file /home/lauer/.config/convmem/restic.env`.
+  The allowlisted PATH matched the installed override. This is observed running
+  process identity, beyond unit configuration alone.
+- The subsequent doctor refresh exited **0** and recognized the new local source.
+  External status remained **WARN: no destination snapshot with original=0295cf8e4922**,
+  before the scheduled 01:00:58 copy. Overall doctor success therefore does not
+  close the external-copy check.
+- Existing audit journals show the normal daily audit passed at **00:13:02**:
+  two segments, 118,977 vectors, zero lost IDs. No new audit was invoked by this
+  lane. This is ID/structural coverage, not semantic integrity or restore proof.
+
+**Open at 00:23 CDT:** external scheduled completion/lineage, Monday's digest,
+and Ryan's image-specific test/custody answers. Local routing/execution is now
+demonstrated for this invocation. The snapshot has not been restored or otherwise
+qualified as a recovery artifact by this check.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->

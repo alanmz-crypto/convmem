@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-23
+**Updated:** 2026-10-24
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -54,9 +54,10 @@ cross-arc snapshot and the linked arc brief below.
   Ryan's bounded inspection and subsequent three-service correction are complete.
   Local backup, external copy and cross-project digest now route through deployed
   runtime-main/production Python. Configuration checks passed; no jobs were
-  manually started. The authorized read-only follow-up at 23:53–23:55 found
-  jobs not yet due; inspect backup results after October 24 01:05 CDT and digest
-  after Monday's run. **Next lane: Ryan** for image-specific test/custody facts;
+  manually started. The local scheduled backup passed October 24 at 00:19:52 CDT,
+  with actual production interpreter/checkout identity observed. External-copy
+  results remain due after 01:05 CDT; digest after Monday's run. **Next lane:
+  Ryan** for image-specific test/custody facts;
   Codex for the granted read-only follow-up. The initializer remains
   parked, unreviewed and unaccepted. No PR or further live action is granted.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
