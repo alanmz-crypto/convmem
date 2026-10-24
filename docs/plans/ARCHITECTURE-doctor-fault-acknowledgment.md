@@ -395,7 +395,9 @@ limit for `convmem.py`: ≤ 15 lines of logic per handler).
 6. It prints the new `cpu_tripwire` verdict.
 
 If an active record for the key already exists, `ack` prints its ID and exits
-0 without rewriting after confirming file and directory durability (§8).
+0 without rewriting after confirming file and directory durability (§8). This
+idempotent retry uses the validated stored record and does not need to reread
+the journal; a new acknowledgment still requires the live-journal checks above.
 If a record for that **same five-field key** is revoked,
 `ack` refuses with exit 1 and preserves the file byte-for-byte. Revocation is
 terminal for that key; it is never overwritten or deleted by the CLI. A changed
@@ -432,12 +434,15 @@ This is the same model as the repo's other local-only guards, such as
   unchanged (or absent). After replacement, a directory-open/fsync failure
   leaves a complete new document and returns exit 3, reporting that durability
   is unconfirmed;
-  it does not claim the old document survived. The writer removes only its
-  own remaining temp file in either case.
+  it does not claim the old document survived. The writer removes its temp
+  file only if replacement did not consume it; cleanup cannot mask a
+  post-replacement durability error.
 - **Retry:** after a post-replacement error, `show` reports the visible state,
   not crash durability. Retry the same command. Under the writer lock, an
   already-active `ack` or already-revoked `revoke` validates the file, fsyncs
   the existing file and then its directory, preserving all bytes and attribution.
+  An already-active `ack` does this even if the journal entry has since been
+  vacuumed or the journal is temporarily unreadable.
   Success is reported only after both syncs succeed. Another sync failure
   returns exit 3, saying the existing document is visible but durability is
   unconfirmed; the retry did not write it. It never says "refused" or claims

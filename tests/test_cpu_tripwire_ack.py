@@ -961,6 +961,31 @@ def test_post_replace_failure_and_same_command_retry(
     assert not list(stored.parent.glob("*.tmp-*"))
 
 
+def test_existing_ack_retry_syncs_without_rereading_journal(stored, monkeypatch):
+    before = stored.read_bytes()
+    real_fsync = os.fsync
+    synced = []
+
+    def track_sync(fd):
+        synced.append("directory" if stat.S_ISDIR(os.fstat(fd).st_mode) else "file")
+        return real_fsync(fd)
+
+    def unavailable_context():
+        raise AssertionError("an existing record must not need the journal")
+
+    monkeypatch.setattr(os, "fsync", track_sync)
+    assert ack.write_ack(
+        context().faults[0].key,
+        OPERATOR,
+        unavailable_context,
+        path=stored,
+        tty_check=lambda: "/dev/pts/test",
+        confirm=lambda *_args: pytest.fail("retry must not prompt"),
+    ) == (ACK_ID, False)
+    assert synced == ["file", "directory"]
+    assert stored.read_bytes() == before
+
+
 @pytest.mark.parametrize("fault_first", [False, True])
 def test_duplicate_message_json_members_preserve_detected_fault(tmp_path, fault_first):
     fault = MCE.partition(" kernel: ")[2]
@@ -1121,6 +1146,44 @@ def test_cli_revoke_post_replace_failure_has_distinct_exit_and_effect(monkeypatc
 
 
 @pytest.mark.parametrize("operation", ["ack", "revoke"])
+def test_cli_post_replace_cleanup_cannot_mask_uncertain_durability(
+    monkeypatch, operation
+):
+    import convmem
+
+    path = ack.default_ack_path()
+    if operation == "revoke":
+        write(path)
+    signals = tripwire.SignalRead(parsed(), [], set(), {4, 5, 8, 9})
+    monkeypatch.setattr(cli, "_snapshot", lambda: (signals, BOOT))
+    monkeypatch.setattr(ack, "interactive_tty", lambda: "/dev/pts/test")
+    real_unlink = Path.unlink
+
+    def read_only_cleanup(target, *args, **kwargs):
+        if ".tmp-" in target.name:
+            raise OSError("read-only filesystem during cleanup")
+        return real_unlink(target, *args, **kwargs)
+
+    def failed_directory_sync(_directory):
+        raise OSError("directory fsync failed after replacement")
+
+    monkeypatch.setattr(Path, "unlink", read_only_cleanup)
+    monkeypatch.setattr(ack, "_sync_directory", failed_directory_sync)
+    args = (
+        shlex.split(cli._ack_command(signals.journal.faults[0].key))[1:]  # pylint: disable=protected-access
+        if operation == "ack"
+        else ["tripwire", "revoke", ACK_ID[:12], "--by", "ryan", "--reason", "undo"]
+    )
+    response = CliRunner().invoke(convmem.app, args, input=ACK_ID[:12] + "\n")
+    assert response.exit_code == 3, response.output
+    assert "durability is unconfirmed" in response.output
+    assert "Refused" not in response.output
+    loaded = ack.load_acks(path)
+    assert loaded.problem is None
+    assert (loaded.records[0]["revoked_at"] is not None) == (operation == "revoke")
+
+
+@pytest.mark.parametrize("operation", ["ack", "revoke"])
 def test_cli_retry_sync_failure_reports_visible_document_without_new_write(
     monkeypatch, operation
 ):
@@ -1270,4 +1333,4 @@ def test_coredump_decode_error_retains_kernel_fault(tmp_path):
 
 
 # ref: ../cpu_tripwire.py, ../cpu_tripwire_ack.py, ../cpu_tripwire_cli.py — hermetic behavior coverage
-# src: ../docs/plans/EXECUTION-doctor-fault-acknowledgment.md — T0–T51 and review corrections
+# src: ../docs/plans/EXECUTION-doctor-fault-acknowledgment.md — T0–T53 and review corrections

@@ -376,7 +376,8 @@ def _save(path: Path, records: list[dict[str, Any]]) -> None:
             ) from exc
         raise
     finally:
-        temp_path.unlink(missing_ok=True)
+        if not replaced:
+            temp_path.unlink(missing_ok=True)
 
 
 def _sync_directory(directory: Path) -> None:
@@ -515,6 +516,14 @@ def write_ack(
     with _writer_lock(path):
         acks = load_acks(path)
         _require(acks.problem is None, acks.problem or "invalid acknowledgment file")
+        for record in acks.records:
+            if record_key(record) == key:
+                _require(
+                    record["revoked_at"] is None,
+                    "this key was revoked; re-acknowledgment is refused",
+                )
+                _sync_existing(path)
+                return key.ack_id, False
         context = read_context()
         _require(
             context.problem is None and context.current_boot_id == key.boot_id,
@@ -527,14 +536,6 @@ def write_ack(
             ackable(fault, context.known_bad),
             "entry is not an acknowledgeable FAIL contributor",
         )
-        for record in acks.records:
-            if record_key(record) == key:
-                _require(
-                    record["revoked_at"] is None,
-                    "this key was revoked; re-acknowledgment is refused",
-                )
-                _sync_existing(path)
-                return key.ack_id, False
         _require(
             confirm(fault, key.ack_id[:12]) == key.ack_id[:12],
             "confirmation did not match; nothing written",
