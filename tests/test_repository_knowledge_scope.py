@@ -239,6 +239,11 @@ class ScopeContractTests(unittest.TestCase):
         self.assertGreaterEqual(audit["include"], 1)
         self.assertEqual(loaded.data["coverage_root"], ".")
 
+    def test_prose_extensions_use_text_chunker(self) -> None:
+        for suffix in (".txt", ".text", ".rst", ".adoc", ".asciidoc", ".org", ".tex"):
+            with self.subTest(suffix=suffix):
+                self.assertEqual(rks.content_class_for_path(f"docs/guide{suffix}"), "text")
+
     def test_unclassified_path_fails_audit(self) -> None:
         man = self._eligible_repo()
         extra = self.root / "orphan.txt"

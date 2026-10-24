@@ -27,7 +27,7 @@ class KiroSteeringAdapterTests(unittest.TestCase):
             random_md = root / "notes.md"
             random_md.write_text("# Notes\n", encoding="utf-8")
             self.assertFalse(is_kiro_steering_doc(random_md))
-            self.assertIsNone(detect_format(random_md))
+            self.assertEqual(detect_format(random_md), "plaintext_document")
 
             inter = root / "docs" / "inter-model" / "PLAN.md"
             inter.parent.mkdir(parents=True)
@@ -39,7 +39,7 @@ class KiroSteeringAdapterTests(unittest.TestCase):
             session.parent.mkdir(parents=True)
             session.write_text("# Session\n", encoding="utf-8")
             self.assertFalse(is_kiro_steering_doc(session))
-            self.assertIsNone(detect_format(session))
+            self.assertEqual(detect_format(session), "plaintext_document")
 
             non_md = root / ".kiro" / "steering" / "notes.txt"
             non_md.parent.mkdir(parents=True)

@@ -135,7 +135,7 @@ class DetectorOrderTests(unittest.TestCase):
         self.assertNotIn("repository_knowledge_blocked", TOOL_BY_FORMAT)
         outside = Path(self._td.name) / "loose.md"
         outside.write_text("# loose\n", encoding="utf-8")
-        self.assertIsNone(detect_format(outside))
+        self.assertEqual(detect_format(outside), "plaintext_document")
 
     def test_parse_requires_eligible(self) -> None:
         man = _write_manifest(self.root, {"docs/plan.md": ("# Plan\nRK\n", "markdown")})
