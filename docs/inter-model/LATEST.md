@@ -9,23 +9,23 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: acknowledgment awaits Claude delta recheck
+- **[Arc Codex #286] Priority #1: acknowledgment awaits Copilot and Kiro G2 reviews
   (2026-10-23, Codex):** Ryan assigned Codex the takeover implementation.
   The exact-entry store, CLI, reader corrections and hermetic tests are on
-  `feat/2026-10-22-doctor-fault-ack-takeover`. **Claude's next review target is
-  `e419810c406bc0ea24b02c2fc16e98f05f13e421`**, the immutable content
-  revision. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable G2 review target is
+  `e419810c406bc0ea24b02c2fc16e98f05f13e421`**. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
   gives the required checks, 252 passing focused tests, 25 passing inventory
   tests, and the committed-manifest pass. Claude's full review of `132658d`
   verified fault behavior and diff coverage but returned PASS-WITH-CHANGES for
   stale writer inventories, retry exit-code inconsistency and a zsh assumption;
-  all three are corrected at the new target. The earlier G0 FAIL remains
-  historical. Claude's FAIL on
+  all three are corrected at the new target. Claude's exact-SHA delta re-review
+  returned PASS: 252 focused tests, 72 inventory tests and 541 wider regression
+  tests passed on Python 3.12.13; all changed delta lines were covered. The
+  earlier G0 FAIL remains historical. Claude's FAIL on
   `01e720e` retired the separate `cpu-tripwire-fault-ack` branch from use;
-  Ryan accepted its two policy corrections on this takeover line. **Next lane:
-  Claude** for the exact-revision R1–R3 delta recheck and coverage verification;
-  Copilot's targeted safety audit and Kiro's implementation review also remain
-  required. G2 is open. The old Timeshift event's live acknowledgment is moot
+  Ryan accepted its two policy corrections on this takeover line. **Next lanes:
+  Copilot** for the targeted safety audit and **Kiro** for implementation review
+  of the same SHA. G2 is open. The old Timeshift event's live acknowledgment is moot
   after reboot. Today's `convmem doctor` still exits 1 on an unacknowledged CPU 7
   fault; no live acknowledgment or runtime change was made. No PR, merge,
   promotion, watcher restart or acceptance follows from this handoff.

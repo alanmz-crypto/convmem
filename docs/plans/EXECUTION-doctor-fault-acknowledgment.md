@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_DELTA_REVIEW_PENDING`. Claude returned PASS-WITH-CHANGES at `132658d`, verifying the fault behavior and diff coverage but requiring R1–R3. The current candidate corrects those three findings. Claude rechecks the new exact revision; Copilot and Kiro G2 reviews remain open. The earlier G0 FAIL and Claude's `4d1aedd` review remain historical.
+**Resume state:** `COPILOT_KIRO_G2_PENDING`. Claude returned PASS-WITH-CHANGES at `132658d`, requiring R1–R3; the current candidate corrects them, and Claude's exact-SHA delta re-review returned PASS. Copilot and Kiro G2 reviews remain open. The earlier G0 FAIL and Claude's `4d1aedd` review remain historical.
 **Current review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        Claude R1–R3 correctives complete; exact-SHA G2 reviews pending
-Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
+Phase:        Claude delta PASS; Copilot and Kiro exact-SHA G2 reviews pending
+Lanes:        Copilot audit + Kiro implementation review -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -38,8 +38,9 @@ design `3d24c753a4b46132d349c34a2cd37b0fbba464c2` required Claude diff coverage,
 Copilot's targeted safety audit and Kiro's implementation review. Ryan assigned
 Codex implementation and Claude review, but no explicit waiver of the other
 G2 requirements was found. They remain required. Claude's static
-PASS-WITH-CHANGES is evidence for its own review only; it does not complete
-diff-coverage verification or the Copilot/Kiro reviews. G2 is open.
+PASS-WITH-CHANGES at the earlier SHA was evidence for its own review only.
+Claude's later exact-SHA PASS completes its review and diff-coverage leg, but
+the Copilot/Kiro reviews remain open. G2 is open.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
@@ -323,7 +324,7 @@ corrections and this evidence. Claude's fixed review candidate is
   scope. Six redundant CLI-local import statements were removed after added
   usage text changed line-number-bearing Pylint fingerprints.
 
-### Corrective verification (Codex, 2026-10-23)
+### Reader-correction verification at `132658d` (Codex, 2026-10-23)
 
 - Focused hermetic suite: **249 passed** across the two tripwire test files and
   `tests/test_doctor.py` with Python 3.13.12 and pytest 9.1.1. It includes LF-only
@@ -375,7 +376,10 @@ of final-delta coverage.
   The committed-manifest guard passed **1 test** on the clean pushed content
   revision.
 
-Claude's delta recheck and Copilot/Kiro G2 reviews remain open. Hosted Python
+Claude's exact-SHA delta re-review at `e419810` returned PASS with no new
+required changes. On Python 3.12.13, Claude reports 252 focused tests, 72
+inventory tests and 541 wider regression tests passing; every changed delta
+line was covered. Copilot/Kiro G2 reviews remain open. Hosted Python
 3.12 CI and the full repository suite were not run locally. No runtime or live
 acknowledgment action was performed.
 

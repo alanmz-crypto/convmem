@@ -1,9 +1,9 @@
-# [Arc Codex] Claude review: scoped CPU-tripwire fault acknowledgment
+# [Arc Codex] G2 review: scoped CPU-tripwire fault acknowledgment
 
 **Updated:** 2026-10-23
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** Claude, independent design and implementation review
-**State:** `CLAUDE_DELTA_REVIEW_PENDING`; full review at `132658d` was PASS-WITH-CHANGES
+**For:** Copilot targeted safety audit and Kiro implementation review; Claude's review is complete
+**State:** `COPILOT_KIRO_G2_PENDING`; Claude's exact-SHA delta re-review at `e419810` was PASS
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -17,9 +17,31 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 **Review target:** `e419810c406bc0ea24b02c2fc16e98f05f13e421`.
 This immutable content revision includes the corrected architecture, execution
-plan, code and tests. The following documentation-only routing commit points
-to it; it does not change the reviewed implementation. Claude should review
+plan, code and tests. Later documentation-only routing commits point to it;
+they do not change the reviewed implementation. Copilot and Kiro should review
 this exact SHA, not a moving branch tip.
+
+## Claude exact-SHA delta review at `e419810` — 2026-10-23
+
+Claude returned **PASS** with no new required changes. It verified R1–R3 in
+clean separate clones on Python 3.12.13: **252 focused** and **72 inventory**
+tests passed; a 36-file regression selection passed **541 tests**. Regenerating
+the R2b inventory was
+byte-identical to the committed file. Its injected fsync probes confirmed exit
+3 and the distinct post-write versus retry messages for ack and revoke. Every
+changed line in the delta was covered; 13 of 14 targeted mutants were killed.
+The surviving mutant exposed an existing inventory-body digest test gap, not a
+new production finding. Claude listed only nonblocking advisories. Its review
+did not include hosted CI or the full run-ci launcher. **Copilot's targeted
+safety audit and Kiro's implementation review remain the two open G2 legs.**
+
+Claude's nonblocking advisories were: make architecture §8's post-replacement
+exit-3 wording self-contained; label the 249-test evidence as historical;
+recompute the R2b inventory digest from its committed body in a later test;
+note that hosted CI may skip the zsh arm; qualify the retry message if a
+post-load file open fails; and cover two pre-existing reader branches. The
+historical 249-test section is now labeled by revision. No production change
+was made after the reviewed content SHA.
 
 ## Claude full review at `132658d` — 2026-10-23
 
@@ -28,7 +50,7 @@ wording, both of Ryan's policy decisions, and preservation of a CPU fault plus
 MCE from timed-out partial stdout. Its earlier C1/C2 reader findings were
 resolved. It measured **654/655** changed executable lines against `origin/main`
 and directly probed the one unexecuted branch. This evidence applies to
-`132658d`, so the final delta still needs rechecking.
+`132658d`; the final delta was subsequently reviewed at `e419810` with PASS.
 
 The verdict was **PASS-WITH-CHANGES**, with three required corrections:
 
@@ -46,9 +68,9 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Claude's next task:** review the `132658d`→current-target delta, verify R1–R3
-and any affected coverage, then return an exact-SHA verdict. Copilot's targeted
-safety audit and Kiro's implementation review remain separate G2 requirements.
+**Next tasks:** Copilot performs the targeted safety audit and Kiro performs
+the implementation review of the pinned SHA. Their verdicts remain separate
+G2 requirements; Claude's PASS does not replace either one.
 No PR, merge, promotion or live use is authorized by this review.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
@@ -85,8 +107,8 @@ The historical identity, revocation, durability and consistency findings were
 resolved in Claude's review. Historical malformed-output C2 remains subject
 to these two reader corrections, now implemented at the review target above.
 Prior A1 (CLOCK_BOOTTIME), A2 (author visible in mixed FAIL) and A3 (durability
-retry) were resolved. G2 remains incomplete until Claude rechecks the new
-exact SHA and verifies coverage, and the Copilot/Kiro reviews are complete.
+retry) were resolved. Claude has rechecked the new exact SHA and verified
+coverage. G2 remains incomplete until Copilot/Kiro reviews are complete.
 
 Ryan's 2026-10-23 authorization retired the old
 `feat/2026-10-22-cpu-tripwire-fault-ack` merge line without deleting it after
@@ -143,8 +165,8 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owners:** Claude rechecks the pinned revision and verifies diff coverage. Copilot's targeted
-safety audit and Kiro's implementation review remain required on that candidate.
+**Next owners:** Copilot's targeted safety audit and Kiro's implementation
+review remain required on the pinned candidate.
 Ryan retains PR/merge, promotion, live-use
 and acceptance decisions. Codex's corrective tests are author evidence only.
 
@@ -313,9 +335,8 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`e419810c406bc0ea24b02c2fc16e98f05f13e421` for Claude's independent
-delta recheck. Codex's 252 focused tests pass; Claude, Copilot and Kiro G2
-reviews remain open. Nothing is live.
+`e419810c406bc0ea24b02c2fc16e98f05f13e421`. Claude's exact-SHA delta
+review PASSed; Copilot and Kiro G2 reviews remain open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

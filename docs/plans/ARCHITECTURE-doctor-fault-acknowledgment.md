@@ -12,8 +12,8 @@
 ```
 Planning Status
 
-Phase:        Claude R1–R3 correctives implemented; exact-revision G2 reviews pending
-Lanes:        Codex fixes -> Claude + Copilot audit + Kiro reviews -> Ryan decision
+Phase:        Claude delta PASS; Copilot and Kiro exact-revision G2 reviews pending
+Lanes:        Copilot audit + Kiro implementation review -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
@@ -29,8 +29,9 @@ records the historical result, new corrections, advisories and lane comparison.
 Claude's full review at `132658d` verified the fault behavior and diff coverage,
 then required mechanical inventory repair, a consistent retry exit-code
 contract, and a portable shell test. These are corrected at the current review
-target. Claude's delta recheck, Copilot safety audit and Kiro implementation
-review remain open; the takeover grant did not explicitly waive them.
+target. Claude's exact-SHA delta re-review returned PASS with no new required
+changes. Copilot safety audit and Kiro implementation review remain open; the
+takeover grant did not explicitly waive them.
 
 ---
 
