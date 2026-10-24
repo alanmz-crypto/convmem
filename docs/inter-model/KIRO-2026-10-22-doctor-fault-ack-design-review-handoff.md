@@ -1,9 +1,9 @@
 # [Arc Codex] G2 review: scoped CPU-tripwire fault acknowledgment
 
-**Updated:** 2026-10-23
+**Updated:** 2026-10-24
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** Claude's final delta review and Kiro's implementation review
-**State:** `CLAUDE_KIRO_G2_PENDING`; replacement safety review PASSed the final SHA
+**For:** Claude's one-file R4 recheck and Kiro's implementation review
+**State:** `CLAUDE_R4_KIRO_G2_PENDING`; safety reviewer PASSed the corrected SHA
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -15,11 +15,33 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 
 ## Exact revision first
 
-**Review target:** `49d9d67805e7f15ffd55fc6507953279184144df`.
+**Review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`.
 This immutable content revision includes the corrected architecture, execution
-plan, code and tests. Later documentation-only routing commits point to it;
-they do not change the reviewed implementation. The replacement safety reviewer
-PASSed this SHA. Claude and Kiro should review the same SHA, not a moving tip.
+plan, code and tests. It adds only a regenerated scoped-proof inventory to the
+previously reviewed content. Later documentation-only routing commits point to
+it. The replacement safety reviewer PASSed this exact SHA. Claude and Kiro
+should review it, not a moving tip.
+
+## Claude final delta review at `49d9d67` — 2026-10-24
+
+Claude returned **PASS-WITH-CHANGES**. Independent probes verified the C1
+mode/owner boundary, C2 post-commit reporting, the R2b inventory, and
+architecture conformance. It found no production-code defect. **R4** was a
+stale derived `SCOPED-PROOF-WRITER-INVENTORY.json`: the shadow inventory's
+shifted writer coordinates had not propagated. The committed-file test failed
+at `49d9d67` and passed after regeneration. Codex reproduced the failure and
+committed only the generated JSON at `1a825d0`; its nine changed lines update
+three sites to `1920`, `507`, and `611`. On the clean content commit, the scoped
+proof, shadow, R2b and manifest-guard selection passed **44 tests**. The
+specific guard is
+`tests/test_issue_286_scoped_proof_shadow.py::test_c_sh2_cc1_writer_inventory_machine_checked`.
+The replacement safety reviewer independently matched all **38** scoped-proof
+routes to the generator, passed its idempotence test and **255 focused tests**,
+and returned **PASS** on `1a825d0`. Claude's one-file R4 recheck and Kiro's
+implementation review remain open.
+
+Claude reported a wider 541-test selection from its previous round had missed
+the scoped-proof test. That result is historical, not evidence for R4.
 
 ## Replacement safety audit at `e419810` — 2026-10-23
 
@@ -45,9 +67,9 @@ with 120 subtests, scoped Ruff, format and Pylint, and the committed-manifest
 guard. The R2b inventory was regenerated with its existing writer after the
 module edits rotated the implementation identity; the route count stays 39.
 Coverage is 100% line and branch for the store, and 100% line for the CLI.
-The safety reviewer PASSed the final SHA after an independent inventory and
+The safety reviewer PASSed `49d9d67` after an independent inventory and
 C1–C2 recheck: 25 inventory and 255 focused tests passed in its disposable
-checkout, which was clean. Claude must still recheck the final delta.
+checkout, which was clean. Its one-file safety recheck of `1a825d0` also PASSed.
 Kiro's independent implementation review remains open.
 
 ## Claude exact-SHA delta review at `e419810` — 2026-10-23
@@ -80,7 +102,7 @@ MCE from timed-out partial stdout. Its earlier C1/C2 reader findings were
 resolved. It measured **654/655** changed executable lines against `origin/main`
 and directly probed the one unexecuted branch. This evidence applies to
 `132658d`; the next delta was reviewed at `e419810` with PASS. The replacement
-safety reviewer later PASSed the final `49d9d67` content revision.
+safety reviewer later PASSed the preceding `49d9d67` content revision.
 
 The verdict was **PASS-WITH-CHANGES**, with three required corrections:
 
@@ -98,9 +120,9 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next tasks:** Claude rechecks the delta to the pinned SHA; Kiro performs
-implementation review there. Each verdict
-remains a separate G2 requirement.
+**Next tasks:** Claude rechecks the R4-only delta to the pinned SHA; Kiro
+performs implementation review there. Each verdict remains a separate G2
+requirement.
 No PR, merge, promotion or live use is authorized by this review.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
@@ -195,8 +217,8 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owners:** Claude rechecks the final delta; Kiro reviews implementation
-on the same pinned candidate. The replacement safety review PASSed this SHA.
+**Next owners:** Claude rechecks R4; Kiro reviews implementation on the same
+pinned candidate. The replacement safety review PASSed this exact SHA.
 Ryan retains PR/merge, promotion, live-use
 and acceptance decisions. Codex's corrective tests are author evidence only.
 
@@ -219,7 +241,7 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Review `49d9d67805e7f15ffd55fc6507953279184144df` in a separate clean
+1. Review `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` in a separate clean
    checkout. The local worktree remains at the path above; GitHub holds the
    same task branch as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
@@ -317,8 +339,9 @@ it is not a tamper-proof authority ledger.
 ## Verification and limits
 
 Codex ran the focused hermetic tests and the checks recorded in the execution
-plan. The current target passed 257 focused tests, 25 affected inventory tests,
-scoped Ruff and Pylint, the committed-manifest guard, and `git diff --check`.
+plan. The unchanged code passed 257 focused tests; the current target passed
+44 scoped-proof, shadow, R2b and manifest tests on a clean tree. Scoped Ruff,
+Pylint and `git diff --check` passed on the preceding code revision.
 Its CLI tests inject post-replacement and retry sync failures for both verbs,
 check exit 3 and distinct written-versus-visible messages, then confirm the
 acknowledgment or revocation is effective. The preserved reader-fix branch
@@ -366,9 +389,10 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`49d9d67805e7f15ffd55fc6507953279184144df`. Claude PASSed the earlier
-`e419810` delta; the replacement safety reviewer PASSed this SHA. Claude and
-Kiro reviews remain open. Nothing is live.
+`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`. Claude's final delta review
+required the one-file R4 inventory regeneration, now committed and safety-
+reviewed. Claude's R4 recheck and Kiro's implementation review remain open.
+Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

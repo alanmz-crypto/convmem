@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-23
+**Updated:** 2026-10-24
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,10 +9,10 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: acknowledgment awaits Claude and Kiro G2
-  reviews (2026-10-23, Codex):** The sole takeover branch is
+- **[Arc Codex #286] Priority #1: acknowledgment awaits R4 recheck and Kiro G2
+  review (2026-10-24, Codex):** The sole takeover branch is
   `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
-  target is `49d9d67805e7f15ffd55fc6507953279184144df`**. Claude PASSed
+  target is `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`**. Claude PASSed
   the earlier `e419810` revision. Copilot reached its limit, so Ryan directed
   Codex to choose another agent. A separate Codex safety reviewer found two
   required fixes at `e419810`: reject a permissively writable or foreign-owned
@@ -20,12 +20,17 @@ cross-arc snapshot and the linked arc brief below.
   verdict refresh fails. Both are corrected at the new target. The
   [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
   records the findings, **257 passing focused tests**, and the committed-
-  manifest pass. The replacement safety reviewer PASSed the final SHA after
-  **25 inventory and 255 focused tests**. **Next lanes:** Claude rechecks the
-  final delta; Kiro reviews implementation at the same SHA. G2
+  manifest pass. The replacement safety reviewer PASSed `49d9d67` after
+  **25 inventory and 255 focused tests**. Claude's full delta review at that
+  SHA was PASS-WITH-CHANGES: the scoped-proof writer inventory was stale. Codex
+  regenerated only that JSON at the new target; **44 targeted tests** pass on
+  the clean commit. The replacement safety reviewer PASSed the same SHA.
+  **Next lanes:** Claude rechecks R4; Kiro reviews the new
+  SHA. G2
   remains open. The retired `cpu-tripwire-fault-ack` branch remains preserved.
-  The old Timeshift event's live acknowledgment is moot after reboot; the
-  prior doctor failure remains historical, and current acceptance is unproven.
+  The old Timeshift event's live acknowledgment is moot after reboot. The
+  required 2026-10-24 protocol doctor exited 0 with zero native faults this
+  boot; formal acceptance is still Ryan's decision.
   No PR, merge, promotion, watcher restart or live acknowledgment followed.
   Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
   See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).

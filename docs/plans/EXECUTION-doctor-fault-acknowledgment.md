@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_KIRO_G2_PENDING`. Claude PASSed `e419810` after R1–R3 corrections. Ryan delegated replacement selection after Copilot reached its limit; Codex chose a separate safety reviewer, whose audit at `e419810` returned PASS-WITH-CHANGES for C1–C2. Both fixes are at the current target, which the safety reviewer PASSed. Claude's final delta check and Kiro's implementation review remain open. Earlier G0 and Claude reviews remain historical.
-**Current review target:** `49d9d67805e7f15ffd55fc6507953279184144df` (immutable content revision; later routing edits are documentation only).
+**Resume state:** `CLAUDE_R4_KIRO_G2_PENDING`. Claude's final review at `49d9d67` verified C1–C2 and the R2b inventory but required R4: regenerate the scoped-proof writer inventory. The one-file correction is at the current target, which the replacement safety reviewer PASSed. Claude's R4 recheck and Kiro's implementation review remain open. Earlier G0 and Claude reviews remain historical.
+**Current review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        Safety review PASS; Claude and Kiro G2 reviews pending
-Lanes:        Claude delta + Kiro implementation -> Ryan decision
+Phase:        R4 correction safety-PASSed; Claude and Kiro reviews pending
+Lanes:        Claude R4 + Kiro implementation -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -387,7 +387,8 @@ of final-delta coverage.
 Claude's exact-SHA delta re-review at `e419810` returned PASS with no new
 required changes. On Python 3.12.13, Claude reports 252 focused tests, 72
 inventory tests and 541 wider regression tests passing; every changed delta
-line was covered. This is historical evidence for that revision.
+line was covered. That selection omitted the scoped-proof inventory test; this
+is historical evidence for that revision, not proof that R4 was absent.
 
 ### Safety-audit correctives (Codex, 2026-10-23)
 
@@ -412,10 +413,18 @@ affected inventory tests passed, with the route count unchanged at **39**.
 
 The replacement safety reviewer PASSed `49d9d67` after independently matching
 all 39 inventory routes and rerunning 25 inventory and 255 focused tests.
-Claude's final delta and Kiro's implementation reviews remain open. Hosted
-Python 3.12 CI and the full
-repository suite were not run locally. No runtime or live acknowledgment
-action was performed.
+Claude's later final-delta review at `49d9d67` was PASS-WITH-CHANGES for R4:
+the scoped-proof inventory was stale after the shadow writer-coordinate
+update. The generated file alone was refreshed at `1a825d0` (nine lines,
+three route sites). Codex reproduced the machine-check test failure before
+regeneration, then ran the scoped-proof, shadow, R2b and committed-manifest
+selection on the clean content commit: **44 passed**, including
+`tests/test_issue_286_scoped_proof_shadow.py::test_c_sh2_cc1_writer_inventory_machine_checked`.
+The R2b inventory is unchanged by this correction. The replacement safety
+reviewer PASSed `1a825d0`, matching all 38 scoped-proof routes against the
+generator and passing 255 focused tests. Claude's R4 recheck and Kiro's implementation
+review remain open. Hosted Python 3.12 CI and the full repository suite were
+not run locally. No runtime or live acknowledgment action was performed.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 

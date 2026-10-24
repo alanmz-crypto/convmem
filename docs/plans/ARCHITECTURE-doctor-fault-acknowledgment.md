@@ -2,18 +2,18 @@
 
 **Arc:** Codex (priority #1: the deployment's doctor-acceptance criterion)
 **Date:** 2026-10-22
-**Updated:** 2026-10-23
+**Updated:** 2026-10-24
 **Authors:** Claude (initial design); Codex (review corrections and implementation)
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover` (from merged design `3d24c75`)
-**Current review target:** `49d9d67805e7f15ffd55fc6507953279184144df`
+**Current review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`
 **Companion:** [`EXECUTION-doctor-fault-acknowledgment.md`](EXECUTION-doctor-fault-acknowledgment.md)
 **Input handoff:** [`CODEX-2026-10-22-doctor-ack-next-model-handoff.md`](../inter-model/CODEX-2026-10-22-doctor-ack-next-model-handoff.md)
 
 ```
 Planning Status
 
-Phase:        Safety review PASS; Claude and Kiro G2 reviews pending
-Lanes:        Claude delta + Kiro implementation -> Ryan decision
+Phase:        R4 correction safety-PASSed; Claude and Kiro reviews pending
+Lanes:        Claude R4 + Kiro implementation -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
@@ -33,8 +33,10 @@ Claude's exact-SHA delta re-review returned PASS there. After
 Copilot reached its limit, Ryan directed Codex to choose another agent; a
 separate Codex safety reviewer found two required fixes at `e419810`. File
 mode/owner load validation and accurate post-commit CLI reporting are corrected
-at the current target. The safety reviewer PASSed the exact current target;
-Claude's delta review and Kiro's implementation review remain open.
+at `49d9d67`, which the safety reviewer PASSed. Claude's final delta review
+then found a stale scoped-proof inventory. Its one-file regeneration is at the
+current target. The replacement safety reviewer PASSed that exact revision;
+Claude's R4 recheck and Kiro's implementation review remain open.
 
 ---
 
