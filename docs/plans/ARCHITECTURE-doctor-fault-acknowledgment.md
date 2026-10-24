@@ -12,8 +12,8 @@
 ```
 Planning Status
 
-Phase:        R4 correction safety-PASSed; Claude and Kiro reviews pending
-Lanes:        Claude R4 + Kiro implementation -> Ryan decision
+Phase:        Claude R4 and safety PASS; implementation review pending
+Lanes:        fresh Claude Opus-class session in Kiro slot -> Ryan decision
 Authority:    Ryan directed Codex to take over on 2026-10-22: "You take over,
               beginning, now, then." Claude reviews the resulting work.
               This grants implementation and hermetic checks; merge, promotion,
@@ -35,8 +35,9 @@ separate Codex safety reviewer found two required fixes at `e419810`. File
 mode/owner load validation and accurate post-commit CLI reporting are corrected
 at `49d9d67`, which the safety reviewer PASSed. Claude's final delta review
 then found a stale scoped-proof inventory. Its one-file regeneration is at the
-current target. The replacement safety reviewer PASSed that exact revision;
-Claude's R4 recheck and Kiro's implementation review remain open.
+current target. The replacement safety reviewer and Claude's R4 recheck both
+PASSed that exact revision. Ryan assigned a fresh Claude Opus-class session to
+the original Kiro G2 implementation-review slot; that review remains open.
 
 ---
 
@@ -547,6 +548,9 @@ change.
    safety audit, and Kiro's implementation review. These original G2
    requirements remain separate; no author verification or single review
    substitutes for the others without Ryan's explicit reassignment or waiver.
+   Ryan later assigned a separate Codex reviewer to the capacity-limited
+   Copilot slot and a fresh Claude Opus-class session to the Kiro implementation
+   slot. Each assignment preserves that slot's independent review obligation.
 4. Ryan's PR and merge decision.
 5. Ryan's **runtime promotion grant** at an exact SHA. The `convmem` CLI and
    the watcher's index children both run from

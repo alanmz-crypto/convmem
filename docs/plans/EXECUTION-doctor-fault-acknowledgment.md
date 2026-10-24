@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `CLAUDE_R4_KIRO_G2_PENDING`. Claude's final review at `49d9d67` verified C1–C2 and the R2b inventory but required R4: regenerate the scoped-proof writer inventory. The one-file correction is at the current target, which the replacement safety reviewer PASSed. Claude's R4 recheck and Kiro's implementation review remain open. Earlier G0 and Claude reviews remain historical.
+**Resume state:** `IMPLEMENTATION_REVIEW_PENDING`. Claude's R4 recheck and the replacement safety review PASSed the current exact content SHA. Ryan assigned a fresh Claude Opus-class session to the original Kiro G2 implementation-review slot. That independent review remains open. Earlier G0 and Claude findings remain historical.
 **Current review target:** `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` (immutable content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        R4 correction safety-PASSed; Claude and Kiro reviews pending
-Lanes:        Claude R4 + Kiro implementation -> Ryan decision
+Phase:        Claude R4 and safety PASS; implementation review pending
+Lanes:        fresh Claude Opus-class session in Kiro slot -> Ryan decision
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -23,7 +23,7 @@ Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 |---|---|---|---|---|
 | G0 | Prior exact-revision design review | Codex, substituting for Kiro | Historical FAIL at `2a138be9b0a12ae8849665435ab7ba1674154853`; Claude's later PASS-WITH-CHANGES at `4d1aedd` led to reader fixes at the current target | No self-issued PASS |
 | G1 | Ryan's explicit 2026-10-22 takeover instruction | Ryan; Codex executes | Correct the design and implement E1–E5 hermetically; Claude reviews the result | Promotion, live use, a PR without a request, merge |
-| G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + independent Codex safety reviewer (Ryan-directed replacement after Copilot limit) + Kiro (implementation review); Codex implementation owner supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
+| G2 | Exact-tip verification and independent reviews | Claude (diff coverage and assigned review) + independent Codex safety reviewer (Ryan-directed replacement after Copilot limit) + fresh Claude Opus-class session (Ryan-assigned original Kiro implementation-review slot); Codex implementation owner supplies author verification | A PR decision only after the required evidence and reviews are complete on the corrected exact revision | Merge, promotion, live use or acceptance |
 | G3 | PR and merge | Ryan | The code lands on `main` | Runtime promotion |
 | G4 | Runtime promotion grant at an exact SHA | Ryan | A fast-forward of `.worktrees/runtime-main`, **with no watcher restart** | Live acknowledgment |
 | G5 | One-event live acknowledgment | Ryan runs it himself | One `convmem tripwire ack` for key `bab67b49aa4f` | Any other event; any acceptance claim |
@@ -43,8 +43,9 @@ Claude's later exact-SHA PASS applies to `e419810`. Ryan then delegated the
 choice of a replacement after Copilot reached its limit. A separate read-only
 Codex reviewer found two safety/correctness gaps at that SHA. The fixes at
 `fb1d251`, with the regenerated writer inventory at `49d9d67`, PASSed the
-replacement safety review. Claude's final delta and Kiro's implementation
-reviews remain open. G2 is open.
+replacement safety review. Claude later PASSed the R4 repair at `1a825d0`.
+Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
+implementation-review slot. Only that independent review remains open in G2.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
@@ -422,9 +423,14 @@ selection on the clean content commit: **44 passed**, including
 `tests/test_issue_286_scoped_proof_shadow.py::test_c_sh2_cc1_writer_inventory_machine_checked`.
 The R2b inventory is unchanged by this correction. The replacement safety
 reviewer PASSed `1a825d0`, matching all 38 scoped-proof routes against the
-generator and passing 255 focused tests. Claude's R4 recheck and Kiro's implementation
-review remain open. Hosted Python 3.12 CI and the full repository suite were
-not run locally. No runtime or live acknowledgment action was performed.
+generator and passing 255 focused tests. Claude independently PASSed the R4
+recheck at the same SHA: 391 targeted tests passed, and its whole-tree
+comparison against `origin/main` found no branch-introduced failure. The
+target had 110 failures and 32 errors; main had 111 failures and 32 errors,
+with only a known ext4 inode-reuse flake failing on main. Both runs shared
+142 environment failures/errors without torch or the Safe Harbor launcher.
+The fresh implementation review remains open. Hosted CI was not run. No
+runtime or live acknowledgment action was performed.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)
 

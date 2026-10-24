@@ -2,12 +2,15 @@
 
 **Updated:** 2026-10-24
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** Claude's one-file R4 recheck and Kiro's implementation review
-**State:** `CLAUDE_R4_KIRO_G2_PENDING`; safety reviewer PASSed the corrected SHA
+**For:** fresh Claude Opus-class implementation review in Ryan's assigned G2 slot
+**State:** `IMPLEMENTATION_REVIEW_PENDING`; Claude R4 and safety rechecks PASSed the content SHA
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
 The historical KIRO filename is retained so existing links continue to work.
+Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
+implementation-review slot. This is a separate review from Claude's completed
+delta and R4 checks.
 Ryan assigned Claude the review role and directed Codex: “You take over,
 beginning, now, then.” Codex implemented in an isolated worktree, preserving
 the earlier writer's checkout. This grant covers implementation and hermetic
@@ -19,8 +22,21 @@ verification. It grants no PR creation, merge, promotion or live acknowledgment.
 This immutable content revision includes the corrected architecture, execution
 plan, code and tests. It adds only a regenerated scoped-proof inventory to the
 previously reviewed content. Later documentation-only routing commits point to
-it. The replacement safety reviewer PASSed this exact SHA. Claude and Kiro
-should review it, not a moving tip.
+it. The replacement safety reviewer and the first Claude reviewer PASSed this
+exact SHA. The fresh implementation reviewer should review it, not a moving tip.
+
+## Claude R4 recheck at `1a825d0` — 2026-10-24
+
+Claude returned **PASS** with no required findings. The one-file inventory
+change regenerates byte-identically across 38 routes. Its machine-check test
+failed at `ca6aa04` and passed at the target; the R2b identity is unchanged.
+Claude passed 391 targeted tests. In a whole-tree comparison against
+`origin/main` at `3d24c75`, the target introduced no failing test ID or
+traceback line; the only failure-set difference was a known ext4 inode-reuse
+flake on main. Both runs shared 142 failures/errors in the no-torch and CG-2
+test environment. Hosted CI and the Safe Harbor launcher were not run. This
+PASS completes Claude's delta/R4 G2 leg; it does not substitute for the fresh
+implementation review.
 
 ## Claude final delta review at `49d9d67` — 2026-10-24
 
@@ -37,8 +53,8 @@ specific guard is
 `tests/test_issue_286_scoped_proof_shadow.py::test_c_sh2_cc1_writer_inventory_machine_checked`.
 The replacement safety reviewer independently matched all **38** scoped-proof
 routes to the generator, passed its idempotence test and **255 focused tests**,
-and returned **PASS** on `1a825d0`. Claude's one-file R4 recheck and Kiro's
-implementation review remain open.
+and returned **PASS** on `1a825d0`. Claude subsequently PASSed the R4 recheck;
+the fresh implementation review remains open.
 
 Claude reported a wider 541-test selection from its previous round had missed
 the scoped-proof test. That result is historical, not evidence for R4.
@@ -70,7 +86,7 @@ Coverage is 100% line and branch for the store, and 100% line for the CLI.
 The safety reviewer PASSed `49d9d67` after an independent inventory and
 C1–C2 recheck: 25 inventory and 255 focused tests passed in its disposable
 checkout, which was clean. Its one-file safety recheck of `1a825d0` also PASSed.
-Kiro's independent implementation review remains open.
+Ryan's fresh-Claude implementation-review slot remains open.
 
 ## Claude exact-SHA delta review at `e419810` — 2026-10-23
 
@@ -120,9 +136,8 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next tasks:** Claude rechecks the R4-only delta to the pinned SHA; Kiro
-performs implementation review there. Each verdict remains a separate G2
-requirement.
+**Next task:** The fresh Claude Opus-class reviewer independently checks the
+full implementation at the pinned SHA in Ryan's reassigned G2 slot.
 No PR, merge, promotion or live use is authorized by this review.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
@@ -160,7 +175,7 @@ resolved in Claude's review. Historical malformed-output C2 remains subject
 to these two reader corrections, now implemented at the review target above.
 Prior A1 (CLOCK_BOOTTIME), A2 (author visible in mixed FAIL) and A3 (durability
 retry) were resolved. Claude rechecked `e419810` and verified coverage there.
-G2 remains incomplete until the final delta and Kiro reviews are complete.
+G2 remains incomplete until Ryan's fresh-Claude implementation review is complete.
 
 Ryan's 2026-10-23 authorization retired the old
 `feat/2026-10-22-cpu-tripwire-fault-ack` merge line without deleting it after
@@ -217,8 +232,9 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owners:** Claude rechecks R4; Kiro reviews implementation on the same
-pinned candidate. The replacement safety review PASSed this exact SHA.
+**Next owner:** A fresh Claude Opus-class session reviews the implementation
+on the pinned candidate. The earlier Claude and replacement safety reviews
+PASSed this exact SHA.
 Ryan retains PR/merge, promotion, live-use
 and acceptance decisions. Codex's corrective tests are author evidence only.
 
@@ -383,16 +399,16 @@ does not grant a PR, merge, promotion, live acknowledgment or acceptance.
 
 G0 is historical design review; G1 is Ryan's explicit takeover grant; G2 is
 Claude coverage verification/review, Ryan's selected independent safety-audit
-replacement after Copilot's limit, and Kiro implementation review, with Codex
-supplying author evidence. Ryan separately owns G3 PR/merge, G4 exact-SHA
+replacement after Copilot's limit, and the implementation-review slot that
+Ryan assigned to a fresh Claude Opus-class session, with Codex supplying
+author evidence. Ryan separately owns G3 PR/merge, G4 exact-SHA
 promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`. Claude's final delta review
-required the one-file R4 inventory regeneration, now committed and safety-
-reviewed. Claude's R4 recheck and Kiro's implementation review remain open.
-Nothing is live.
+`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`. Claude and the replacement
+safety reviewer PASSed this content SHA. Ryan's fresh-Claude implementation
+review remains open. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

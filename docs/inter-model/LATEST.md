@@ -9,25 +9,18 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: acknowledgment awaits R4 recheck and Kiro G2
-  review (2026-10-24, Codex):** The sole takeover branch is
+- **[Arc Codex #286] Priority #1: acknowledgment awaits the final G2
+  implementation review (2026-10-24, Codex):** The sole takeover branch is
   `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
-  target is `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`**. Claude PASSed
-  the earlier `e419810` revision. Copilot reached its limit, so Ryan directed
-  Codex to choose another agent. A separate Codex safety reviewer found two
-  required fixes at `e419810`: reject a permissively writable or foreign-owned
-  acknowledgment file, and report a completed write accurately if the later
-  verdict refresh fails. Both are corrected at the new target. The
-  [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-  records the findings, **257 passing focused tests**, and the committed-
-  manifest pass. The replacement safety reviewer PASSed `49d9d67` after
-  **25 inventory and 255 focused tests**. Claude's full delta review at that
-  SHA was PASS-WITH-CHANGES: the scoped-proof writer inventory was stale. Codex
-  regenerated only that JSON at the new target; **44 targeted tests** pass on
-  the clean commit. The replacement safety reviewer PASSed the same SHA.
-  **Next lanes:** Claude rechecks R4; Kiro reviews the new
-  SHA. G2
-  remains open. The retired `cpu-tripwire-fault-ack` branch remains preserved.
+  target is `1a825d0434b46393da0dd4a5e1f8a8376a8c938f`**. Claude's R4
+  recheck returned **PASS** with 391 targeted tests and no takeover-branch
+  failure in the whole-tree comparison with main. The replacement safety
+  reviewer also PASSed this SHA. Ryan assigned a fresh Claude Opus-class
+  session to the original Kiro implementation-review slot. **Next lane:**
+  that independent reviewer checks the full implementation at the same SHA;
+  G2 remains open. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  records the evidence and review boundary. The retired
+  `cpu-tripwire-fault-ack` branch remains preserved.
   The old Timeshift event's live acknowledgment is moot after reboot. The
   required 2026-10-24 protocol doctor exited 0 with zero native faults this
   boot; formal acceptance is still Ryan's decision.

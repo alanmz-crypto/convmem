@@ -93,8 +93,9 @@ mode/owner validation and accurate post-commit CLI reporting at `e419810`;
 both are corrected at `49d9d67`, which the safety reviewer PASSed. Claude's
 final review found a stale derived scoped-proof inventory; its one-file
 regeneration is at the current target, which the replacement safety reviewer
-PASSed. Claude's R4 recheck and Kiro's
-implementation review remain open. The prior recorded doctor failure was an
+PASSed. Claude's R4 recheck also PASSed the same SHA. Ryan assigned a fresh
+Claude Opus-class session to the original Kiro G2 implementation-review slot;
+that review remains open. The prior recorded doctor failure was an
 unacknowledged CPU 7 fault; current acceptance is unproven. No runtime
 change or live acknowledgment was made.
 
@@ -121,9 +122,9 @@ change or live acknowledgment was made.
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
 | Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
 | Runtime-promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. The required 2026-10-24 protocol doctor later exited **0** with zero native faults this boot. | Deployment is executed; the later doctor result does not itself grant formal acceptance, which remains Ryan's decision |
-| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; doctor's CPU-tripwire criterion remains failed |
+| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; the earlier CPU-tripwire failure is historical after reboot, and formal acceptance remains Ryan-owned |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Branch-only review target `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` adds only the regenerated scoped-proof writer inventory to the previously reviewed content. A clean-tree selection of 44 scoped-proof, shadow, R2b and manifest tests passed, and the replacement safety reviewer PASSed the exact SHA. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records Claude's R4 finding and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | Claude rechecks R4; Kiro reviews implementation on the same SHA. Ryan owns G3–G6 |
+| Doctor acknowledgment, priority #1 | Branch-only review target `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` passed Claude's R4 recheck and the replacement safety review. Claude's 391 targeted tests passed; its whole-tree comparison found no failure introduced by the branch. The [review packet](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md) records the evidence and Ryan's policy decisions. G2 remains open. No promotion or live acknowledgment occurred. | A fresh Claude Opus-class session performs Ryan's reassigned Kiro-slot implementation review on the same SHA. Ryan owns G3–G6 |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
@@ -136,10 +137,10 @@ Part A of Claude's 2026-10-22 post-fence handoff on
 Codex executed both after an idle-window check. That one-time grant is consumed;
 the next lane must not repeat the deployment under it.
 
-**The next lanes are Claude's R4 recheck and Kiro's implementation
-review** of
-`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`. Claude's final review at
-`49d9d67` verified safety behavior but required the derived-inventory fix. Ryan
+**The next lane is a fresh Claude Opus-class implementation review** of
+`1a825d0434b46393da0dd4a5e1f8a8376a8c938f`, in the original Kiro G2
+slot reassigned by Ryan. Claude's R4 recheck and the replacement safety review
+PASSed this content SHA. Ryan
 directly granted Codex the implementation takeover. The earlier G0 FAIL and
 Claude PASS-WITH-CHANGES at the prior revision remain historical; Claude's
 later FAIL on the retired branch was resolved by Ryan's policy decisions in
@@ -252,8 +253,8 @@ and unproven canary outcomes remain separate from this fence deployment.
 
 Codex admission and the same-source publication fence are live.
 
-1. Complete Claude's R4 recheck and Kiro's implementation review on
-   pinned revision
+1. Complete the fresh Claude Opus-class implementation review in Ryan's
+   reassigned Kiro slot on pinned revision
    `1a825d0434b46393da0dd4a5e1f8a8376a8c938f` (G2). Codex's verification
    does not replace independent reviews. Ryan then decides PR/merge (G3), runtime
    promotion without a watcher restart (G4), and acceptance (G6). G5 for the
@@ -283,7 +284,7 @@ Codex admission and the same-source publication fence are live.
 | Execute grant | Ryan | Any production-code implementation outside the explicit acknowledgment takeover grant |
 | Default-off flag | Live config + Ryan | Incremental routing in production |
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
-| Implementation evidence review | Claude coverage/review + Ryan-directed independent safety substitute after Copilot limit + Kiro implementation review for acknowledgment G2 | PR disposition; all three must cover the corrected target |
+| Implementation evidence review | Claude coverage/review + Ryan-directed independent safety substitute after Copilot limit + fresh Claude Opus-class implementation review in Ryan's reassigned Kiro slot for acknowledgment G2 | PR disposition; all three must cover the corrected target |
 | Production canary | Ryan | Live source/Chroma/config/provider operation |
 | Activation | Ryan | Feature enablement and watcher participation |
 
@@ -436,6 +437,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-23 | Codex / independent safety reviewer | Ryan delegated replacement selection after Copilot's limit; Codex chose a separate safety reviewer, which required two fixes at `e419810`; Codex pushed both at `fb1d251` for final G2 delta review |
 | 2026-10-23 | Independent safety reviewer | PASSed content `49d9d67`, including regenerated R2b inventory and both safety fixes; Claude and Kiro G2 reviews remain |
 | 2026-10-24 | Claude / Codex / safety reviewer | Claude verified C1–C2 and architecture at `49d9d67` but found stale scoped-proof inventory R4; Codex regenerated one JSON file at `1a825d0`, which the safety reviewer PASSed; Claude and Kiro reviews remain |
+| 2026-10-24 | Claude / Ryan | Claude PASSed R4 at `1a825d0` after 391 targeted tests and a whole-tree main comparison with no branch-introduced failure; Ryan assigned a fresh Claude Opus-class session to the original Kiro G2 implementation-review slot |
 
 ## TL;DR
 
@@ -450,11 +452,10 @@ Keep this document a current-state snapshot, not a session diary.
   **Ryan to confirm**. Merged Kiro bootstrap prerequisites do not authorize a
   retry of stale proposal `c5fec18c…79c81`.
 - Priority #1: the corrected acknowledgment review target is `1a825d0`.
-  A clean-tree 44-test selection covering scoped-proof, shadow, R2b and the
-  manifest guard passes. The replacement safety reviewer PASSed this SHA.
-  Claude's review at `49d9d67` required only R4; its one-file recheck and
-  Kiro's implementation review remain open. No runtime
-  promotion or live
+  Claude's R4 recheck and the replacement safety review PASSed this SHA;
+  Claude found no branch-introduced whole-tree failure. A fresh Claude
+  Opus-class session holds Ryan's reassigned implementation-review slot.
+  No runtime promotion or live
   acknowledgment occurred; current acceptance remains unproven.
 
 <!-- ref: ../inter-model/LATEST.md — current Arc Codex routing -->
