@@ -667,6 +667,21 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "cpu_tripwire_ack.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "cpu_tripwire_cli.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "cpu_tripwire_events.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "cross_project_digest.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6862,6 +6877,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_cpu_tripwire_ack.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_cross_project_digest.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8606,7 +8626,7 @@
     },
     {
       "path": "convmem.py",
-      "sha256": "65ac6f6a91ca4e1b33a2c7c6618430ab7e38d704be0c89c5bc18d0288ae8ba01",
+      "sha256": "d71f3dda4fbc12b623df59c52d0b5227180d0fb28f2118246df8484f0e7c0bd5",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

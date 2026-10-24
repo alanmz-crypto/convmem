@@ -10,7 +10,10 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
+
+import pytest
 
 from cpu_tripwire import Fault, check, evaluate, parse_cpu_list, parse_kernel_faults
 
@@ -43,12 +46,19 @@ NOISE = [
 KNOWN_BAD = {"hardware": {"known_bad_cpus": [8, 9]}}
 
 
+@pytest.fixture(autouse=True)
+def _isolated_ack_home(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+
 def _fault(cpu: int | None, pid: int | None = 1) -> Fault:
     return Fault("t", "segfault", cpu, "p", pid)
 
 
 def test_parses_real_fault_lines_and_ignores_the_rest() -> None:
-    faults = parse_kernel_faults([*NOISE, SEGV_CPU8, SEGV_CPU4, GP_NO_CPU, INVALID_OPCODE, MCE])
+    faults = parse_kernel_faults(
+        [*NOISE, SEGV_CPU8, SEGV_CPU4, GP_NO_CPU, INVALID_OPCODE, MCE]
+    )
     assert [(f.kind, f.cpu, f.process, f.pid) for f in faults] == [
         ("segfault", 8, "python3.11", 60770),
         ("segfault", 4, "node", 5123),
@@ -112,7 +122,10 @@ def test_known_bad_cpu_back_online_fails() -> None:
 
 def test_crash_dump_without_a_kernel_line_warns_and_aborts_excluded() -> None:
     # Orphan hardware-signal dump is now a visible WARN (was FAIL); SIGABRT electron dump stays excluded.
-    dumps = [{"pid": 42, "sig": 11, "exe": "/usr/bin/python3.11"}, {"pid": 43, "sig": 6, "exe": "/x/electron"}]
+    dumps = [
+        {"pid": 42, "sig": 11, "exe": "/usr/bin/python3.11"},
+        {"pid": 43, "sig": 6, "exe": "/x/electron"},
+    ]
     verdict = evaluate([], dumps, set(range(8)), {8, 9})
     assert verdict.status == "warn" and "python3.11[42] SIGSEGV" in verdict.detail
     assert "electron" not in verdict.detail
@@ -127,8 +140,29 @@ class _FakeRunner:
         self.calls.append(list(argv))
         if argv[0] == "journalctl":
             if self.journal is None:
-                return subprocess.CompletedProcess(argv, 1, "", "No journal files were opened")
-            return subprocess.CompletedProcess(argv, 0, "\n".join(self.journal), "")
+                return subprocess.CompletedProcess(
+                    argv, 1, "", "No journal files were opened"
+                )
+            rows = self.journal
+            if "json" in argv:
+                rows = []
+                for index, line in enumerate(self.journal):
+                    head, _, message = line.partition(" kernel: ")
+                    stamp = datetime.fromisoformat(head.split(" ", 1)[0])
+                    rows.append(
+                        json.dumps(
+                            {
+                                "MESSAGE": message,
+                                "_BOOT_ID": "a" * 32,
+                                "__REALTIME_TIMESTAMP": str(
+                                    int(stamp.timestamp()) * 1_000_000
+                                ),
+                                "_SOURCE_MONOTONIC_TIMESTAMP": str(index + 1),
+                                "__CURSOR": f"test-{index}",
+                            }
+                        )
+                    )
+            return subprocess.CompletedProcess(argv, 0, "\n".join(rows), "")
         if self.dumps is None:
             return subprocess.CompletedProcess(argv, 1, "", "boom")
         if not self.dumps:
@@ -143,7 +177,9 @@ def _sys(tmp_path: Path, online: str = "0-7,10-23") -> dict[str, Path]:
 
 
 def test_check_reads_this_boot_only(tmp_path: Path) -> None:
-    runner = _FakeRunner([*NOISE, SEGV_CPU8], [{"pid": 60770, "sig": 11, "exe": "/bin/python3.11"}])
+    runner = _FakeRunner(
+        [*NOISE, SEGV_CPU8], [{"pid": 60770, "sig": 11, "exe": "/bin/python3.11"}]
+    )
     verdict = check(KNOWN_BAD, runner=runner, **_sys(tmp_path))
     assert verdict.status == "warn"
     assert runner.calls[0][:4] == ["journalctl", "-k", "-b", "0"]
@@ -151,7 +187,10 @@ def test_check_reads_this_boot_only(tmp_path: Path) -> None:
 
 
 def test_check_empty_coredump_list_passes(tmp_path: Path) -> None:
-    assert check(KNOWN_BAD, runner=_FakeRunner(NOISE, []), **_sys(tmp_path)).status == "pass"
+    assert (
+        check(KNOWN_BAD, runner=_FakeRunner(NOISE, []), **_sys(tmp_path)).status
+        == "pass"
+    )
 
 
 def test_check_real_typora_userspace_fault_warns_not_fail(tmp_path: Path) -> None:
@@ -162,10 +201,18 @@ def test_check_real_typora_userspace_fault_warns_not_fail(tmp_path: Path) -> Non
 
 
 def test_blind_tripwire_warns(tmp_path: Path) -> None:
-    assert check(KNOWN_BAD, runner=_FakeRunner(None, []), **_sys(tmp_path)).status == "warn"
-    assert check(KNOWN_BAD, runner=_FakeRunner(NOISE, None), **_sys(tmp_path)).status == "warn"
+    assert (
+        check(KNOWN_BAD, runner=_FakeRunner(None, []), **_sys(tmp_path)).status
+        == "warn"
+    )
+    assert (
+        check(KNOWN_BAD, runner=_FakeRunner(NOISE, None), **_sys(tmp_path)).status
+        == "warn"
+    )
     bad_cfg = {"hardware": {"known_bad_cpus": ["eight"]}}
-    assert check(bad_cfg, runner=_FakeRunner(NOISE, []), **_sys(tmp_path)).status == "warn"
+    assert (
+        check(bad_cfg, runner=_FakeRunner(NOISE, []), **_sys(tmp_path)).status == "warn"
+    )
 
 
 def test_doctor_maps_the_verdict(monkeypatch) -> None:
@@ -178,3 +225,6 @@ def test_doctor_maps_the_verdict(monkeypatch) -> None:
     assert result.effective_status() == "fail" and not result.ok
     monkeypatch.setattr(cpu_tripwire, "check", lambda cfg: Verdict("warn", "y"))
     assert _check_cpu_tripwire({}).ok
+
+
+# ref: ../cpu_tripwire.py, ../cpu_tripwire_events.py — legacy policy and JSON reader regression coverage
