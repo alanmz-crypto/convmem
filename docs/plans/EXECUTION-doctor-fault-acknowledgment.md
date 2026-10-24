@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `IMPLEMENTATION_REVIEW_PENDING`. Claude's R4 recheck and the replacement safety review PASSed the preceding `1a825d0` content. A first Opus implementation review was shell-restricted and exposed two retry/durability defects, corrected at the new content SHA. Ryan's reassigned G2 slot requires a shell-capable independent recheck. Earlier G0 and Claude findings remain historical.
+**Resume state:** `G2_PASS`. Claude's R4 recheck and the replacement safety review PASSed the preceding `1a825d0` content. A first Opus implementation review was shell-restricted and exposed two retry/durability defects, corrected at the current content SHA. Fresh shell-capable Opus implementation review and a separate safety delta recheck both PASSed the exact corrected revision. Ryan owns G3–G6; earlier G0 and Claude findings remain historical.
 **Current review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` (immutable corrective content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        corrected content pushed; implementation recheck pending
-Lanes:        fresh Claude Opus-class session in Kiro slot -> Ryan decision
+Phase:        G2 PASS at corrected content SHA; Ryan G3 decision next
+Lanes:        Ryan G3–G6
 Authority:    Ryan explicitly assigned takeover; later gates remain separate.
 ```
 
@@ -48,7 +48,8 @@ Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
 implementation-review slot. Its first pass at `1a825d0` was static because
 shell permissions were denied. It exposed two retry/durability issues that
 Codex reproduced and corrected at the current target. An independent,
-shell-capable implementation recheck remains open in G2.
+shell-capable implementation recheck and a separate safety delta recheck
+both PASSed the corrected content at `1a7676b`; G2 is complete.
 
 ## E. Implementation steps (Codex, under Ryan's takeover grant)
 
@@ -357,10 +358,10 @@ corrections and this evidence. Claude's fixed review candidate is
 - Scoped Ruff lint and format, scoped Pylint, and `git diff --check` passed.
   The committed-manifest guard passed **1 test** on the pushed content commit.
 
-No full-repository pytest, host tripwire invocation, hardware/power-loss test,
-runtime promotion, watcher restart or live acknowledgment was performed.
-Claude's historical PASS-WITH-CHANGES did not cover these corrections. G2
-remains incomplete until independent review of the new immutable revision.
+The author did not run full-repository pytest, a host tripwire invocation,
+hardware/power-loss test, runtime promotion, watcher restart or live
+acknowledgment. A fresh independent Opus reviewer later compared the full
+test tree with main and PASSed the corrected content. G2 is complete.
 
 ### Claude R1–R3 follow-up (Codex, 2026-10-23)
 
@@ -432,7 +433,8 @@ comparison against `origin/main` found no branch-introduced failure. The
 target had 110 failures and 32 errors; main had 111 failures and 32 errors,
 with only a known ext4 inode-reuse flake failing on main. Both runs shared
 142 environment failures/errors without torch or the Safe Harbor launcher.
-The fresh implementation review remains open. Hosted CI was not run. No
+The fresh implementation review and final safety delta recheck PASSed
+`1a7676b`. Hosted CI was not run. No
 runtime or live acknowledgment action was performed.
 
 ## P. Live-use runbook (G4–G6; listed for review, not authorized)

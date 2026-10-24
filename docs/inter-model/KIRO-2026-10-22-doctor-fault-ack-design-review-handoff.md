@@ -2,8 +2,8 @@
 
 **Updated:** 2026-10-24
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** fresh Claude Opus-class implementation review in Ryan's assigned G2 slot
-**State:** `IMPLEMENTATION_REVIEW_PENDING`; final implementation-review delta needs a shell-capable independent recheck
+**For:** Ryan's G3 PR/merge decision after completed G2 reviews
+**State:** `G2_PASS`; all required independent reviews cover the final content SHA
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
@@ -25,9 +25,30 @@ temp-path cleanup could mask exit 3 with "Refused", and an existing-record
 retry required a readable journal before syncing the stored file. It includes
 new regressions, the aligned §7–§8 contract, and a regenerated R2b inventory.
 The preceding `1a825d0` candidate passed Claude's R4 recheck and the
-replacement safety review. Those passes do not cover this new code delta.
+replacement safety review. A fresh shell-capable Opus implementation review
+and a separate safety delta recheck both PASSed the current content revision.
 Later documentation-only routing commits point to this target; review the
 immutable SHA, not a moving tip.
+
+## Final G2 reviews at `1a7676b` — 2026-10-24
+
+Fresh Claude Opus 5.5 session `4ba750ba-982f-454e-909e-ddf376ad7025`
+reviewed the exact clean content revision with shell access and returned
+**PASS**, with no required findings. Its independent checks included 66 real
+CLI pseudo-terminal probes (65 passed; one assertion was a reviewer wording
+mistake), reproduction of both prior defects, 365 passing focused tests,
+7/7 changed executable lines covered in the corrective delta, current
+inventory identity, and a whole-tree comparison with no failure ID introduced
+against `origin/main`. The target and main shared 148 environment-related
+failure/error IDs; hosted CI and live operations were not run.
+
+The separate read-only safety reviewer rechecked `1a825d0..1a7676b` and
+returned **PASS** with no required findings or new advisories. It passed 258
+focused and 25 inventory tests, verified the 39-route R2b inventory, and
+confirmed both retry/durability fixes preserve the safety contract. Together
+with Claude's preceding diff-coverage and R4 reviews, these complete G2 on
+the final immutable content SHA. Ryan owns G3–G6; no PR, merge, promotion,
+watcher restart or live acknowledgment was performed.
 
 ## First Opus implementation review at `1a825d0` — 2026-10-24
 
@@ -75,7 +96,7 @@ specific guard is
 The replacement safety reviewer independently matched all **38** scoped-proof
 routes to the generator, passed its idempotence test and **255 focused tests**,
 and returned **PASS** on `1a825d0`. Claude subsequently PASSed the R4 recheck;
-the fresh implementation review remains open.
+the fresh implementation review subsequently PASSed at `1a7676b`.
 
 Claude reported a wider 541-test selection from its previous round had missed
 the scoped-proof test. That result is historical, not evidence for R4.
@@ -107,7 +128,7 @@ Coverage is 100% line and branch for the store, and 100% line for the CLI.
 The safety reviewer PASSed `49d9d67` after an independent inventory and
 C1–C2 recheck: 25 inventory and 255 focused tests passed in its disposable
 checkout, which was clean. Its one-file safety recheck of `1a825d0` also PASSed.
-Ryan's fresh-Claude implementation-review slot remains open.
+Ryan's fresh-Claude implementation-review slot subsequently PASSed at `1a7676b`.
 
 ## Claude exact-SHA delta review at `e419810` — 2026-10-23
 
@@ -157,10 +178,9 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next task:** A fresh Claude Opus-class reviewer independently rechecks the
-full implementation and the two corrective paths at the pinned SHA in Ryan's
-reassigned G2 slot, with shell access confirmed for the SHA/clean-tree check.
-No PR, merge, promotion or live use is authorized by this review.
+**Next task:** Ryan decides G3 PR/merge disposition for the G2-PASSed content
+revision. The independent implementation and safety rechecks are complete.
+No PR, merge, promotion or live use is authorized by the reviews alone.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
 
@@ -197,7 +217,7 @@ resolved in Claude's review. Historical malformed-output C2 remains subject
 to these two reader corrections, now implemented at the review target above.
 Prior A1 (CLOCK_BOOTTIME), A2 (author visible in mixed FAIL) and A3 (durability
 retry) were resolved. Claude rechecked `e419810` and verified coverage there.
-G2 remains incomplete until Ryan's fresh-Claude implementation review is complete.
+That historical G2 gap is closed by the final Opus review above.
 
 Ryan's 2026-10-23 authorization retired the old
 `feat/2026-10-22-cpu-tripwire-fault-ack` merge line without deleting it after
@@ -254,11 +274,9 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owner:** A fresh Claude Opus-class session reviews the implementation
-on the pinned candidate. Earlier Claude and replacement safety PASSes apply
-to `1a825d0`; the new corrective delta has author evidence only so far.
-Ryan retains PR/merge, promotion, live-use
-and acceptance decisions. Codex's corrective tests are author evidence only.
+**Next owner:** Ryan decides G3 PR/merge disposition. Final independent Opus
+and safety PASSes cover `1a7676b`; Codex's corrective tests remain separate
+author evidence. Ryan retains promotion, live-use and acceptance decisions.
 
 Use a separate review checkout at that exact commit. First compare
 `git rev-parse HEAD` with the SHA above and inspect `git status --short` for
@@ -279,9 +297,10 @@ test results and reproduction instructions are in execution-plan §A.
 
 Resume from here:
 
-1. Review `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` in a separate clean
-   checkout. The local worktree remains at the path above; GitHub holds the
-   same task branch as the recovery copy if it must be reconstructed.
+1. Use the completed G2 reviews of
+   `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` for Ryan's G3 decision.
+   The local worktree remains at the path above; GitHub holds the task branch
+   as the recovery copy if it must be reconstructed.
 2. Treat host PIDs, service state and doctor results in the earlier evidence
    as historical snapshots. Reboot is not evidence that hardware is healthy
    or that the deployment's acceptance criterion has passed.
@@ -289,7 +308,7 @@ Resume from here:
    Timeshift event `bab67b49aa4f` is moot. Do not replay its live acknowledgment
    command against the new boot. The implementation review can still continue;
    Ryan decides whether to merge/deploy it for future events.
-4. Preserve the pending exact-revision G2 reviews and all remaining Ryan gates.
+4. Preserve the completed exact-revision G2 evidence and all remaining Ryan gates.
    No live acknowledgment, runtime promotion or acceptance was performed.
 
 The earlier packet recorded FAIL at merged design
@@ -429,10 +448,9 @@ promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Corrective content is pinned at
-`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Its cleanup and retry
-corrections have author tests; Claude and the replacement safety reviewer
-PASSed the preceding `1a825d0` content. A shell-capable independent
-implementation recheck remains open. Nothing is live.
+`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. Fresh shell-capable Opus
+implementation review and independent safety delta recheck both PASSed the
+final content, completing G2. Ryan owns G3–G6. Nothing is live.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->
