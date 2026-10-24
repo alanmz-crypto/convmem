@@ -9,9 +9,9 @@ original rollout procedure was not executed. A separately granted read-only
 post-deployment check and three-service routing correction are now complete;
 [section 7](#7-post-deployment-check-and-service-routing--2026-10-23) records
 their exact effects and limits. [Recovery inputs](#recovery-inputs--decided-2026-10-22)
-retain the October 22 decisions; confirmation of the newer image/test and physical
-custody is pending. Start with [STATUS](STATUS-safe-harbor.md). No further live
-action is granted by this document.
+retain the October 22 decisions. Ryan's [October 24 answers](#owner-recovery-answers--october-24)
+leave exact-image qualification and independent custody open. Start with
+[STATUS](STATUS-safe-harbor.md). No further live action is granted by this document.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -390,8 +390,8 @@ and three-service routing correction are complete. T1–T5 remain accepted and
 merged. The runtime is already live; repeating the historical rollout is not the
 next step. The initializer candidate remains parked, unreviewed and unaccepted.
 
-Open items are (1) Ryan's newest completed image and actual test, plus physical
-custody of an image drive and password copy; and (2) the normal Monday digest
+Open items are (1) exact-image qualification and independent image/key custody,
+given Ryan's [recorded answers](#owner-recovery-answers--october-24); and (2) the normal Monday digest
 run using its corrected route. October 24's local and external scheduled backup
 runs passed, including observed runtime identity and copy lineage (§7). Those
 results establish execution/availability, not demonstrated recovery. Do not force
@@ -650,6 +650,29 @@ absent from mounts; the configured password-copy volume remained mounted at the
 off-workstation custody. No reply identifying a newer completed image, its actual
 test or independent custody had arrived. No image payload was opened or restored;
 successful scheduled backup/copy is not recovery qualification.
+
+### Owner recovery answers — October 24
+
+Ryan has now answered the recovery questions:
+
+- **Newest completed image and image-specific test:** unknown from his reply.
+  Keep the earlier observed October 20 and October 11 image records and his
+  unnamed prior restore report. No newer image or exact-artifact test is
+  established, and the answer does not mean no backup or prior test exists.
+- **Image-drive custody:** Ryan reports all drives are plugged in. The accepted
+  requirement to retain an unplugged image drive away from the workstation is
+  therefore unmet by this report. The earlier absence of a mount did not prove
+  that its device was unplugged.
+- **Password-copy custody:** Ryan knows of no separate unplugged, independently
+  stored copy. The configured matching copy was observed on a mounted volume;
+  independent key access remains unconfirmed. No password contents were requested.
+
+These are owner-reported facts, not a new device inspection or recovery test.
+The questions are answered as far as Ryan currently knows; do not keep routing
+the same unanswered-question request. Operational closeout still needs exact-image
+qualification and independent custody. Any agent-run image check, backup, restore
+or drive/key action needs its own bounded grant. The already authorized Monday
+digest observation can proceed independently after the normal run completes.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->

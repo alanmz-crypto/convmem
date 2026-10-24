@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — operational follow-up, 2026-10-24.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Both corrected backup jobs passed on October 24 (local 00:19:52 CDT, external 01:01:15); actual runtime identity and copy lineage were confirmed. Doctor refreshed after 01:05 exited 0 with both backup checks PASS. The corrected digest is pending Monday. Newest tested-image and off-workstation custody confirmation remain pending. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
+> **Arc: Safe Harbor — operational follow-up, 2026-10-24.** T1–T5 / V1–V6 are accepted and merged through `c6f0724`; deployed runtime remains `1a68675`. Codex completed Ryan's read-only post-deployment check and separately authorized routing correction for local backup, external copy and cross-project digest. Both corrected backup jobs passed on October 24 (local 00:19:52 CDT, external 01:01:15); actual runtime identity and copy lineage were confirmed. Doctor refreshed after 01:05 exited 0 with both backup checks PASS. The corrected digest is pending Monday. Ryan answered the recovery questions: newest-image/test details are unknown, all drives are plugged in, and no separate offline password copy is known to him. Recovery qualification and independent custody remain open. The legacy initializer stays parked, unreviewed and unaccepted. No further live operation is granted.
 
 ## 1. What This Is For (product goal)
 
@@ -48,14 +48,14 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Post-deployment inspection complete:** the observed processes used the deployed route; stored guard evidence and existing audits were inspected. This does not re-review later runtime changes from other arcs or establish semantic integrity/recoverability.
 - **Routing correction complete:** at October 23 23:26:43 CDT, Codex installed three user-unit drop-ins and reloaded the manager. Effective commands/environment and unit validation passed. Services remained inactive and timers active/enabled. **Local and external scheduled execution passed October 24; digest remains pending Monday.** No corpus write, backup/restore, initializer, audit invocation or restart was initiated by this lane.
 - **Recovery policy recorded October 22:** Ryan delegated items 1–3 to Claude. Accepted loss interval is one day of ConvMem data and work since the latest disk image for the rest of the system. Whole-disk image `2026-10-20-05-img` completed without logged errors; `2026-10-11-06-img` is the older fallback. Policy is to keep at least one image drive and a Restic password copy unplugged and away from the workstation. [ROLLOUT recovery inputs](ROLLOUT-safe-harbor.md#recovery-inputs--decided-2026-10-22) retains provenance and locations.
-- **Recovery facts still pending:** the October 23 23:53–23:55 read-only follow-up found the October 20 image drive unmounted and the older October 11 image mounted. The configured password-copy volume remains mounted; doctor reports the copy matches. This establishes availability, not independent custody. October 23's planned new image is not confirmed completed/tested. Ryan's earlier “Clonezilla is restorable. Tested.” did not name an image. The new image/test/custody questions remain pending.
+- **Recovery answers received October 24:** Ryan reports newest-image/test details unknown, all drives plugged in, and no separate offline password copy to his knowledge. The earlier observed October 20/October 11 images remain recorded; this answer neither identifies a newer completed/tested image nor retracts his earlier unnamed restore report. The accepted unplugged-image custody condition is unmet by his report, and independent password access remains unconfirmed. An unmounted volume is not evidence of unplugging. Doctor's matching-copy PASS establishes neither independent custody nor recovery qualification. See the [owner-answer receipt](ROLLOUT-safe-harbor.md#owner-recovery-answers--october-24).
 - **Scheduled backup results, October 24:** local invocation 00:17:51–00:19:52 CDT created source `0295cf8e4922568d4b9633ee9fc8f2246939f3c116ff75f69919f38428cda26d`; external invocation 01:01:01–01:01:15 copied it to `ba581a75bb7bc07b0fc83b04fea200643ca597b54046fb230d56bab8acc6ec7b`, with `original==source`. Both completed successfully using production Python 3.11/runtime-main, observed through local process metadata and external structured journal fields. After 01:05, doctor exited 0 with local and external PASS. Daily audit passed (two segments, 118,977 vectors, zero lost); existing nonfatal warnings remain. ROLLOUT §7 records exact evidence and limits; no restore qualification was performed.
 - **Initializer remains parked:** both observed live generations already carry release evidence. No new initializer review, implementation or execution is justified by this checkpoint. Older-image restore requirements may merit a separately scoped decision later.
 - Limits remain: existing audit ID coverage is not semantic integrity; gate PASS is not demonstrated recovery; current strict release eligibility was not tested. Fixture restart/fsync injection is not hardware power-loss proof. The retained tripwire warning was not cleared or reclassified by this work.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan:** confirm the newest completed image, which test was performed, and actual off-workstation custody of one image drive and a Restic password copy. Existing policy need not be decided again.
+**Ryan:** the factual questions are answered as far as currently known. The remaining recovery work is to identify and qualify an exact image and establish independent image/key custody under a separately scoped step. Existing policy need not be decided again; do not repeat the same questions without new information.
 
 **Next operational follow-up:** Ryan authorized the bounded read-only recovery/scheduled-results check. Both backup routes are now confirmed through scheduled runs. The remaining scheduled observation is digest after Monday October 26 09:08:21 CDT, allowing for completion. Do not start jobs to manufacture evidence. Any failure returns for a scoped correction decision; do not infer repair, restore or service-change authority from this receipt.
 
@@ -63,7 +63,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 6. What Remains Before Operational Closeout (sequential)
 
-1. Obtain the missing recovery facts in §4, retaining the one-day loss policy. Agent-run image checks, backups, restores and drive/key actions require their own grant.
+1. Address the recorded recovery gaps in §4: exact-image qualification and independent image/key custody, retaining the one-day loss policy. Ryan's answers are recorded; agent-run image checks, backups, restores and drive/key actions require their own grant.
 2. Observe the corrected digest after its Monday scheduled run. Configuration validation and both corrected backup runs are complete. Keep repository availability failures distinct from routing failures.
 3. Reconcile any concrete residual deployment-readiness gap from those facts. Do not repeat the historical rollout against an already-live runtime or promote the parked initializer automatically.
 4. Record the closeout decision with its actual scope. No implementation PASS, merge, audit PASS or incidental runtime promotion implies demonstrated recovery.
@@ -100,7 +100,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## Update Log
 
-- 2026-10-24 — Codex: observed both corrected scheduled backup routes succeed with production runtime identity and copy lineage; final doctor backup checks PASS. Digest and image-test/custody confirmation remain pending.
+- 2026-10-24 — Codex: recorded Ryan's recovery answers (image/test details unknown, all drives plugged in, no separate offline password copy known); qualification/custody remain open. Both corrected backup routes passed; Monday digest observation remains pending.
 
 - 2026-10-23 — Codex: read-only follow-up found corrected jobs not yet due, October 20 image drive unmounted and configured password copy still mounted; recorded exact next checks and kept image-test/custody answers pending.
 
@@ -231,7 +231,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] Post-deployment inspection and the three-service routing correction are complete. Runtime remains unchanged; no jobs were manually started. Both scheduled backup jobs and final doctor backup checks passed; Monday's digest and Ryan's newest tested-image/custody confirmation remain open. The initializer stays parked; no further live work is granted.
+[Arc Safe Harbor] Post-deployment inspection and the three-service routing correction are complete. Runtime remains unchanged; no jobs were manually started. Both scheduled backup jobs and final doctor backup checks passed. Ryan's answers are recorded; exact-image qualification and independent image/key custody remain open, alongside Monday's digest observation. The initializer stays parked; no further live work is granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md — operational readiness and proposed sequence -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — parked implementation handoff -->

@@ -53,13 +53,14 @@ cross-arc snapshot and the linked arc brief below.
 - **Arc Safe Harbor — scheduled backup routing verified (2026-10-24, Codex):**
   Local backup and external copy completed automatically through production
   Python/runtime-main; source/destination lineage matched. Doctor refreshed after
-  01:05 CDT passed both backup checks. No job was manually started. **Next lane:
-  Ryan** for newest image-specific test and custody facts; Codex for the remaining
-  read-only digest observation after Monday's normal run. The initializer remains
+  01:05 CDT passed both backup checks. No job was manually started. Ryan's recovery
+  answers are now recorded; qualification and independent custody remain open.
+  **Next lane: Ryan** for recovery preparation; Codex for the remaining read-only
+  digest observation after Monday's normal run. The initializer remains
   parked, unreviewed and unaccepted. No PR or mutation authority follows.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
   [STATUS](../plans/STATUS-safe-harbor.md) and the
-  [final backup receipt](../plans/ROLLOUT-safe-harbor.md#external-scheduled-copy-and-final-health--october-24-after-0105-cdt).
+  [owner recovery answers](../plans/ROLLOUT-safe-harbor.md#owner-recovery-answers--october-24).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its

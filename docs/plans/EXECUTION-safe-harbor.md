@@ -1,10 +1,11 @@
 # Execution Plan — Safe Harbor
 
-**Current state — 2026-10-23.** Ryan resumed Safe Harbor. The §23 initializer
+**Current state — 2026-10-24.** Ryan resumed Safe Harbor. The §23 initializer
 implementation remains parked, unreviewed and unaccepted. Section 24 records the
 completed read-only post-deployment check and separately authorized correction
-of three scheduled service routes. Recovery confirmation and evidence from the
-next normal scheduled runs remain open. Start with [STATUS](STATUS-safe-harbor.md);
+of three scheduled service routes. Both scheduled backup routes passed; Monday's
+digest remains pending. Ryan's recovery answers are recorded; exact-image
+qualification and independent custody remain open. Start with [STATUS](STATUS-safe-harbor.md);
 historical grants below do not authorize additional work.
 
 > **Arc: Safe Harbor. T1–T5 / V1–V6 ACCEPTED AND MERGED through `c6f0724`.** The runtime is already live through other arcs' promotions. [ROLLOUT §7](ROLLOUT-safe-harbor.md#7-post-deployment-check-and-service-routing--2026-10-23) records actual observations and the bounded routing correction, without claiming the original rollout procedure was executed or recovery was qualified. No further live action follows from this record.
@@ -17,11 +18,11 @@ historical grants below do not authorize additional work.
 
 ```text
 Planning Status
-Phase:        Operational check and routing correction complete; recovery inputs pending
+Phase:        Operational follow-up; recovery gaps recorded, digest observation pending
 Characters:   Task Decomposer, Dependency Mapper, Scope Guardian
 Function:     Planner
-Lanes:        Ryan for recovery facts; initializer remains parked
-Authority:    Section 24 grants completed; no further live work granted
+Lanes:        Ryan for recovery preparation; Codex for read-only digest observation
+Authority:    Section 24 read-only follow-up only; no further live mutation granted
 ```
 
 Standards: [Execution Planning](../planning/EXECUTION-PLANNING.md), [decision-review guardrails](../inter-model/DECISION-REVIEW-GUARDRAILS.md), Ousterhout's existing-module boundaries and the Hard Parts digest's explicit ownership/transaction trade-offs. This plan chooses one bounded route; rejected alternatives remain in the approved architecture.
@@ -1198,8 +1199,15 @@ Python/runtime-main identity and matching source/destination lineage. Doctor
 refreshed after 01:05 exited 0 with both backup checks PASS. No job was manually
 started. The [receipt](ROLLOUT-safe-harbor.md#external-scheduled-copy-and-final-health--october-24-after-0105-cdt)
 retains the midnight freshness failure, later passes and limits. Monday's digest
-and Ryan's image-specific test/custody confirmation remain open; no recovery
-qualification, warning clearance or further mutation authority follows.
+remains pending; no recovery qualification, warning clearance or further mutation
+authority follows.
+
+**Recovery answers received, October 24:** Ryan reports image/test details unknown,
+all drives plugged in, and no separate offline password copy to his knowledge.
+The [owner-answer receipt](ROLLOUT-safe-harbor.md#owner-recovery-answers--october-24)
+records the limits and preserves earlier image observations. Qualification and
+independent custody remain open; the factual questions are no longer awaiting a
+reply. No image check, backup/restore, drive/key action or initializer is granted.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
