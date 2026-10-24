@@ -11,7 +11,9 @@ post-deployment check and three-service routing correction are now complete;
 their exact effects and limits. [Recovery inputs](#recovery-inputs--decided-2026-10-22)
 retain the October 22 decisions. The [October 24 inspection](#recovery-preparation-inspection--october-24-0150-cdt)
 identifies a newer completed image; exact-image qualification and independent custody remain open. Start with
-[STATUS](STATUS-safe-harbor.md). No further live action is granted by this document.
+[STATUS](STATUS-safe-harbor.md). Ryan subsequently authorized the named image's
+[integrity check](#authorized-image-check--local-authentication-needed); local
+authentication is needed before it can start. No restore or live mutation follows.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -715,7 +717,53 @@ alone does not demonstrate restore/boot/application recovery. No new backup,
 restore, image-check execution, secret-copy or eject operation is granted to
 an agent by this record. The parked initializer remains out of scope.
 
+### Authorized image check — local authentication needed
+
+Ryan then said “check for me,” authorizing the integrity check of
+`2026-10-23-13-img`. Doctor refreshed October 24 and exited 0. The image volume
+still matched UUID `cce6ae9a-b6ce-49da-8dd9-feb94b817777`; available memory was
+46 GiB and no Restic/Timeshift/Partclone/Zstandard process matched the bounded
+process-name check. No service was changed or stopped.
+
+The native checker was not installed. Codex downloaded Arch's `partclone`
+`0.3.50-2` package to `/tmp/safe-harbor-image-check-vDJNmR`, matched its SHA-256
+to the configured repository metadata, and verified its signature against the
+installed Arch public keyring (converted to binary form in the temporary
+directory for gpgv). No system package was installed. Package SHA-256:
+`bb615114e72e74d70b8f688a0a3e36f144af4868635885baae6999207ad50f9c`;
+checker SHA-256:
+`1cb3735af11734d655547dce061ffaa98461095238fe0fbc4716028757bb3fa1`.
+
+**Attempt outcome: NOT RUN — permission required.** Both compressed partition
+files are owned by root with mode `0600`. The first ordinary open failed with
+permission denied; `sudo -n` reported that a password is required. Neither
+partition scan started. The local result file records `NOT_RUN_PERMISSION`;
+this does not establish corruption or successful integrity checking.
+
+**Prepared local command (normal user, not sudo bash):**
+
+```bash
+bash /tmp/safe-harbor-image-check-vDJNmR/run-check.sh
+```
+
+The helper asks for sudo authentication in Ryan's terminal. Only the exact-file
+reader runs privileged; system Zstandard 1.5.7 and the verified Partclone checker
+run as Ryan with idle I/O / nice 19. Each complete compressed partition stream
+must decode and pass checksums, with all three pipeline exits checked. Source
+device/inode/size/mtime/ctime are compared before and after. No restore output or
+extracted filesystem is written; checker logs stay in the temporary directory.
+Shell syntax checked successfully; the helper itself has not run against the
+payloads. It is temporary and may need preparation again after cleanup/reboot.
+
+Codex should inspect `terminal-result.txt`, both `*.terminal-partclone.log`
+files and the before/after source records after Ryan starts it. A started or
+partial run is not PASS. Coverage is compressed-stream and saved-partition
+checksum integrity; it is not a boot test, an application restore or a full
+Clonezilla metadata validation. No source permission change, system installation,
+backup, restore, service change, secret copy or drive removal is granted.
+
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
 <!-- ref: /home/lauer/.config/systemd/user/convmem-restic-local.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-restic-external.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-cross-project-digest.service.d/90-safe-harbor-routing.conf — installed October 23 routing -->
 <!-- src: /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/clonezilla-img, /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/blkid.list — image completion and saved filesystem identity -->
+<!-- ref: /tmp/safe-harbor-image-check-vDJNmR/run-check.sh — temporary local-authentication image-check helper -->

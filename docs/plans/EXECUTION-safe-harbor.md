@@ -1217,6 +1217,14 @@ records identity, scope, device-sharing and limits. This resolves the newer-imag
 identification gap only. Qualification, independent custody and Monday's digest
 result remain open; no additional operation is granted.
 
+**Named image-check grant, October 24:** Ryan's “check for me” authorizes the
+integrity check of `2026-10-23-13-img`. The [check handoff](ROLLOUT-safe-harbor.md#authorized-image-check--local-authentication-needed)
+records the verified temporary checker and root-only file-access stop. No
+partition scan started; Ryan must authenticate locally, after which Codex may
+inspect the existing check's results without another approval. The grant excludes
+restores, source permission changes, system installation, service/drive/key
+actions and unrelated tests; it does not reopen the parked initializer.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->
