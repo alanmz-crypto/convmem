@@ -9,8 +9,8 @@ original rollout procedure was not executed. A separately granted read-only
 post-deployment check and three-service routing correction are now complete;
 [section 7](#7-post-deployment-check-and-service-routing--2026-10-23) records
 their exact effects and limits. [Recovery inputs](#recovery-inputs--decided-2026-10-22)
-retain the October 22 decisions. Ryan's [October 24 answers](#owner-recovery-answers--october-24)
-leave exact-image qualification and independent custody open. Start with
+retain the October 22 decisions. The [October 24 inspection](#recovery-preparation-inspection--october-24-0150-cdt)
+identifies a newer completed image; exact-image qualification and independent custody remain open. Start with
 [STATUS](STATUS-safe-harbor.md). No further live action is granted by this document.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
@@ -390,8 +390,8 @@ and three-service routing correction are complete. T1–T5 remain accepted and
 merged. The runtime is already live; repeating the historical rollout is not the
 next step. The initializer candidate remains parked, unreviewed and unaccepted.
 
-Open items are (1) exact-image qualification and independent image/key custody,
-given Ryan's [recorded answers](#owner-recovery-answers--october-24); and (2) the normal Monday digest
+Open items are (1) qualification of the [identified October 23 image](#recovery-preparation-inspection--october-24-0150-cdt)
+and independent image/key custody; and (2) the normal Monday digest
 run using its corrected route. October 24's local and external scheduled backup
 runs passed, including observed runtime identity and copy lineage (§7). Those
 results establish execution/availability, not demonstrated recovery. Do not force
@@ -674,6 +674,48 @@ qualification and independent custody. Any agent-run image check, backup, restor
 or drive/key action needs its own bounded grant. The already authorized Monday
 digest observation can proceed independently after the normal run completes.
 
+### Recovery preparation inspection — October 24, 01:50 CDT
+
+Under Ryan's continued read-only grant, Codex inspected mounted-device metadata,
+top-level image directories and small existing image metadata/log files. No
+image payload was opened, checked, mounted or restored; no drive was mounted or
+unmounted by this lane. No password contents were read or copied.
+
+- **Newer image located:** `/run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img`.
+  The volume is now mounted, UUID `cce6ae9a-b6ce-49da-8dd9-feb94b817777`.
+  Its saved log records Clonezilla Live 3.3.2-31, start October 23 13:56:06 UTC
+  and completion 14:08:36 UTC (08:56:06–09:08:36 CDT). Both partition saves
+  report successful cloning, followed by completion of the savedisk job. The
+  metadata reports size `304G`; this inspection did not rescan image contents.
+- **Scope:** the saved disk is `nvme1n1`, partitions `nvme1n1p1` and
+  `nvme1n1p2`. Recorded filesystem UUIDs match current `/boot` and `/`.
+  This establishes the recorded scope includes the workstation root/home tree,
+  not successful restoration of any file or the usability of an embedded key.
+- **Testing still unconfirmed:** the available saving log contains no image-check
+  or restore-test result. The partition-table integrity step in that log is not
+  an image-payload check. The image is a candidate for qualification, not a
+  declared usable recovery point.
+- **Earlier images:** the October 11 fallback remains visible on
+  `rszl-larch-5t-fs`. The October 20 directory was not in the inspected top-level
+  listing of `ext-ex4-1T-NVMe`; no deletion or absence elsewhere is inferred.
+- **Physical-device mapping:** the password-copy volume `BIT-Brg-larch-7t`
+  shares a physical USB device with mounted `BIT-shf-larch-fs`. The October 11
+  image volume shares another device with mounted `BIT-25G-paula-fs`. The
+  October 23 image volume is on a separate single-partition USB device. These
+  are observed mappings, not clearance to unplug anything; later safe removal
+  must account for all partitions and active users on the selected device.
+- **Health and schedule:** doctor exited 0 with both backup checks PASS.
+  At Saturday October 24 01:50 CDT the digest timer remained active, next run
+  Monday October 26 09:08:21 CDT, last trigger October 19. No digest journal
+  entries exist after the routing correction. Monday's result is still pending.
+
+The next physical preparation is a check of this exact October 23 image with its
+result retained, followed by independent image/key custody. An integrity check
+alone does not demonstrate restore/boot/application recovery. No new backup,
+restore, image-check execution, secret-copy or eject operation is granted to
+an agent by this record. The parked initializer remains out of scope.
+
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
 <!-- ref: /home/lauer/.config/systemd/user/convmem-restic-local.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-restic-external.service.d/90-safe-harbor-routing.conf, /home/lauer/.config/systemd/user/convmem-cross-project-digest.service.d/90-safe-harbor-routing.conf — installed October 23 routing -->
+<!-- src: /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/clonezilla-img, /run/media/lauer/ext-ex4-1T-NVMe/2026-10-23-13-img/blkid.list — image completion and saved filesystem identity -->

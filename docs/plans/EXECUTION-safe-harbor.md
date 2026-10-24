@@ -1209,6 +1209,14 @@ records the limits and preserves earlier image observations. Qualification and
 independent custody remain open; the factual questions are no longer awaiting a
 reply. No image check, backup/restore, drive/key action or initializer is granted.
 
+**Preparation inspection returned, October 24:** read-only metadata inspection
+identified `2026-10-23-13-img` on the now-mounted image drive. Its saved log
+reports successful boot/root imaging; no image-check or restore-test result was
+found. The [preparation receipt](ROLLOUT-safe-harbor.md#recovery-preparation-inspection--october-24-0150-cdt)
+records identity, scope, device-sharing and limits. This resolves the newer-image
+identification gap only. Qualification, independent custody and Monday's digest
+result remain open; no additional operation is granted.
+
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->
 <!-- src: VERIFY-safe-harbor.md — completed implementation and owner acceptance -->
