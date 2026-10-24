@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-22
+**Updated:** 2026-10-24
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,30 +9,26 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: doctor-acknowledgment design ready for Kiro
-  (2026-10-22, Claude):** Ryan cannot reboot now and prioritized acknowledging
-  the specific Timeshift crash while continuing to flag new faults. A fresh
-  design model drafted the mechanism on `plan/2026-10-22-doctor-fault-ack`:
-  - Each acknowledgment is keyed to one exact kernel journal entry and bound
-    to one boot.
-  - The matched fault becomes a visible WARN, never PASS.
-  - New faults, machine checks and known-bad CPUs coming back online still
-    FAIL.
-  **Next lane: Kiro design review (G0)**, via the
-  [Kiro pickup](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  Design PR [#415](https://github.com/alanmz-crypto/convmem/pull/415) is open
-  under Ryan's PR Steward assignment; Ryan owns the merge.
-  Resume state: design `READY_FOR_REVIEW`; implementation `NOT_STARTED`.
-  Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The input
-  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
-  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
-  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
-  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
-  promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No reboot or live exception occurred. Stage 1/Stage 2
-  outcomes and residual burn remain **Ryan to confirm**. See the current
-  [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **[Arc Codex #286] Priority #1: acknowledgment PR #416 is open for Ryan's G3 decision
+  (2026-10-24, Codex):** The sole takeover branch is
+  `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
+  target is `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`**. Claude's R4
+  recheck and the replacement safety reviewer PASSed the preceding `1a825d0`
+  revision. A first Opus implementation review at that SHA was limited to
+  static reading by CLI permissions; its two retry/durability observations
+  were reproduced and corrected at the new target. A fresh shell-capable
+  Opus session independently PASSed the full implementation at the exact
+  SHA, and the separate safety reviewer PASSed the corrective delta. **Next
+  lane:** Ryan reviews [PR #416](https://github.com/alanmz-crypto/convmem/pull/416)
+  for G3 merge; G4–G6 remain his gates. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  records the evidence and review boundary. The retired
+  `cpu-tripwire-fault-ack` branch remains preserved.
+  The old Timeshift event's live acknowledgment is moot after reboot. The
+  required 2026-10-24 protocol doctor exited 0 with zero native faults this
+  boot; formal acceptance is still Ryan's decision.
+  The PR is open; no merge, promotion, watcher restart or live acknowledgment followed.
+  Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
+  See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
 - **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
   Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
@@ -314,5 +310,5 @@ its existing archive/reference location. Use
 
 <!-- ref: ../plans/STATUS-codex-jsonl-production-integration.md — current Arc Codex state and deployment gates -->
 <!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
-<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 design review pickup -->
-<!-- src: ../../cpu_tripwire.py — deployed fault-classification policy -->
+<!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 Claude design and implementation review pickup -->
+<!-- src: ../../cpu_tripwire.py — fault policy and candidate acknowledgment integration -->
