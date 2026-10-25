@@ -2,8 +2,8 @@
 
 **Updated:** 2026-10-25 (routing state; G2 evidence remains dated)
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** G2 review evidence and Ryan's remaining G6 acceptance decision
-**State:** `G2_PASS`; G3 merged; G4 promoted; old-event G5 moot; G6 pending
+**For:** G2 review evidence and G6 acceptance disposition
+**State:** `G2_PASS`; G3 merged; G4 promoted; old-event G5 moot; G6 accepted with live-use limit
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
 **G3 PR:** [#416](https://github.com/alanmz-crypto/convmem/pull/416), Ryan squash-merged as `4b4796b6a667509f94475a5a14424204947fbb12`
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
@@ -14,7 +14,9 @@ the merged SHA under Ryan's G4 direction. The watcher stayed at PID 1149 with
 `NRestarts=0`; post-promotion doctor exited 0 with zero native faults, and no
 acknowledgment was made. The investigated boot has ended, making its G5 moot.
 Historical review sections below describe evidence and gates as they stood
-before the merge. Ryan alone decides G6 acceptance.
+before the merge. Ryan accepted G6 on 2026-10-25 for the current deployment's
+doctor criterion based on the post-promotion exit 0. Live acknowledgment was
+not exercised and remains unproven; any future event needs a separate grant.
 Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
 implementation-review slot. This is a separate review from Claude's completed
 delta and R4 checks.
@@ -461,7 +463,8 @@ acceptance. If the investigated boot has ended, G5 for that event is moot.
 
 **TL;DR:** [Arc Codex] Independent G2 reviews PASSed content `1a7676b`;
 Ryan merged PR #416 as `4b4796b`, and Codex promoted that exact SHA without
-restarting the watcher. The old-event G5 is moot; Ryan decides G6 acceptance.
+restarting the watcher. Ryan accepted G6 for the observed doctor exit 0;
+live acknowledgment remains unproven and needs a separate future grant.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->

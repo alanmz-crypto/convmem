@@ -21,7 +21,8 @@ and visibility/recovery behavior. Each adapter's source and activation grants
 remain distinct. Codex admission and the publication fence are live; Stage 1
 and Stage 2 acceptance remains Ryan to confirm. After the 2026-10-25
 doctor-acknowledgment runtime promotion, `convmem doctor` exited 0 with zero
-native faults this boot; formal deployment acceptance remains Ryan-owned (§4).
+native faults this boot. Ryan accepted G6 for that observed deployment
+criterion; no live acknowledgment was exercised (§4).
 No Kiro source is selected.
 
 ## 2. System Design (how the pieces connect)
@@ -83,7 +84,9 @@ installed CLI exposes `tripwire show`, `ack`, and `revoke`; post-promotion
 `convmem doctor` exited 0 with zero native faults this boot. The watcher
 stayed active at PID 1149 with `NRestarts=0`, without a restart or a live
 acknowledgment. The original Timeshift fault belongs to an earlier boot, so
-its G5 acknowledgment is moot. G6 acceptance remains Ryan's decision.
+its G5 acknowledgment is moot. Ryan accepted G6 on 2026-10-25 for the
+observed doctor exit 0; live acknowledgment remains unproven and any future
+event needs its own grant.
 The retired `cpu-tripwire-fault-ack` branch is preserved. Merged implementation
 and observed live operation remain distinct from Stage 1/Stage 2 acceptance.
 
@@ -109,23 +112,24 @@ and observed live operation remain distinct from Stage 1/Stage 2 acceptance.
 | Codex admission and watcher prerequisites | Admission #388, rejection-loop #390, wedge fixes #395, compatibility #399, and manifest cache #403 are merged; live Codex admission is observed | Preserve current settings; do not infer canary acceptance from live operation |
 | Optional integrity observation and Kiro route | #405 and #406 are merged; observer is live in shadow mode, with no exact Kiro source selected | Separate authority for any config or source change |
 | Same-source publication fence | #411 is merged and deployed at `1a68675` under Ryan's one-time exact-SHA/restart grant | Grant consumed; no further restart or promotion is authorized by it |
-| 2026-10-22 fence promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. The required 2026-10-24 protocol doctor later exited **0** with zero native faults this boot. | That fence promotion is historical; the 2026-10-25 doctor-ack promotion is in the row below. Formal acceptance remains Ryan's decision |
-| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; the earlier CPU-tripwire failure is historical after reboot, and formal acceptance remains Ryan-owned |
+| 2026-10-22 fence promotion verification | Exact HEAD, active service, unchanged config, and clean 10-minute journal (`13:52:35–14:02:35 CDT`, 2026-10-22) verified. No traceback/refusal or automatic restart; a subsequent admitted Codex run committed at `14:03:31 CDT`, transforming one chunk. Host-access doctor exited **1** on the same pre-deployment CPU-tripwire report; its local/offsite backup and index/native-crash checks passed. The required 2026-10-24 protocol doctor later exited **0** with zero native faults this boot. | That fence promotion is historical; the 2026-10-25 doctor-ack promotion and G6 decision are in the row below |
+| Interrupted Timeshift backup | Deliberate USB removal explains the interruption. Failed snapshot `2026-10-22_13-00-00` is absent; replacement `2026-10-22_13-03-52` has completion metadata and a journal success at `13:07:24 CDT`. No restore/integrity test was performed. | Normal replacement completion established; the earlier CPU-tripwire failure is historical after reboot. G6 acceptance does not establish backup restore/integrity or live acknowledgment behavior |
 | Stale Timeshift mount cleanup | Ryan completed the root active-user check and normal unmount; Codex verified `/run/timeshift/835726/backup` absent at `14:48:28 CDT`, with the reconnected volume still read-write and watcher unchanged | Scoped cleanup complete; grant consumed. Retention's previous failed status remains recorded; retry/reset would need separate authority |
-| Doctor acknowledgment, priority #1 | Independent G2 reviews PASSed content `1a7676b`; Ryan merged [PR #416](https://github.com/alanmz-crypto/convmem/pull/416) as `4b4796b` (G3), and Codex promoted that exact SHA to the clean runtime without restarting the watcher (G4). Post-promotion doctor exited 0 with zero native faults; no acknowledgment was made. The old-event G5 is moot after reboot. | Ryan decides G6 acceptance; any future event requires its own live-use grant |
+| Doctor acknowledgment, priority #1 | Independent G2 reviews PASSed content `1a7676b`; Ryan merged [PR #416](https://github.com/alanmz-crypto/convmem/pull/416) as `4b4796b` (G3), and Codex promoted that exact SHA to the clean runtime without restarting the watcher (G4). Post-promotion doctor exited 0 with zero native faults; no acknowledgment was made. The old-event G5 is moot after reboot. Ryan accepted G6 on 2026-10-25 for the observed deployment criterion. | Live acknowledgment remains unproven; any future event requires its own live-use grant |
 | Stage 1 and Stage 2 outcomes | **Ryan to confirm**; checked repository and corpus search do not establish the measured results or acceptance | Locate authoritative result/grant evidence before declaring either stage passed |
 | Pre-activation rollout residual-burn decision | **Ryan to confirm**; admission cutoff alone does not prove the chosen disposition | Confirm the recorded decision; no exclusion, retirement, or rebuild is authorized here |
 
 ## 5. Your Role
 
-**Ryan's next decision is G6 acceptance.** The scoped acknowledgment code
+**G6 is accepted with a live-use limit.** The scoped acknowledgment code
 passed independent G2 review, Ryan merged PR #416 at `4b4796b`, and Codex
 promoted that exact SHA to `.worktrees/runtime-main` under Ryan's subsequent
 direction. The clean runtime matches `origin/main`; the watcher remained
 active at PID 1149 with `NRestarts=0`. Post-promotion `convmem doctor` exited
 0 because it found zero native faults in the current boot. No acknowledgment
-was written. Ryan decides whether this satisfies the deployment's doctor
-criterion; a passing check does not make that decision for him.
+was written. Ryan decided on 2026-10-25 that this satisfies the current
+deployment's doctor criterion, while expressly leaving live acknowledgment
+unproven. This decision grants no future live use.
 
 The investigated Timeshift entry belonged to an earlier boot, making its
 one-event G5 acknowledgment moot. A future event requires fresh, separate
@@ -143,22 +147,16 @@ boundaries. Do not repeat the consumed G4 fast-forward or restart the watcher.
 
 Codex admission and the same-source publication fence are live.
 
-1. Ryan decides G6 acceptance of the deployment's doctor criterion. G2
-   reviews PASSed content `1a7676b`; PR #416 merged as `4b4796b` (G3), and
-   runtime promotion at that SHA completed without a watcher restart (G4).
-   Post-promotion doctor exited 0 with zero native faults; no acknowledgment
-   was made. G5 for the old Timeshift event is moot after reboot. Any future
-   live acknowledgment needs its own grant.
-2. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
+1. Reconcile Stage 1/Stage 2 outcomes and residual burn from authoritative
    records; keep unsupported outcomes **Ryan to confirm**. Review the reported
    quarantines and old wedged transaction without clearing them. Do not repeat
    paid canaries or assert acceptance from a running service alone.
-3. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
+2. Decide whether further Timeshift maintenance is needed. Scoped stale-mount
    cleanup is complete; the retention unit still records its prior failed run.
    Any service reset, retention retry, snapshot deletion, filesystem or hardware
    work needs separate authority. Do not repeat the consumed unmount or
    ConvMem watcher restart.
-4. For any later Kiro bootstrap retry, prepare fresh mutation-state and
+3. For any later Kiro bootstrap retry, prepare fresh mutation-state and
    local/offsite backup evidence, exact proposal and review packet; revalidate
    runtime/config/source/binding/dimension and the writer window immediately
    before a separately granted operation. The merged isolation/recovery fixes
@@ -172,7 +170,7 @@ Codex admission and the same-source publication fence are live.
 | Bootstrap required | Separate Ryan grant | Adoption/rebuild of existing indexed sources and associated model cost |
 | Production canary | Ryan | Live source/Chroma/config/provider operation |
 | Activation | Ryan | Feature enablement and watcher participation |
-| Doctor acknowledgment acceptance | Ryan | G6 deployment-criterion decision; G4 promotion and doctor exit 0 do not grant it |
+| Future live doctor acknowledgment | Ryan | G6 acceptance does not authorize acknowledging a future fault; each event needs its own grant |
 
 No model may infer one gate from another. In particular, plan PASS, code merge,
 or canary PASS does not enable production indexing.
@@ -328,6 +326,7 @@ Keep this document a current-state snapshot, not a session diary.
 | 2026-10-24 | Claude Opus / independent safety reviewer | Shell-capable implementation review and final safety delta recheck both PASSed exact content `1a7676b`; G2 complete and Ryan owns G3–G6 |
 | 2026-10-24 | Codex PR Steward | Opened PR #416 for Ryan's G3 merge decision; content target remains `1a7676b`, with no runtime or live action |
 | 2026-10-25 | Ryan / Codex | PR #416 merged as `4b4796b`; Ryan directed G4 and Codex fast-forwarded the clean runtime without a watcher restart. Post-promotion doctor exited 0; G6 remains Ryan-owned |
+| 2026-10-25 | Ryan | Accepted G6 for the observed post-promotion doctor exit 0; live acknowledgment was not exercised and remains unproven; future events need separate grants |
 
 ## TL;DR
 
@@ -335,8 +334,9 @@ Keep this document a current-state snapshot, not a session diary.
   directed its G4 promotion. The clean runtime now matches that SHA; the
   watcher stayed active at PID 1149 with `NRestarts=0`.
 - Post-promotion doctor exited 0 with zero native faults. No acknowledgment
-  was made; the old Timeshift entry's G5 is moot after reboot. Ryan decides
-  G6 formal acceptance, and future events require separate live-use grants.
+  was made; the old Timeshift entry's G5 is moot after reboot. Ryan accepted
+  G6 for this observed deployment criterion. Future events require separate
+  live-use grants, and live acknowledgment remains unproven.
 - Stage 1/Stage 2 results and the pre-activation residual-burn decision remain
   **Ryan to confirm**. Merged Kiro prerequisites do not authorize a stale
   bootstrap retry.

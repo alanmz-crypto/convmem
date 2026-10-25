@@ -19,8 +19,10 @@ cross-arc snapshot and the linked arc brief below.
   or live acknowledgment. Post-promotion `convmem doctor` exited 0 with zero
   native faults this boot and known-bad CPUs offline. The investigated
   Timeshift fault belongs to an earlier boot, so its G5 acknowledgment is
-  moot. **Next lane: Ryan's G6 acceptance decision.** Any future event needs
-  a separate live-use grant. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  moot. **Ryan accepted G6 on 2026-10-25 for the current deployment's doctor
+  criterion, based on that post-promotion exit 0.** Live acknowledgment was
+  not exercised and remains unproven; any future event needs a separate
+  live-use grant. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
   preserves G2 evidence; the retired `cpu-tripwire-fault-ack` branch remains
   preserved. Stage 1/Stage 2 outcomes and residual burn remain **Ryan to
   confirm**. See the [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
@@ -42,8 +44,7 @@ cross-arc snapshot and the linked arc brief below.
   `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
   backup volume remains mounted read-write and the watcher remains active.
   Retention still records its previous failed run; no retry/reset occurred.
-  **Next lane: Ryan** for any separate retention-maintenance decision and
-  doctor-acceptance disposition;
+  **Next lane: Ryan** for any separate retention-maintenance decision;
   see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
   Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
   is historical context, not current runtime instructions. Ad-hoc host work;

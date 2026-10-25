@@ -4,14 +4,14 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `G4_COMPLETE`. Independent G2 reviews PASSed the immutable content revision. Ryan merged PR #416 as `4b4796b6a667509f94475a5a14424204947fbb12` (G3), then directed the exact-SHA runtime fast-forward (G4), completed 2026-10-25 without a watcher restart. Post-promotion doctor exited 0 with zero native faults. The old-event G5 is moot after reboot; Ryan owns G6 acceptance. Earlier G0 and corrective review findings remain historical.
+**Resume state:** `G6_ACCEPTED_WITH_LIMIT`. Independent G2 reviews PASSed the immutable content revision. Ryan merged PR #416 as `4b4796b6a667509f94475a5a14424204947fbb12` (G3), then directed the exact-SHA runtime fast-forward (G4), completed 2026-10-25 without a watcher restart. Post-promotion doctor exited 0 with zero native faults. The old-event G5 is moot after reboot. Ryan accepted G6 on 2026-10-25 for this observed deployment criterion; live acknowledgment remains unproven and needs a separate future grant. Earlier G0 and corrective review findings remain historical.
 **Current review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` (immutable corrective content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        G4 complete; G5 old event moot; G6 pending Ryan's decision
-Lanes:        Ryan G6; future live acknowledgments need separate grants
+Phase:        G4 complete; G5 old event moot; G6 accepted with live-use limit
+Lanes:        Future live acknowledgments need separate Ryan grants
 Authority:    G3 merge and G4 promotion are complete, not reusable grants.
 ```
 
@@ -437,7 +437,7 @@ The fresh implementation review and final safety delta recheck PASSed
 `1a7676b`. Hosted CI was not run. No
 runtime or live acknowledgment action was performed.
 
-## P. Historical G4–G5 runbook; G6 pending
+## P. Historical G4–G5 runbook; G6 accepted with limit
 
 **Current state (2026-10-25):** Ryan merged PR #416 as `4b4796b`, then
 directed G4 promotion. Codex fast-forwarded the clean runtime from `1a68675`
@@ -445,7 +445,8 @@ to that exact SHA; the watcher stayed at PID 1149 with `NRestarts=0` and was
 not restarted. Post-promotion doctor exited 0 with zero native faults this
 boot. The investigated event belongs to an earlier boot, so the G5 steps
 below are historical and must not be run for it. Any future event requires a
-separate live-use grant. Ryan alone decides G6 acceptance.
+separate live-use grant. Ryan accepted G6 on 2026-10-25 for the observed
+post-promotion doctor exit 0; this did not test live acknowledgment.
 
 G4 promotion, run by the lane Ryan names, with his exact SHA:
 
@@ -483,7 +484,8 @@ G5, Ryan in his own terminal:
 Any lane may then verify, read-only: architecture §10.2.
 
 If the result is wrong, roll back as in architecture §10.3: revoke the record,
-move the file aside, or promote back. G6 remains Ryan's alone.
+move the file aside, or promote back. The G6 acceptance above grants no
+rollback or future live acknowledgment.
 
 <!-- ref: ./ARCHITECTURE-doctor-fault-acknowledgment.md, ./STATUS-codex-jsonl-production-integration.md — binding spec and arc brief -->
 <!-- src: ../../tests/test_cpu_tripwire.py, ../../config/repository-knowledge/openclaw-watch-scope-v1.json — existing fixtures and manifest classification -->
