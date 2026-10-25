@@ -4,15 +4,15 @@
 **Date:** 2026-10-22
 **Authors:** Claude (initial plan); Codex (review corrections and implementation)
 **Architecture:** [`ARCHITECTURE-doctor-fault-acknowledgment.md`](ARCHITECTURE-doctor-fault-acknowledgment.md) (the binding spec; section numbers below such as §5.2 refer to it)
-**Resume state:** `G2_PASS`. Claude's R4 recheck and the replacement safety review PASSed the preceding `1a825d0` content. A first Opus implementation review was shell-restricted and exposed two retry/durability defects, corrected at the current content SHA. Fresh shell-capable Opus implementation review and a separate safety delta recheck both PASSed the exact corrected revision. Ryan owns G3–G6; earlier G0 and Claude findings remain historical.
+**Resume state:** `G4_COMPLETE`. Independent G2 reviews PASSed the immutable content revision. Ryan merged PR #416 as `4b4796b6a667509f94475a5a14424204947fbb12` (G3), then directed the exact-SHA runtime fast-forward (G4), completed 2026-10-25 without a watcher restart. Post-promotion doctor exited 0 with zero native faults. The old-event G5 is moot after reboot; Ryan owns G6 acceptance. Earlier G0 and corrective review findings remain historical.
 **Current review target:** `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922` (immutable corrective content revision; later routing edits are documentation only).
 
 ```
 Planning Status
 
-Phase:        G2 PASS; PR #416 open for Ryan's G3 decision
-Lanes:        Ryan G3–G6
-Authority:    Ryan explicitly assigned takeover; later gates remain separate.
+Phase:        G4 complete; G5 old event moot; G6 pending Ryan's decision
+Lanes:        Ryan G6; future live acknowledgments need separate grants
+Authority:    G3 merge and G4 promotion are complete, not reusable grants.
 ```
 
 ---
@@ -437,7 +437,15 @@ The fresh implementation review and final safety delta recheck PASSed
 `1a7676b`. Hosted CI was not run. No
 runtime or live acknowledgment action was performed.
 
-## P. Live-use runbook (G4–G6; listed for review, not authorized)
+## P. Historical G4–G5 runbook; G6 pending
+
+**Current state (2026-10-25):** Ryan merged PR #416 as `4b4796b`, then
+directed G4 promotion. Codex fast-forwarded the clean runtime from `1a68675`
+to that exact SHA; the watcher stayed at PID 1149 with `NRestarts=0` and was
+not restarted. Post-promotion doctor exited 0 with zero native faults this
+boot. The investigated event belongs to an earlier boot, so the G5 steps
+below are historical and must not be run for it. Any future event requires a
+separate live-use grant. Ryan alone decides G6 acceptance.
 
 G4 promotion, run by the lane Ryan names, with his exact SHA:
 
