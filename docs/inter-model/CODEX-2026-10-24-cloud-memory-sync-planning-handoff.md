@@ -130,6 +130,43 @@ Candidate routes:
 | Remote Control | Claude app driving the workstation's Claude Code | No | none |
 | Claude Code cloud environment | Claude Code in any Claude app | Yes | private download source; 5-minute setup budget; porting `/workspace` scripts |
 | Custom connector (remote MCP) | plain Claude chats in any Claude app | Yes | always-on server (about $10-25/month), HTTP transport and auth for the MCP server, security review |
+| DeepSeek agent on an always-on server | a private web page in any phone browser | Yes | same always-on server; private network only; security review; developer-preview software |
+
+### DeepSeek route: facts as of 2026-10-25
+
+Added by Ryan's "yes" on 2026-10-25. Sources: a third-party article about
+DeepSeek Harness (Composio), not yet checked against DeepSeek's own docs.
+
+- DeepSeek has no hosted, Codex-style environment, and its consumer app has
+  no known custom tool connector. The route is self-hosted.
+- DeepSeek Harness (`dsh`) is an open-source Node.js agent in developer
+  preview with a web interface (`pnpm dsh web`). Its MCP client plugin
+  supports stdio and streamable HTTP with static headers only (no OAuth).
+- The harness can run shell commands, so it must never face the internet: a
+  private network the phone joins (for example Tailscale) plus a Copilot
+  security review.
+- **Why it matters for sync:** chats would live on Ryan's own server, so the
+  workstation could pull and index them. That makes it the only candidate
+  route that also closes the cloud-to-workstation capture gap. The log format
+  is unverified and would need a new ConvMem parser.
+- A lighter variant: a private page on the same server that runs
+  `convmem ask` directly. Cited answers only, no multi-step agent work.
+- DeepSeek `deepseek-v4-flash` costs pennies per question and uses no Codex
+  budget.
+
+### ChatGPT cloud environment: facts as of 2026-10-25
+
+OpenAI's "Cloud environments" guide (learn.chatgpt.com), read 2026-10-25:
+
+- Environments can join a private network over Tailscale (reusable,
+  ephemeral auth key, set under Advanced > VPN). The ChatGPT environment
+  could therefore fetch refreshes from the same always-on private server
+  that other routes need. This is a candidate answer to question 7.
+- Network secrets: programs see a placeholder; the proxy substitutes the real
+  value only for allowed HTTPS destinations.
+- Computer and browser use are not supported in cloud environments yet.
+  Skills stored in the repository are available; personal skills from the
+  workstation are not synced.
 
 ### Constraints the architecture must respect
 
@@ -165,9 +202,11 @@ Candidate routes:
 5. **Verification per cycle.** Reuse the fresh-task check: hashes, serving
    count, one cited answer with fallback forbidden, and unchanged memory
    fingerprints.
-6. **Claude route.** Which of the three routes above, or a staged mix (for
+6. **Client route.** Which of the four routes above, or a staged mix (for
    example the cloud environment first, the connector later)? Does the
-   ChatGPT environment stay, or does Claude replace it?
+   ChatGPT environment stay, or does Claude replace it? Can one private
+   always-on server back the connector, the DeepSeek route and the refresh
+   source at once?
 7. **Private download source.** The Claude cloud route needs a place the
    setup script can fetch the memory package from with a fixed bearer token.
    Drive does not fit (its access tokens expire hourly). Candidates include a
@@ -216,7 +255,7 @@ fields as the 2026-10-25 check).
 - [ ] Ryan has named the arc; ARCHITECTURE, EXECUTION and STATUS use one slug
 - [ ] STATUS is listed in `AGENTS.md` and `config/agent-protocol.md`
 - [ ] Both directions are covered, or one is deferred with a stated reason
-- [ ] A Claude app route is chosen, or deferred with a stated reason
+- [ ] A client route (Claude or DeepSeek) is chosen, or deferred with a stated reason
 - [ ] Privacy constraint enforced: no route publishes memory to a public place
 - [ ] Ryan GUI steps per cycle stated and minimized
 - [ ] Kiro review requested on the exact plan revision
