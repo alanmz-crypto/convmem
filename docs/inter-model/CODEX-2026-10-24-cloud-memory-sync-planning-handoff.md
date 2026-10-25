@@ -1,10 +1,12 @@
-# Planning Handoff: two-way sync between workstation ConvMem and the cloud copy
+# Planning Handoff: cloud memory sync and Claude app access
 
 **Date:** 2026-10-24
 **Author:** Claude (cloud-migration coordination)
-**For:** Codex (architecture and execution planning)
-**Authorization:** Ryan, 2026-10-24, verbal: "make that a future project". This
-authorizes recording the project only. Planning starts when Ryan says so.
+**For:** planning lane: Codex, or Claude CLI if Ryan picks it (Codex budget
+was nearly spent on 2026-10-24)
+**Authorization:** Ryan, 2026-10-24, verbal: "make that a future project", then
+"yes" to adding the Claude cloud route. This authorizes recording the project
+only. Planning starts when Ryan says so.
 **Arc:** not yet named. Ryan assigns the codename when planning starts.
 
 ---
@@ -26,8 +28,13 @@ authorizes recording the project only. Planning starts when Ryan says so.
 ## What to build
 
 A plan, not code: `ARCHITECTURE-<slug>.md`, `EXECUTION-<slug>.md` and
-`STATUS-<slug>.md` for keeping Ryan's cloud copy of ConvMem and his workstation
-ConvMem in step, in both directions, with the workstation as the only writer.
+`STATUS-<slug>.md` for two linked goals, with the workstation as the only
+writer throughout:
+
+1. Keep the cloud copy of ConvMem and the workstation ConvMem in step, in both
+   directions.
+2. Let Ryan use ConvMem from Claude apps (phone, web, desktop) with his
+   computer off. Today only the ChatGPT environment can do that.
 
 **Why this exists:** the cloud migration finished on 2026-10-25 (UTC). Ryan can
 now ask ConvMem questions from his phone with his computer off. But the cloud
@@ -40,6 +47,8 @@ copy is read-only and frozen:
 2. **Workstation to cloud is missing.** The cloud copy holds the backup
    snapshot taken 2026-10-23 at 00:19 CDT. Nothing indexed since then
    reaches the phone.
+3. **Claude apps have no cloud route.** Remote Control works today, but only
+   while the computer is on.
 
 ---
 
@@ -84,6 +93,43 @@ copy is read-only and frozen:
   in a fresh chat after first use.
 - `OPENAI_CLUSTER` is a platform variable. Check key variables by name, not
   with `grep OPENAI`.
+- An unscripted phone question in a new chat found the runtime without help,
+  but answered from the runtime's setup files (migration manifest, setup
+  status), not from ConvMem retrieval. The question's answer postdated the
+  snapshot, so retrieval could not have answered it. Whether a plain question
+  uses retrieval is still unproven.
+- **Known stale state:** the published environment's setup notes and manifest
+  steps still say Edit/Publish and the fresh-task check are pending. Both
+  passed on 2026-10-25. Update them at the next environment edit.
+
+### Claude app access: facts as of 2026-10-24
+
+Claude Code docs, "Configure cloud environments"
+(https://code.claude.com/docs/en/cloud-environments), checked 2026-10-24:
+
+- Anthropic-hosted cloud sessions get about 4 vCPUs, 16 GB RAM and 30 GB of
+  disk. The ConvMem runtime needs about 18 GB (13.2 GiB memory, 2.4 GB models,
+  1.7 GB Python).
+- A setup script runs as root on Ubuntu 24.04. If it finishes within about
+  5 minutes, its filesystem is snapshotted and reused by later sessions.
+  Running processes are not kept, so Ollama must start per session (for
+  example from a SessionStart hook).
+- The snapshot is rebuilt when the script or allowed hosts change, and after
+  about 7 days. That weekly rebuild could also serve as the workstation-to-
+  cloud refresh, if the setup script pulls a copy the workstation keeps fresh.
+- Network secrets are per-host bearer tokens added by the proxy (Anthropic-
+  hosted environments only). The DeepSeek key fits this model. The setup
+  script runs before the environment's variables are set.
+- Cloud sessions clone the repository, so its `CLAUDE.md` loads there. It can
+  hold non-sensitive usage instructions; this repository is public.
+
+Candidate routes:
+
+| Route | Works in | Computer off | Main cost |
+|---|---|---|---|
+| Remote Control | Claude app driving the workstation's Claude Code | No | none |
+| Claude Code cloud environment | Claude Code in any Claude app | Yes | private download source; 5-minute setup budget; porting `/workspace` scripts |
+| Custom connector (remote MCP) | plain Claude chats in any Claude app | Yes | always-on server (about $10-25/month), HTTP transport and auth for the MCP server, security review |
 
 ### Constraints the architecture must respect
 
@@ -119,6 +165,17 @@ copy is read-only and frozen:
 5. **Verification per cycle.** Reuse the fresh-task check: hashes, serving
    count, one cited answer with fallback forbidden, and unchanged memory
    fingerprints.
+6. **Claude route.** Which of the three routes above, or a staged mix (for
+   example the cloud environment first, the connector later)? Does the
+   ChatGPT environment stay, or does Claude replace it?
+7. **Private download source.** The Claude cloud route needs a place the
+   setup script can fetch the memory package from with a fixed bearer token.
+   Drive does not fit (its access tokens expire hourly). Candidates include a
+   private object store behind a token check or a private dataset host. Ryan
+   decides where his memory may live.
+8. **Setup time.** Can install plus fetch plus extract finish inside about
+   5 minutes? If not, what moves to a per-session step, and how slow is a
+   session start then?
 
 ### Output / contract
 
@@ -140,6 +197,8 @@ copy is read-only and frozen:
 - Do not make the manual 54-chunk transfer the design. It was a one-time
   bootstrap.
 - Nothing private in this public repository (see Constraints).
+- No internet-facing ConvMem server or custom connector without a security
+  review (Copilot audit lane) of its authentication and exposure.
 
 ---
 
@@ -157,6 +216,7 @@ fields as the 2026-10-25 check).
 - [ ] Ryan has named the arc; ARCHITECTURE, EXECUTION and STATUS use one slug
 - [ ] STATUS is listed in `AGENTS.md` and `config/agent-protocol.md`
 - [ ] Both directions are covered, or one is deferred with a stated reason
+- [ ] A Claude app route is chosen, or deferred with a stated reason
 - [ ] Privacy constraint enforced: no route publishes memory to a public place
 - [ ] Ryan GUI steps per cycle stated and minimized
 - [ ] Kiro review requested on the exact plan revision

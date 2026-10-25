@@ -272,12 +272,14 @@ cross-arc snapshot and the linked arc brief below.
 - **Recovery Authority:** T1–T3 are on `main`; T4 is not authorized and V4k
   remains blocked on the separately governed CG-2 reference-v2 closure. Read
   [`STATUS-recovery-authority.md`](../plans/STATUS-recovery-authority.md).
-- **Future project, not started — cloud memory sync (recorded 2026-10-24):**
-  the phone-ready cloud copy of ConvMem was verified on 2026-10-25 UTC but is
-  read-only and frozen at the 2026-10-23 snapshot; phone chats are never
-  captured. Codex plans two-way sync with the workstation as the only writer
-  when Ryan starts it and names the arc (`BLOCKED_ON_RYAN`). This repository
-  is public, so no route may publish memory here. Read
+- **Future project, not started — cloud memory sync and Claude app access
+  (recorded 2026-10-24):** the phone-ready cloud copy of ConvMem (ChatGPT
+  only) was verified on 2026-10-25 UTC but is read-only and frozen at the
+  2026-10-23 snapshot; phone chats are never captured, and Claude apps have no
+  computer-off route. The planning lane (Codex or Claude CLI) plans two-way
+  sync and a Claude route, with the workstation as the only writer, when Ryan
+  starts it and names the arc (`BLOCKED_ON_RYAN`). This repository is public,
+  so no route may publish memory here. Read
   [`CODEX-2026-10-24-cloud-memory-sync-planning-handoff.md`](CODEX-2026-10-24-cloud-memory-sync-planning-handoff.md).
 
 ## Resume order
