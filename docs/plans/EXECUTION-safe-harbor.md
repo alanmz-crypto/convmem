@@ -1,11 +1,12 @@
 # Execution Plan — Safe Harbor
 
-**Current state — 2026-10-24.** Ryan resumed Safe Harbor. The §23 initializer
+**Current state — 2026-10-25.** Ryan resumed Safe Harbor. The §23 initializer
 implementation remains parked, unreviewed and unaccepted. Section 24 records the
 completed read-only post-deployment check and separately authorized correction
-of three scheduled service routes. Both scheduled backup routes passed; Ryan's
-additional digest is scheduled for October 24 18:00 CDT, with its result pending
-and the weekly schedule retained. Ryan's recovery answers are recorded; the October 23
+of three scheduled service routes. Both scheduled backup routes and Ryan's
+additional October 24 digest passed. The read-only result inspection is complete,
+with report-coverage and memory limits recorded; weekly scheduling is retained.
+Ryan's recovery answers are recorded; the October 23
 image's boot/root integrity checks passed October 24. Restore qualification and
 independent custody remain open. Start with [STATUS](STATUS-safe-harbor.md);
 historical grants below do not authorize additional work.
@@ -1243,6 +1244,17 @@ weekly jitter resampling. This is a narrow exception to the prior observation-on
 scope; it grants no other service change, proposal publication, corpus indexing,
 automatic retry, repair, backup/restore or initializer action. Inspect results
 read-only after completion; successful scheduling is not successful execution.
+
+**Digest result returned, October 25:** the one-time timer fired October 24 at
+18:00:00 CDT; the digest completed at 18:02:04 with exit 0. Journal process
+identities confirm production Python 3.11/runtime-main, and the generated
+report's identity and recency PASS were inspected. The [result
+receipt](ROLLOUT-safe-harbor.md#digest-result-inspection--october-25) preserves
+the synthesis's insufficient-recent-material limitation, 16.4 GiB peak-memory
+advisory and fresh doctor PASS. All three corrected service routes now have
+successful execution evidence. This completes the authorized bounded operational
+verification, not restore qualification or acceptance of the parked initializer.
+No rerun, cleanup, repair or resource-policy change follows from this result.
 
 <!-- ref: ROLLOUT-safe-harbor.md, STATUS-safe-harbor.md — deployment draft and remaining gates -->
 <!-- ref: ../inter-model/CURSOR-2026-10-22-safe-harbor-legacy-initializer-handoff.md — section 23 implementation handoff -->

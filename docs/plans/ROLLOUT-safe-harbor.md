@@ -1,6 +1,6 @@
 # Safe Harbor — deployment preflight and rollout/rollback draft
 
-**Current operational checkpoint — 2026-10-24.** The Safe Harbor runtime
+**Current operational checkpoint — 2026-10-25.** The Safe Harbor runtime
 (T1–T5, `c6f0724`) is already live: runtime-main reached it through ordinary
 promotions for other arcs (`3e705e4` by October 17; `1a68675` with the watcher
 restarted 2026-10-22 13:52 CDT), not through this procedure. Both live segments
@@ -14,9 +14,12 @@ identifies a newer completed image; exact-image qualification and independent cu
 [STATUS](STATUS-safe-harbor.md). Ryan subsequently authenticated locally for the
 authorized [integrity check](#image-integrity-result--october-24-0903-cdt): both
 partition images passed at 09:03:12 CDT. Restore/boot qualification remains open;
-no restore follows. Ryan also authorized an [additional digest run today at
+no restore follows. Ryan also authorized an [additional digest run October 24 at
 18:00 CDT](#additional-digest-run--october-24-1800-cdt); its one-time timer is
-enabled and waiting. Results remain pending; the weekly schedule is retained.
+now elapsed. The [result inspection](#digest-result-inspection--october-25)
+confirms successful execution through the corrected route. The weekly schedule
+is retained. Bounded operational verification is complete; recovery qualification
+remains separate.
 
 **Arc: Safe Harbor. Sections 1–5 are a historical draft, not an execution grant.** Codex prepared this procedure
 under Ryan's bounded read-only preflight/drafting authorization on 2026-10-14
@@ -874,13 +877,66 @@ The one-time timer is enabled across a restart before its deadline but does not
 catch up if the user manager was down at 18:00. It does not wake a powered-off
 machine. No completion claim follows from successful scheduling.
 
-After the run, inspect the timer/service journal, service exit and actual process
+The scheduled follow-up was to inspect the timer/service journal, service exit and actual process
 route where available, and `~/.local/share/convmem/digests/2026-10-24.md`. A
 service failure, missing result or missed trigger returns for review, not an
-automatic retry. No Codex automation was created; return to this session for
-the read-only result inspection. To cancel before the deadline if Ryan requests
-it, disable/stop only `convmem-safe-harbor-digest-once-20261024.timer`; that
-cancellation has not been executed. The initializer remains parked.
+automatic retry. No Codex automation was created. The read-only result inspection
+is now recorded below. The initializer remains parked.
+
+### Digest result inspection — October 25
+
+At 10:45 CDT, after doctor exited 0, Codex inspected existing timer/service
+state, journal entries and the report. No job, smoke test, repair or cleanup
+was invoked. The **bounded routing/execution check passed**:
+
+- The one-time timer last triggered **October 24 18:00:00 CDT** and is now
+  `active/elapsed`, enabled, with no next elapse.
+- The digest service ran **18:00:00–18:02:04 CDT**, invocation
+  `cbca7e2af23043e69f9a5ccea272efc5`, `Result=success`, `ExecMainStatus=0`.
+  `ExecMainCode=1` is the normal exited-process classification, not exit status 1.
+- The invocation's journal identifies PID `1831842`, executable
+  `/home/lauer/miniforge3/envs/convmem/bin/python3.11`, command
+  `/home/lauer/miniforge3/envs/convmem/bin/python /home/lauer/Projects/convmem/.worktrees/runtime-main/cross_project_digest.py`.
+  Its next-steps child also used production Python/runtime-main with
+  `skip_ask=0`. This is actual execution evidence, not only configured paths.
+- Report: `/home/lauer/.local/share/convmem/digests/2026-10-24.md`,
+  generated `2026-10-24T23:02:02Z`, 6,382 bytes, mtime
+  `2026-10-24T18:02:02.700474-05:00`, SHA-256
+  `f89dc3ac10dc70d9ae158097ec9d0b76d67701286f40f520bb401508d942496a`.
+- Existing service, weekly timer, routing drop-in and one-time timer hashes
+  match the schedule receipt above. Current runtime checkout is clean at
+  `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`. The weekly timer is enabled and
+  waiting; observed next trigger is Monday October 26 09:06:48 CDT, within
+  its unchanged jitter window. No timer was changed during this inspection.
+
+**Report limits:** recency PASS checks that the one recent decision header
+appears in the synthesis citations. The synthesis explicitly says the retrieved
+material is insufficient to summarize the requested week's coordination work;
+its other cited material is older. This is neither proof of complete retrieval
+nor evidence that recent session material is absent from the corpus. Content
+coverage remains a separate question, not a hidden routing failure.
+
+**Resource advisory:** systemd reports peak memory `17614303232` bytes
+(16.4 GiB), swap peak `0`, `MemoryMax=infinity`, `OOMPolicy=stop`. The service
+completed successfully; no OOM/failure appears in this invocation. The journal
+also contains an unauthenticated Hugging Face Hub rate-limit warning. Root
+cause of the peak was not investigated; it does not justify an unapproved
+memory-limit, provider, cache or runtime change.
+
+**Fresh health:** October 25 doctor exited 0 with five existing nonfatal warnings.
+Local and external backup checks passed for source
+`a52da7d3ed1ee1ff2ebae419c2a5b6d1b177d99fe14ba313588041d18135e76b`
+and destination `1f055d34e9ab8d65b4a9f2cb0c64b8ad8b2e17c3d3dd2ef7946586b4f6f9038e`.
+The existing daily audit reports two valid segments, 119,412 vectors and zero
+lost IDs. No quarantine or native fault this boot was reported. These health
+observations do not establish semantic integrity or qualify a restore.
+
+All three corrected service routes now have successful execution evidence;
+the authorized operational verification is complete. No additional digest run
+is required for this check. Restore qualification and owner-managed custody
+remain open; the initializer remains parked. Any investigation of digest
+coverage or resource use requires its own scope. The elapsed timer was left
+in place, not removed or rescheduled.
 
 <!-- ref: STATUS-safe-harbor.md, EXECUTION-safe-harbor.md, ../RECOVER.md — current readiness and execution boundaries -->
 <!-- src: VERIFY-safe-harbor.md, ../../chroma_write_guard.py, ../../backup_workflows.py, ../../systemd/convmem-chroma-audit.service.example — accepted evidence and rollout contracts -->
@@ -889,3 +945,4 @@ cancellation has not been executed. The initializer remains parked.
 <!-- ref: /tmp/safe-harbor-image-check-vDJNmR/run-check.sh — temporary local-authentication image-check helper -->
 <!-- src: /tmp/safe-harbor-image-check-vDJNmR/terminal-result.txt, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-before.json, /tmp/safe-harbor-image-check-vDJNmR/terminal-source-after.json — completed image check and source identity -->
 <!-- ref: /home/lauer/.config/systemd/user/convmem-safe-harbor-digest-once-20261024.timer — owner-authorized additional digest at 18:00 CDT -->
+<!-- src: /home/lauer/.local/share/convmem/digests/2026-10-24.md — inspected digest output and recency/coverage limits -->

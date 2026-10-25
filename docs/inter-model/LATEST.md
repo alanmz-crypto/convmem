@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-24
+**Updated:** 2026-10-25
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -50,21 +50,20 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — scheduled backup routing verified (2026-10-24, Codex):**
-  Local backup and external copy completed automatically through production
-  Python/runtime-main; source/destination lineage matched. Doctor refreshed after
-  01:05 CDT passed both backup checks. No job was manually started. Ryan's recovery
-  answers and the newer image's completed integrity check are recorded;
-  restore qualification and independent custody remain open.
-  Ryan owns physical custody follow-up; it stays unverified without repeated prompts.
-  **Next lane: Codex** for the read-only digest observation after today's additional
-  **18:00 CDT** run. Ryan authorized it; the one-time timer is enabled/waiting and
-  the weekly schedule remains enabled. Scheduling is not completed-run evidence.
-  Both boot/root image checks passed; no repeat scan is needed. The initializer remains
-  parked, unreviewed and unaccepted. No PR or mutation authority follows.
+- **Arc Safe Harbor — bounded operational verification complete (2026-10-25, Codex):**
+  Local backup, external copy and the additional October 24 digest all completed
+  through the corrected production Python/runtime-main routes. The digest finished
+  at 18:02:04 CDT, exit 0; its report, recency check and journal identity were
+  inspected. Coverage limitations and a 16.4 GiB memory peak are disclosed in the
+  receipt. Image integrity passed; restore qualification remains separate.
+  **Next lane: Ryan** for any further recovery-qualification or digest-triage scope.
+  Physical custody stays owner-managed/unverified without repeated prompts.
+  No further run is needed for this completed check; weekly scheduling remains
+  enabled. The initializer stays parked, unreviewed and unaccepted. No PR,
+  repair or other mutation authority follows.
   Continuation branch: `feat/2026-10-22-safe-harbor-legacy-initializer`. Read
   [STATUS](../plans/STATUS-safe-harbor.md) and the
-  [schedule receipt](../plans/ROLLOUT-safe-harbor.md#additional-digest-run--october-24-1800-cdt).
+  [completed-run receipt](../plans/ROLLOUT-safe-harbor.md#digest-result-inspection--october-25).
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
