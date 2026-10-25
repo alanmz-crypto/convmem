@@ -272,6 +272,13 @@ cross-arc snapshot and the linked arc brief below.
 - **Recovery Authority:** T1–T3 are on `main`; T4 is not authorized and V4k
   remains blocked on the separately governed CG-2 reference-v2 closure. Read
   [`STATUS-recovery-authority.md`](../plans/STATUS-recovery-authority.md).
+- **Record templates miss the required constraint flag (2026-10-25, Claude;
+  `AUTHORIZED (not yet implemented)`, no arc):** `convmem record` now rejects a
+  proposal without `--constraint`, but the protocol source, generated agent
+  surfaces, `brief.py` and `SESSION-CLOSE-RECORD.md` still show the old block.
+  Cursor fixes the live templates on `fix/2026-10-25-record-template-constraint`
+  without running the deploy script. Read
+  [`CURSOR-2026-10-25-record-template-constraint-handoff.md`](CURSOR-2026-10-25-record-template-constraint-handoff.md).
 
 ## Resume order
 
