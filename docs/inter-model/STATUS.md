@@ -47,7 +47,7 @@ gated.
 
 | Arc | State | Next authorized action |
 |---|---|---|
-| Safe Harbor (routing updated 2026-10-14) | T1–T4 accepted/merged; corrected T5 selection 257 passed, full isolated lint PASS, operator handoff prepared. | **Ryan**: authorize the bounded exact-tip Kiro V6 review, then decide acceptance/outage disposition. No PR/hosted-CI/merge/live grant; [STATUS](../plans/STATUS-safe-harbor.md). |
+| Safe Harbor (routing updated 2026-10-25) | T1–T5 accepted/merged; bounded operational observation complete. Four static findings open/unreproduced; initializer parked. | **Paused for shutdown. Cursor after Ryan resumes:** isolated SH-001 validation only, Codex supervision; no active session or runtime correction. [Resume](../../Issues/Arc/Safe_Harbor/README.md) · [STATUS](../plans/STATUS-safe-harbor.md). |
 | ConvMem Switchboard (routing snapshot 2026-09-24) | Historical M0–M8 accepted at `8010fb0`; M11 integration preserved at `9c6421a`, with merge readiness held at the current-main Pylint gate in the existing supervisor packet. | Resume through the active Codex supervisor and [Switchboard STATUS](../plans/STATUS-openclaw-convmem-integration.md), which links the exact `b55de5b` remediation packet: Kiro review, then Ryan's exact resume decision if not already superseded by newer applicable evidence. Do not rerun the retired planning cycle or reset to M3. This routing update does not grant, pause or expand implementation; live-data and promotion stay separate. |
 | Codex — Kiro JSONL incremental production integration | The coordinator and live-safe canary runtime are on `main` through PR #301 (`8983a6fc…`); Ryan also merged the guarded, default-off Kiro live route through PR #365 (`f3171fc`). A 68-message source-freeze packet at `27518aa…` received Kiro PASS but issued no executable grant or digest. | P2 grant progression remains paused on issue #268's shared watch-child OOM; the §9.7 end-to-end memory comparison is pending. PR #365's merge grants no live Gate 0/P2, bootstrap, replacement digest, provider call, config change, watcher action, or activation. See the issue #286 row below and [`STATUS-codex-jsonl-production-integration.md`](../plans/STATUS-codex-jsonl-production-integration.md). |
 | JudgeBench semantic calibration v1 | G3 locked on `main` (#170); Phase A prep merged (#171); Chroma R4 GREEN | Ryan's separate 60-call calibration experiment grant, then G4 judge selection. Keep `--legacy` path separate from v1 provenance. |
@@ -129,3 +129,5 @@ remain unauthorized. Verify `origin/main` when a commit identity matters.
 | G6 | The Ryan-gated prospective naturalistic product-value study freeze. |
 | T4 | The next Recovery Authority execution stage; it is not authorized here. |
 | V4k | A Recovery Authority verification item blocked on CG-2 reference-v2 closure. |
+
+<!-- ref: ../../Issues/Arc/Safe_Harbor/README.md, ../plans/STATUS-safe-harbor.md — Safe Harbor checkpoint and queued validation -->

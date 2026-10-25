@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor. T1–T4 ACCEPTED AND MERGED; T5 / V6 ACCEPTED AT `1cb02fb`.** [The pinned Kiro review and Ryan acceptance](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance) retain the original failure and evidence limits. T5 delivery remains on its branch; PR creation, hosted CI, merge and deployment are separately gated. Merged source is not deployed runtime or demonstrated disaster recovery.
+> **Arc: Safe Harbor — shutdown checkpoint, 2026-10-25.** T1–T5 / V1–V6 are accepted and merged; bounded operational observation is complete. Four separate static findings (SH-001–SH-004) remain open and unreproduced. The legacy initializer stays parked. Cursor is designated for SH-001 isolated validation only, queued until Ryan resumes after the planned two-week shutdown beginning October 26; no session or implementation is active. Start with the [saved issue index and resume prompt](../../Issues/Arc/Safe_Harbor/README.md). This documentation-only branch is `docs/2026-10-25-safe-harbor-shutdown-checkpoint`.
 
 ## 1. What This Is For (product goal)
 
@@ -35,53 +35,54 @@ The scope is application cooperation, not same-user security. Read clients can p
 
 ## 3. What Exists Right Now (file map)
 
-- **T1 / V1 on main:** incident retention, canonical client/cache identity and persisted-empty authority refusal; [PR #387](https://github.com/alanmz-crypto/convmem/pull/387), squash `05aa2c86e2d01c9a9f5259b1f505833d7f28563d`.
-- **T2 / V2 on main:** operation-bound preflight, production-skip refusal and future-time policy across five consumers; [PR #389](https://github.com/alanmz-crypto/convmem/pull/389), accepted `eb06c97df2cfe9de3627fd8672b9e3b7c277c963`, tree-identical squash `458b9f6bb0bf98048c11ac0baf46a2340dcdcbf3`.
-- **T3 / V3 / V4 on main:** preserve before replacement, pin generations, contain every automatic segment restore and validate all incidents before release; [PR #391](https://github.com/alanmz-crypto/convmem/pull/391), accepted `3c490e2ce61d5c6531a044132c5a01faf144f1ac`, tree-identical squash `a7f72003aea516b4961a584fcfe54ad255d6a053`.
-- **T4 / V5 on main:** fresh tombstone-aware approval recovery, direct/CLI target binding, native-lock serialization, export completion and truthful uncertain-outcome retry; [PR #392](https://github.com/alanmz-crypto/convmem/pull/392), accepted `ed6699bea949b95e0807f166c3297500736d4aa9`, tree-identical squash `fdc8da7fa67c1d7b31bc5cd44de466001df04260`. [Final closeout](VERIFY-safe-harbor.md#t4-final-ci-review-owner-acceptance-and-squash-mapping) records hosted CI, Kiro’s pinned reviews and Ryan’s acceptance/outage exception. Codex performed the squash on Ryan’s explicit “merge” instruction.
-- **T5 accepted on an isolated verification branch:** `feat/2026-10-14-safe-harbor-t5`, based on that exact T4 squash. Kiro PASS and Ryan V6 acceptance are pinned to `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`; the documentation successor records those decisions only. [VERIFY V6](VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance) separates new mechanical evidence, reused hosted evidence and independent sign-off. [RECOVER](../RECOVER.md#safe-harbor-incident-handling-and-rollout) is the operational handoff, prepared only. No T5 PR or fresh hosted run exists.
-- **Runtime remains unqualified for rollout:** no T5 action changes runtime-main or services. No live process census, guard-state adoption, loss-window decision or exact backup qualification was performed. The extra ext4 drive is a reported resource, not proof of usable or offsite protection.
+- **T1–T5 on main:** incident retention/canonical identity (#387), target-bound preflight (#389), preservation and strict release (#391), serialized approval recovery (#392), integrated evidence/operator handoff (#394). Latest Safe Harbor squash is `c6f07241ccf1a71d9d874fee963a37b04091b3ce`, tree-equal to accepted #394 head `188184b28707eb87c042d579aa7bbcba043dd5d0`. [Saved VERIFY](https://github.com/alanmz-crypto/convmem/blob/2b95f58ef79802f80058b07e125bf73802db5f1e/docs/plans/VERIFY-safe-harbor.md#t5-hosted-ci-owner-exception-and-squash-mapping) retains exact acceptance and evidence; historical reviews apply only to their pinned subjects.
+- **Observed deployed runtime, October 25:** `runtime-main` at `4b4796b6a667509f94475a5a14424204947fbb12`, following another lane's promotion. The cited Safe Harbor implementation files are unchanged from the audit baseline `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`. This checkpoint performs no promotion and does not re-review other arcs' changes.
+- **Saved operational/initializer continuation:** `feat/2026-10-22-safe-harbor-legacy-initializer` remains pushed at `2b95f58ef79802f80058b07e125bf73802db5f1e` (origin checked October 25). Its [ROLLOUT receipt](https://github.com/alanmz-crypto/convmem/blob/2b95f58ef79802f80058b07e125bf73802db5f1e/docs/plans/ROLLOUT-safe-harbor.md) preserves post-deployment observations, service-route results and recovery inputs. Cursor's initializer runtime `204f1c6`, delivery `dd0c467`, is parked unreviewed/unaccepted. Do not merge that branch just to recover its documents.
+- **New assessment:** [SH-001–SH-004](../../Issues/Arc/Safe_Harbor/README.md) are four separate proposed P2 findings covering JSONL framing, partial export retry, retained finding details and first-directory durability. No reproductions, fixes or corrective delivery exist in this assessment. The initializer's four missing tests are a different set of obligations.
 
 ## 4. Completion State
 
-- Direction/name, every-restore owner-disposition cost, execution plan and B-E4.1 (all five consumers) are owner-approved. Ownership stays with the existing arcs.
-- **T1–T4 / V1–V5 ACCEPTED AND MERGED.** Each task’s review and BugBot outage exception stays bound to its accepted candidate. None is a BugBot PASS or a blanket future exemption.
-- **Latest full hosted integration:** T4 candidate `ed6699b`, Python 3.12.15, run `38519477899`: 3,267 passed / 18 host-environment skips / 252 passing subtests; critical collection, unchanged-baseline lint and all security checks passed. Its tested merge and main squash have the same tree. V5 is completed evidence, not NOT RUN.
-- **T5 / V6: Kiro PASS and Ryan ACCEPTED at `1cb02fbd9cc15b36c7f3f094237da071ca2dcd18`.** Kiro returned high confidence, no blockers, after static source/diff and recorded-evidence inspection. Test source `22fa1b9fc547092c7bf7e3b0156621e7db10b597` has 16 passing controls, 22 passing affected cases and 257 passing integrated cases; these selections overlap. Full isolated lint passes against the unchanged baseline. The original 240/1 failure's exact cause remains unproven. Acceptance does not grant a BugBot outage exception or transfer earlier exceptions to T5.
-- Limits persist: process restart/IO injection is not hardware power-loss proof; strict release can refuse recoverable states; auxiliary sink non-interference remains at the accepted author-trace level; incidental/unguarded writers are outside a global stop guarantee. Historical failed and excluded runs remain visible.
+- Direction/name, every-restore owner disposition, execution plan, B-E4.1 and T1–T5 / V1–V6 acceptance remain settled. Existing ownership and index/plain-add exemptions are unchanged. BugBot exceptions remain candidate-specific.
+- **Bounded software observation complete:** saved receipts show successful local-backup, external-copy and October 24 one-time digest execution through the corrected production Python/runtime-main routes. The digest finished at 18:02:04 CDT, disclosed insufficient retrieved recent material and a 16.4 GiB memory peak; these are limits, not permission to rerun or repair it.
+- **Recovery qualification remains limited:** both boot/root partition images in `2026-10-23-13-img` passed recorded integrity checks October 24. Restore/boot/application usability of that exact image is untested. The recorded owner loss policy is one day of ConvMem data and work since the latest disk image for the rest of the system. Physical image/key separation remains unverified and owner-managed; do not convert the owner's hypothetical storage statement into completed evidence.
+- **October 25 checkpoint health:** doctor exited 0 with five nonfatal warnings; local/external backup checks passed, no guard quarantine was reported, and the tripwire reported zero native faults this boot. This is a dated observation, not restore qualification, a fix for SH-001–SH-004 or a guarantee after the shutdown.
+- **Assessment complete; validation not started:** Codex found no corrective handoff for SH-001–SH-004. The contacted doctor-acknowledgment lane owns none of them. Cursor is now designated for the queued SH-001 validation only; no active session has acknowledged it. SH-002–SH-004 remain unassigned.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Ryan next:** decide whether to authorize one draft PR and normal hosted CI for the T5 branch. Any final-tip external-review/outage disposition, merge and deployment remain separate decisions.
+**Current phase: paused checkpoint.** Ryan plans to turn the workstation off October 26 for about two weeks. Preserve the pushed findings and resume prompt; leave no test or implementation process running across shutdown.
 
-**Codex:** preserve the pinned V6 acceptance and prepare delivery within any subsequent grant. No new review or tests are needed merely to record acceptance. The existing Kiro handoff is completed/reference-only; do not restart it automatically.
+**On Ryan's return:** Codex reads the [issue index](../../Issues/Arc/Safe_Harbor/README.md), checks source drift and any intervening delivery, then supervises Cursor's isolated SH-001 validation. Cursor may add test/harness cases and collect evidence using the existing pre-import bootstrap, synthetic stores and network/production-path refusal. Return separate event-tail, export-tail and valid-control results before any runtime correction. No proof is presumed from this static assessment.
 
-## 6. What Remains Before "Live" (sequential)
+**Ryan:** receives the validation result before deciding on correction. Recovery qualification and physical custody remain separate owner decisions. Keep the initializer parked; no initializer review or execution is part of SH-001.
 
-1. Obtain a separate draft-PR/hosted-CI grant, report final-candidate results, and resolve the final-tip external-review gate and merge decision. V6 review/acceptance is complete at `1cb02fb`; the selected local run is not fresh hosted full-suite evidence, and no T5 outage exception is recorded.
-2. Set the lost-work interval and qualify an exact usable recovery artifact and independently accessible key. Preserve the reported pre-incident image; extra drive capacity grants no backup/restore/retention operation.
-3. Approve a deployment procedure naming candidate/interpreter, all old-process dispositions, canonical and lexical guard locations, existing incident/snapshot schema handling and rollback compatibility. Keep stopped services stopped unless separately granted.
-4. Execute only a separately authorized rollout or corpus operation. No V6 PASS alone opens that lane.
+## 6. What Remains (sequential)
+
+1. Resume from the pushed documentation checkpoint after Ryan returns. Re-establish current source and health; stale pre-shutdown PASS results cannot authorize live work.
+2. Perform only the [bounded SH-001 validation](../../Issues/Arc/Safe_Harbor/SH-001-jsonl-append-boundaries.md#validation-before-correction) in an isolated worktree. Return reproduction or refutation with independently inspected durable effects and positive controls. Stop if isolation or the supposed source behavior cannot be established.
+3. Codex assesses the returned evidence; Ryan then decides any runtime correction and its review/delivery scope. Do not bundle SH-002–SH-004 into it or infer an existing corrective candidate.
+4. Leave the other findings and exact-image recovery qualification open until separately scoped. Completed operational observation needs no automatic rerun.
 
 ## 7. Hard Stops (models cannot cross)
 
-- T5 section 18 authorizes the bounded test-only signalling/logging correction, isolated evidence and existing-doc handoff. No runtime/test weakening, new dependency, baseline change, new PR/comment/review trigger, merge, deployment, production command, drive/key/repository/service action, ledger write or session indexing.
-- Guard containment is cooperative. A publication/removal durability failure may require separately authorized process-level containment; do not claim a marker is a durable stop merely because bytes are visible.
+- The checkpoint/queued validation authorizes no runtime correction, initializer execution, production corpus mutation, service change, backup/restore, drive/key action, PR/comment, hosted CI, merge or deployment. No manual session indexing while the watcher captures this Codex session.
+- The initializer grant is consumed and its result parked. Its four missing tests and isolation lapses remain in [the saved Claude review](https://github.com/alanmz-crypto/convmem/blob/2b95f58ef79802f80058b07e125bf73802db5f1e/docs/plans/VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22); they are not SH-001–SH-004.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
-- Gate PASS is availability/freshness/path evidence; zero missing vector IDs is not semantic integrity. Neither substitutes for exact-artifact recovery qualification.
-- Kiro sign-off and Ryan V6 acceptance are pinned to `1cb02fb`; later code/test changes require their own scoped evidence and review. Author evidence does not supply independent acceptance.
+- Guard containment is cooperative. File visibility is not durable publication; fixture restart is not power-loss proof. Gate PASS is availability/freshness/path evidence; ID coverage is not semantic integrity or demonstrated recovery.
+- Preserve pinned reviews and excluded attempts. Any later runtime correction requires its own evidence and review; author evidence is not independent acceptance.
 
 ## 8. Relationship to ConvMem (the bigger picture)
 
-Safe Harbor proposes stricter contracts around existing local guard and approval-recovery paths. Complete-data Backup v2 still owns its resolver, eligibility/gate interfaces, snapshot/restore profile and open Hybrid consistency audit; Recovery Authority still owns provenance-aware recovery and its T4/V4k dependencies. Other run-ledger, generation and permission surfaces retain their own owners.
+Safe Harbor implements stricter contracts around existing local guard and approval-recovery paths. Complete-data Backup v2 still owns its resolver, eligibility/gate interfaces, snapshot/restore profile and open Hybrid consistency audit; Recovery Authority still owns provenance-aware recovery and its T4/V4k dependencies. Other run-ledger, generation and permission surfaces retain their own owners.
 
 The architecture records these interfaces and refuses to claim a global freeze. It does not change those other arcs' statuses or silently finish their deferred work.
 
 ## 9. Key Design Files (for deep dives)
 
-- [Safe Harbor architecture](ARCHITECTURE-safe-harbor.md): proposed direction, evidence, risks and reviewer assignment.
+- [Safe Harbor architecture](ARCHITECTURE-safe-harbor.md): accepted direction, evidence, risks and reviewer assignment.
 - [Execution plan](EXECUTION-safe-harbor.md): five bounded tasks, interface proposal, proof requirements and new-drive operational limits.
-- [VERIFY companion](VERIFY-safe-harbor.md): T1–T4 acceptance and exact merge mappings, integrated V6 evidence, pinned Kiro PASS, Ryan V6 acceptance and retained delivery/live gates.
+- [VERIFY companion](VERIFY-safe-harbor.md): merged implementation evidence. The newer operational/initializer receipts remain pinned on the saved continuation linked in section 3.
+- [Issue index and queued validation handoff](../../Issues/Arc/Safe_Harbor/README.md): shutdown checkpoint, four unresolved findings and the next bounded task.
 - [Reboot checkpoint](https://github.com/alanmz-crypto/convmem/blob/bc3a6fd34bc594024d53fb86c9ca6b312cb64bd1/docs/inter-model/CODEX-2026-10-11-durability-reboot-checkpoint.md): review provenance and saved pre-reboot state.
 - [Recovery Authority STATUS](STATUS-recovery-authority.md): ownership and hard stops.
 - [Complete-data Backup v2 STATUS](STATUS-complete-data-backup-correction-v2.md): existing profile/restore contract and open consistency audit.
@@ -93,6 +94,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-25 — Codex: saved the four unresolved static findings for the planned two-week shutdown; designated Cursor for queued SH-001 validation only, corrected current routing and kept the initializer parked.
 
 - 2026-10-14 — Codex: recorded Kiro V6 PASS and Ryan acceptance at `1cb02fb`; delivery, outage disposition and live operations remain separately gated.
 
@@ -199,4 +202,7 @@ Overwrite sections 3–6 when the actual state changes. Keep runtime observation
 
 ## TL;DR
 
-[Arc Safe Harbor] T1–T4 remain accepted and merged. The corrected T5 selection passes all 257 cases; Kiro V6 review and Ryan acceptance remain pending. Historical failure and evidence limits stay visible; no PR or live grant.
+[Arc Safe Harbor] T1–T5 are accepted/merged and bounded operational observation is complete. The shutdown checkpoint preserves four open static findings; SH-001 isolated validation is queued for Cursor after Ryan resumes, with Codex supervision. No validation has run. The initializer stays parked; runtime correction and live operations remain ungranted.
+
+<!-- ref: ../../Issues/Arc/Safe_Harbor/README.md — current assessment and queued validation handoff -->
+<!-- src: /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/STATUS-safe-harbor.md — saved operational evidence and initializer disposition at 2b95f58 -->

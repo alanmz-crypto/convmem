@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-24
+**Updated:** 2026-10-25
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -54,9 +54,15 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
-  Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
-  **Next lane: Ryan**, for a separate draft-PR/normal-hosted-CI decision. [STATUS](../plans/STATUS-safe-harbor.md) holds current gates; no T5 outage exception, PR, hosted CI, merge or live grant is implied.
+- **Arc Safe Harbor — shutdown checkpoint; SH-001 validation queued (2026-10-25):**
+  T1–T5 are accepted/merged and bounded operational observation is complete.
+  Four separate static findings remain open; none has been reproduced.
+  **Next lane after Ryan resumes: Cursor**, for SH-001 isolated validation
+  only, with Codex supervision. No session has started. Runtime corrections
+  and live operations are ungranted; the initializer stays parked.
+  The [issue index and resume prompt](../../Issues/Arc/Safe_Harbor/README.md)
+  on `docs/2026-10-25-safe-harbor-shutdown-checkpoint` are the starting point;
+  [STATUS](../plans/STATUS-safe-harbor.md) records current state and limits.
 
 - **Trapdoor Hunt / issue #268 — §9.7 harness safety corrective (2026-10-09):**
   Copilot FAILed the prior unmerged measurement tip `2d3ba40` because its
@@ -312,3 +318,5 @@ its existing archive/reference location. Use
 <!-- ref: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md — fresh-model priority-#1 pickup -->
 <!-- ref: ./KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — priority-#1 Claude design and implementation review pickup -->
 <!-- src: ../../cpu_tripwire.py — fault policy and candidate acknowledgment integration -->
+
+<!-- ref: ../../Issues/Arc/Safe_Harbor/README.md, ../plans/STATUS-safe-harbor.md — Safe Harbor shutdown routing -->
