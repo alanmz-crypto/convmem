@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-24
+**Updated:** 2026-10-25
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -9,34 +9,31 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: acknowledgment PR #416 is open for Ryan's G3 decision
-  (2026-10-24, Codex):** The sole takeover branch is
-  `feat/2026-10-22-doctor-fault-ack-takeover`. **The immutable content review
-  target is `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`**. Claude's R4
-  recheck and the replacement safety reviewer PASSed the preceding `1a825d0`
-  revision. A first Opus implementation review at that SHA was limited to
-  static reading by CLI permissions; its two retry/durability observations
-  were reproduced and corrected at the new target. A fresh shell-capable
-  Opus session independently PASSed the full implementation at the exact
-  SHA, and the separate safety reviewer PASSed the corrective delta. **Next
-  lane:** Ryan reviews [PR #416](https://github.com/alanmz-crypto/convmem/pull/416)
-  for G3 merge; G4–G6 remain his gates. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
-  records the evidence and review boundary. The retired
-  `cpu-tripwire-fault-ack` branch remains preserved.
-  The old Timeshift event's live acknowledgment is moot after reboot. The
-  required 2026-10-24 protocol doctor exited 0 with zero native faults this
-  boot; formal acceptance is still Ryan's decision.
-  The PR is open; no merge, promotion, watcher restart or live acknowledgment followed.
-  Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**.
-  See the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
+- **[Arc Codex #286] Priority #1: doctor acknowledgment is merged and promoted
+  (2026-10-25, Codex):** Ryan squash-merged [PR #416](https://github.com/alanmz-crypto/convmem/pull/416)
+  as `4b4796b6a667509f94475a5a14424204947fbb12` after independent G2
+  reviews PASSed immutable content `1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`.
+  Under Ryan's subsequent "proceed" direction, Codex fast-forwarded the clean
+  `.worktrees/runtime-main` from `1a68675` to that exact merge SHA (G4).
+  The watcher stayed active at PID 1149 with `NRestarts=0`; there was no restart
+  or live acknowledgment. Post-promotion `convmem doctor` exited 0 with zero
+  native faults this boot and known-bad CPUs offline. The investigated
+  Timeshift fault belongs to an earlier boot, so its G5 acknowledgment is
+  moot. **Ryan accepted G6 on 2026-10-25 for the current deployment's doctor
+  criterion, based on that post-promotion exit 0.** Live acknowledgment was
+  not exercised and remains unproven; any future event needs a separate
+  live-use grant. The [review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md)
+  preserves G2 evidence; the retired `cpu-tripwire-fault-ack` branch remains
+  preserved. Stage 1/Stage 2 outcomes and residual burn remain **Ryan to
+  confirm**. See the [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
 
-- **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
+- **CPU-tripwire policy retained in the current runtime (2026-10-25, Codex):**
   Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
-  on 2026-10-17. It is included in runtime `1a68675` on `main`; no temporary
+  on 2026-10-17. It is included in runtime `4b4796b` on `main`; no temporary
   branch switch, pull, or repeat deployment is needed. Unattributed userspace
   faults are WARN; CPU-attributed faults outside the configured known-bad set,
-  machine checks, and known-bad CPUs returning online remain FAIL. The current
-  Timeshift failure follows that retained policy; CPU damage is not established
+  machine checks, and known-bad CPUs returning online remain FAIL. The earlier
+  Timeshift failure followed that retained policy; CPU damage is not established
   by the classification. Ryan confirmed he unplugged the external USB drives
   for testing. That explains the backup-volume disconnect four seconds before
   Timeshift's I/O errors and crash; the exact software failure remains unproven.
@@ -47,8 +44,7 @@ cross-arc snapshot and the linked arc brief below.
   `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
   backup volume remains mounted read-write and the watcher remains active.
   Retention still records its previous failed run; no retry/reset occurred.
-  **Next lane: Ryan** for any separate retention-maintenance decision and
-  doctor-acceptance disposition;
+  **Next lane: Ryan** for any separate retention-maintenance decision;
   see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
   Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
   is historical context, not current runtime instructions. Ad-hoc host work;
