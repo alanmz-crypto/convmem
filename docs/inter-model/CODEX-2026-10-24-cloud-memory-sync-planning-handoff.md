@@ -100,7 +100,15 @@ copy is read-only and frozen:
   uses retrieval is still unproven.
 - **Known stale state:** the published environment's setup notes and manifest
   steps still say Edit/Publish and the fresh-task check are pending. Both
-  passed on 2026-10-25. Update them at the next environment edit.
+  passed on 2026-10-25. The start guide also sends new chats to Drive first
+  (unreachable from cloud chats) and never says to answer memory questions
+  with `convmem ask`, which likely explains the plain-question miss.
+  **Pending Ryan GUI step (2026-10-25):** one Edit chat with the prepared
+  prompt (local path in Related files), Republish, then one new chat asking
+  only "Why was my ConvMem watcher stuck at a 4G memory cap when I'd set
+  8G?" Pass: a cited answer naming a late-sorting systemd drop-in and #308.
+  The cloud `downloads/` folder stays (install recovers from it); the Drive
+  handoff is deliberately not refreshed.
 
 ### Claude app access: facts as of 2026-10-24
 
@@ -280,7 +288,9 @@ squash-merges unless a PR says **Do not squash**.
 |------|------|
 | Transfer materials, evidence, prior cloud guides (local only, not in Git) | `/home/lauer/tmp/convmem-cloud-20261023/` |
 | Latest cloud setup guide snapshot (local) | `/home/lauer/tmp/convmem-cloud-20261023/reports/cloud-startup-correction-20261024/convmem-runtime/CLOUD-ENVIRONMENT-SETUP.md` |
-| Fresh-task check prompt (local) | `/home/lauer/tmp/claude-1000/-home-lauer-Projects-convmem/d1951787-496f-4193-94a0-1387576053af/scratchpad/fresh-task-prompt.txt` |
+| Fresh-task check prompt (local) | `/home/lauer/tmp/convmem-cloud-20261023/reports/fresh-task-prompt-20261025.txt` |
+| Edit prompt for the stale notes (local) | `/home/lauer/tmp/convmem-cloud-20261023/reports/cloud-edit-prompt-20261025.txt` |
+| Record-template fix (Cursor, separate) | `docs/inter-model/CURSOR-2026-10-25-record-template-constraint-handoff.md` on `docs/2026-10-25-record-template-constraint-handoff` |
 | Private Drive migration manifest | id recorded in the local transfer materials; never commit it here |
 
 ---
