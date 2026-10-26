@@ -18,7 +18,7 @@ Ryan requested an immediate recorded stopping point for every agent. **This lane
 - **Shared fixes:** PR **#419** passed all listed hosted checks and was merged at `d54f92bcd78248c8aee8a54df758564752d79aa4` on October 25, 22:49 CDT. Its accepted head was `ab21be08c1689186390a9bb8e4dcc0e5a04e3c95`. Those changes are **not in this checkpoint branch**. On return, inspect current main and integrate the accepted fixes before expecting #418's four shared failures to disappear. Preserve the disclosed host-dependent skips.
 - **Pending checks:** #418 run `40263810496` at `b2e6ffe` still had pytest in progress at the close observation; Pylint/security checks passed. Saving this receipt triggers normal successor CI. Read the final candidate's checks on resume; no merge readiness is claimed.
 - **Other lane:** #417 is an independent doctor-routing documentation PR, not a dependency on #418. Its owner acknowledged shutdown: clean pushed branch `docs/2026-10-25-doctor-ack-g4-routing` at `0a99bf99491aec9e987f711903b53a137ba140e7`, no local job remaining, hosted pytest pending. That lane retains ownership. If later integration touches shared routing files, preserve both arcs' entries rather than replacing the other lane's work.
-- **Coordination:** the shutdown request was sent to the four other active Codex tasks and the #417 owner through the app's thread messaging. Receipt from #417 is recorded above; other sessions own their own checkpoints. Do not infer that every external agent or application has stopped from this lane's completion.
+- **Coordination:** the shutdown request was relayed to eight other Codex tasks through the app's thread messaging as active tasks were identified. Receipt from #417 is recorded above; other sessions own their own checkpoints. Do not infer that every external agent or application has stopped from this lane's completion.
 
 ### Session continuity and preservation limits
 
@@ -34,15 +34,15 @@ Inspect draft #418's final tip and checks, current main including #419, and #417
 
 ### Owner-only close record
 
-The pushed checkpoint is the completed preservation record. The curated ledger remains Ryan-owned; Codex did not run these commands. The close search returned generic checkpoint patterns rather than a closer curated decision, so this uses the documented coordination-protocol root. Review the proposal before approving it.
+The pushed checkpoint is the completed preservation record. The curated ledger remains Ryan-owned; Codex did not run these commands. The close search returned generic checkpoint patterns rather than a closer curated decision, so this uses the documented coordination-protocol root. The required constraint is explicit. Approval runs only if draft creation succeeds; approve the preview only if it names this Safe Harbor close, not another pending task.
 
 ```bash
 convmem record \
   --relates-to dec_prop_20260623_161428_c311 \
   --summary "ConvMem Safe Harbor paused with findings and resume state saved in draft PR #418." \
   --rationale "T1-T5 remain accepted and merged. SH-001-SH-004 remain unresolved; initializer parked. Checkpoint and manifest correction are pushed. Shared CI fixes #419 merged; #418 integration and final CI remain pending. Resume from Issues/Arc/Safe_Harbor/README.md. No merge, deployment or live operations granted. Coordination root used because the close search returned no closer curated decision." \
-  --author codex-session
-
+  --constraint "Checkpoint only; no merge, deployment, runtime correction or live recovery is authorized." \
+  --author codex-session &&
 convmem record --approve-last
 ```
 
@@ -105,4 +105,4 @@ The contacted doctor-acknowledgment lane explicitly disclaimed ownership of SH-0
 The remaining order is SH-002, SH-003, then SH-004. Keep them separate from the first correction: SH-002 needs a decision about sufficient evidence for retry; SH-003 needs retained-scope validation; SH-004 needs a precise directory-sync fault case. No new architecture or general HOLD mechanism is proposed.
 
 <!-- ref: ./SH-001-jsonl-append-boundaries.md, ./SH-002-revision-export-retry.md, ./SH-003-finding-revisions-narrow-evidence.md, ./SH-004-new-guard-directory-durability.md, ../../../docs/plans/STATUS-safe-harbor.md, ../../../config/repository-knowledge/openclaw-watch-scope-v1.json — findings, pause state and checkpoint classifications -->
-<!-- src: ../../../chroma_write_guard.py, ../../../propose_decision.py, ../../../conflict_events.py, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/STATUS-safe-harbor.md, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/VERIFY-safe-harbor.md -->
+<!-- src: ../../../chroma_write_guard.py, ../../../propose_decision.py, ../../../conflict_events.py, ../../../convmem.py, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/STATUS-safe-harbor.md, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/VERIFY-safe-harbor.md -->
