@@ -34,6 +34,8 @@ This doc covers **two** distinct close types. Know which one you're in.
 
 When Ryan says one of these: output a **terminal-ready** `convmem record` command. Ryan copy-pastes and runs it.
 
+Every hard-close proposal must include at least one `--constraint` field. State the hard boundary that governed the work, or use the exact sentinel `none-identified` when no hard constraint applies. Repeat `--constraint` for additional boundaries. Put status and open items in `--rationale`.
+
 ---
 
 ## WRONG (never output this)
@@ -47,6 +49,9 @@ convmem record summary="..." detail="..."
 
 # ❌ missing --relates-to (required)
 convmem record --summary "..." --rationale "..." --author ryan
+
+# ❌ missing --constraint (required; use the sentinel when none apply)
+convmem record --relates-to dec_prop_20260623_161428_c311 --summary "..." --rationale "..." --author ryan
 
 # ❌ human topic tag — NOT a ledger id
 convmem record --relates-to "system-maintenance" --summary "..." ...
@@ -68,6 +73,7 @@ convmem record \
   --relates-to <ledger-id-you-looked-up> \
   --summary "<one sentence — lead with primary lane, e.g. convmem repo / system ops>" \
   --rationale "<Done / Open / Not my lane — plain English, details here>" \
+  --constraint "<hard boundary for this work, or none-identified>" \
   --author <model-session or ryan>
 
 convmem record --approve-last
@@ -79,7 +85,7 @@ Add `--signer kiro-review` on approve **only** when Kiro signs.
 
 ```bash
 convmem record -i
-# Paste when prompted: relates_to, summary, rationale, author
+# Enter the required constraint prompt with a hard boundary or the exact sentinel none-identified.
 convmem record --approve-last
 ```
 
@@ -124,6 +130,8 @@ convmem record --approve-last
 
 Do not hide the main topic in rationale only.
 
+`--constraint` records hard scope or authorization boundaries. It is required for every hard-close record; use `none-identified` only when no hard constraint applies.
+
 ---
 
 ## Per-model defaults
@@ -157,6 +165,7 @@ convmem record \
   --relates-to dec_prop_20260623_161428_c311 \
   --summary "Tier 1 system cache cleanup before backup: 8.5G cleared without sudo" \
   --rationale "Cleaned build/package/browser caches (~8.5G): pip, go-build, Chrome, npm, uv, Trash, thumbnails, borg. Pending (sudo): paru ~5.7G, pacman ~8.1G, journalctl vacuum ~1G. New maintenance thread — no closer ledger parent; chained to coordination protocol c311." \
+  --constraint "No sudo actions were authorized; the privileged cleanups remain pending." \
   --author crush-session
 
 convmem record --approve-last
@@ -169,6 +178,7 @@ convmem record \
   --relates-to dec_prop_20260623_161428_c311 \
   --summary "System cache cleanup before backup: 8.5G cleared without sudo" \
   --rationale "Audited ~/.cache (~21G). Cleaned without sudo: pip ~3.9G, go-build ~1.7G, Chrome cache ~1.8G, npm ~251M, uv ~614M, Trash ~141M, thumbnails ~37M, borg ~152M. Pending (sudo): pacman -Sc ~8.1G, paru -Sc ~5.7G, journalctl --vacuum-time=30d ~1G." \
+  --constraint "No elevated cleanup was authorized; privileged cleanup remains pending." \
   --author ryan
 
 convmem record --approve-last
@@ -181,6 +191,7 @@ convmem record \
   --relates-to dec_prop_20260623_212248_fec0 \
   --summary "Codex late join: change-feed lane deferred; shell CLI to convmem" \
   --rationale "Joined after Kiro+Cursor. Change feed deferred to 2026-07-07. AGENTS.md shell. Did not drive record UX, practice :8081, Continue verify, watch lazy-import (Kiro)." \
+  --constraint "Change-feed implementation and Kiro-owned lanes remained outside this session scope." \
   --author ryan
 
 convmem record --approve-last
@@ -202,6 +213,7 @@ convmem record \
   --relates-to dec_prop_20260623_215943_5abe \
   --summary "Continue MCP verify passed: brief, search_fast, ask; DeepSeek V4 in config.yaml" \
   --rationale "Agent-mode MCP tools exercised (brief willowyhollow-dev, search_fast practice-local, ask reset). Grader PASS. Added reset ledger 1403. Config: schema v1 + mcpServers; V4 Flash/Pro replaces legacy deepseek-chat/reasoner. Not client deploy or staging2." \
+  --constraint "Read-only MCP verification was in scope; no client deployment or staging2 operation was authorized." \
   --author continue-session
 
 convmem record --approve-last
@@ -214,6 +226,7 @@ convmem record \
   --relates-to dec_prop_20260623_213448_a602 \
   --summary "Correction: Cursor session was almost exclusively ~/Projects/convmem product work" \
   --rationale "Primary lane: convmem repo — record --approve-last, brief/MCP/AGENTS/LATEST, Continue verify, SESSION-CLOSE-RECORD, practice-local lab. Not client deploy or willowyhollow-dev git audit. Touch-only: staging2 CSP probe." \
+  --constraint "Only convmem product work was in scope; no client deployment or staging2 audit was authorized." \
   --author cursor-session
 
 convmem record --approve-last
@@ -227,6 +240,7 @@ convmem record --approve-last
 - [ ] Includes **`--relates-to dec_prop_…`** (or `obs_…` from search — **not** a topic label)
 - [ ] Id **starts with** `dec_` or `obs_` — if it looks like English (`system-maintenance`), stop and fix
 - [ ] Uses **`--summary`** and **`--rationale`** (not `detail=`, `session=`, custom keys)
+- [ ] Includes **`--constraint`** with the session boundary, or exact `none-identified` sentinel
 - [ ] Ends with **`convmem record --approve-last`**
 - [ ] Summary states **primary lane** in the first clause
 
