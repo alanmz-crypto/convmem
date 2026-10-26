@@ -1,12 +1,50 @@
 # Safe Harbor — remaining issues
 
-Codex source audit, 2026-10-25. Requested by Ryan; the investigation was read-only, with these issue files as its only authored changes. Ryan's later shutdown request adds a documentation-only checkpoint and routing updates. Codex contributed to this arc, so this is a follow-up audit, not an independent acceptance review.
+Codex source audit, 2026-10-25. Requested by Ryan; the investigation was read-only, with these issue files as its only authored changes. Ryan's later shutdown request adds a checkpoint, routing updates and the five required repository-manifest classifications. Codex contributed to this arc, so this is a follow-up audit, not an independent acceptance review.
 
 ## Shutdown checkpoint — start here
 
 **State: paused for Ryan's planned two-week workstation shutdown beginning October 26.** The assessment is complete; the four findings remain open. No finding has been reproduced or corrected. The initializer remains parked. There is no evidence from this assessment that requires starting a repair before shutdown.
 
-**Saved branch:** `docs/2026-10-25-safe-harbor-shutdown-checkpoint`, based on `4b4796b6a667509f94475a5a14424204947fbb12`. This is a documentation-only checkpoint, not an implementation candidate or merge request. It preserves all five issue documents and updates Safe Harbor's routing. The earlier initializer/evidence branch is separately preserved at `2b95f58ef79802f80058b07e125bf73802db5f1e`; its origin ref was checked October 25. Do not merge or deploy that branch to resume this assessment.
+**Saved branch:** `docs/2026-10-25-safe-harbor-shutdown-checkpoint`, based on `4b4796b6a667509f94475a5a14424204947fbb12`, now tracked by draft PR **#418**. It preserves all five issue documents, routing and their manifest classifications; it contains no Safe Harbor runtime correction. The earlier initializer/evidence branch is separately preserved at `2b95f58ef79802f80058b07e125bf73802db5f1e`; its origin ref was checked October 25. Do not merge or deploy that branch to resume this assessment.
+
+### Close receipt — 2026-10-25, 23:13 CDT
+
+Ryan requested an immediate recorded stopping point for every agent. **This lane is checkpoint-only and stops after pushing this receipt.** No local test or implementation job is left running by this lane. Hosted CI may finish while the workstation/chat is closed; pending is not PASS.
+
+- **Delivery:** initial checkpoint `23883f65f130f94ba576cf796b9f656dbf5d0534`; manifest correction `b2e6ffef0f76b14d2991d63680961af02cceb64b`. The correction adds exactly five `unrelated` rows to the existing manifest. Include/watch scope, runtime, tests and lint baseline are unchanged. This receipt is a later documentation-only successor; use the remote branch/PR for its exact final tip.
+- **Original CI:** run `40245662735` at `23883f6` had **5 failed, 3811 passed, 14 skipped**. Pylint itself passed. One failure was our missing classifications; four concerned SQLite temporary-file placement and watcher-route runner requirements.
+- **Qualified local correction evidence:** on the clean `b2e6ffe` worktree, the existing committed-manifest test passed through the Safe Harbor `-I -S -B` parent bootstrap and clean proof-profile child: **1 passed, 0 skipped in 2.23 seconds**, Python 3.13.12, uid 1000, exit 0. Tracked source/harness hashes were unchanged. Temporary logs at `/tmp/safe-harbor-t3-suite-28bq_uk0` are disposable; this receipt and the PR preserve the essential result. This is not full-suite or SH-001 evidence.
+- **Shared fixes:** PR **#419** passed all listed hosted checks and was merged at `d54f92bcd78248c8aee8a54df758564752d79aa4` on October 25, 22:49 CDT. Its accepted head was `ab21be08c1689186390a9bb8e4dcc0e5a04e3c95`. Those changes are **not in this checkpoint branch**. On return, inspect current main and integrate the accepted fixes before expecting #418's four shared failures to disappear. Preserve the disclosed host-dependent skips.
+- **Pending checks:** #418 run `40263810496` at `b2e6ffe` still had pytest in progress at the close observation; Pylint/security checks passed. Saving this receipt triggers normal successor CI. Read the final candidate's checks on resume; no merge readiness is claimed.
+- **Other lane:** #417 is an independent doctor-routing documentation PR, not a dependency on #418. Its owner acknowledged shutdown: clean pushed branch `docs/2026-10-25-doctor-ack-g4-routing` at `0a99bf99491aec9e987f711903b53a137ba140e7`, no local job remaining, hosted pytest pending. That lane retains ownership. If later integration touches shared routing files, preserve both arcs' entries rather than replacing the other lane's work.
+- **Coordination:** the shutdown request was sent to the four other active Codex tasks and the #417 owner through the app's thread messaging. Receipt from #417 is recorded above; other sessions own their own checkpoints. Do not infer that every external agent or application has stopped from this lane's completion.
+
+### Session continuity and preservation limits
+
+- Codex session ID: `01a1292d-9453-7023-a056-71c99b70bd12`.
+- Full local transcript: `/home/lauer/.codex/sessions/2026/10/10/rollout-2026-10-10T23-16-55-01a1292d-9453-7023-a056-71c99b70bd12.jsonl` (existence and matching session metadata checked during close).
+- Task worktree: `/home/lauer/.local/share/convmem/worktrees/docs-2026-10-25-safe-harbor-shutdown-checkpoint`.
+- GitHub preserves the committed findings, scope, evidence summary and resume instructions. The raw private transcript is local and is not copied to GitHub. Automatic watcher capture is the configured chat-ingestion route; final-turn ingestion is not asserted here. No manual session index was run.
+- No corpus/system-disk backup, restore test, drive custody confirmation or initializer execution follows from this checkpoint. Recovery limits in STATUS remain open.
+
+### First action on return
+
+Inspect draft #418's final tip and checks, current main including #419, and #417's separate routing delivery. Finish the bounded documentation/CI integration only under the applicable owner scope; no force-push or merge is implied. Then return to the queued SH-001 validation below when Ryan resumes. Preserve all four findings and keep the initializer parked.
+
+### Owner-only close record
+
+The pushed checkpoint is the completed preservation record. The curated ledger remains Ryan-owned; Codex did not run these commands. The close search returned generic checkpoint patterns rather than a closer curated decision, so this uses the documented coordination-protocol root. Review the proposal before approving it.
+
+```bash
+convmem record \
+  --relates-to dec_prop_20260623_161428_c311 \
+  --summary "ConvMem Safe Harbor paused with findings and resume state saved in draft PR #418." \
+  --rationale "T1-T5 remain accepted and merged. SH-001-SH-004 remain unresolved; initializer parked. Checkpoint and manifest correction are pushed. Shared CI fixes #419 merged; #418 integration and final CI remain pending. Resume from Issues/Arc/Safe_Harbor/README.md. No merge, deployment or live operations granted. Coordination root used because the close search returned no closer curated decision." \
+  --author codex-session
+
+convmem record --approve-last
+```
 
 **Assignment on return:** Cursor performs bounded, isolated **SH-001 validation only**; Codex supervises scope and assesses the evidence. Ryan's October 25 instruction to assign bounded validation supplies this next-step scope. No Cursor session has been started or acknowledged the assignment. SH-002–SH-004 have no assigned implementation lane. Runtime corrections need a separate decision after the validation results.
 
@@ -23,7 +61,7 @@ git fetch origin refs/heads/docs/2026-10-25-safe-harbor-shutdown-checkpoint
 git show FETCH_HEAD:Issues/Arc/Safe_Harbor/README.md
 ```
 
-This turn's doctor exited 0 with five nonfatal warnings, current local/external backup PASS, no guard quarantine and zero native faults this boot. These observations do not qualify a restore or prove the four findings harmless. No tests or new backup/restore operations were run for this checkpoint.
+The October 25 orientation doctor exited 0 with five nonfatal warnings, local/external backup PASS, no guard quarantine and zero native faults this boot. These dated observations do not qualify a restore or prove the four findings harmless. The only later local test was the isolated manifest check described above; no new backup/restore operations were run.
 
 ## Findings
 
@@ -66,5 +104,5 @@ The contacted doctor-acknowledgment lane explicitly disclaimed ownership of SH-0
 
 The remaining order is SH-002, SH-003, then SH-004. Keep them separate from the first correction: SH-002 needs a decision about sufficient evidence for retry; SH-003 needs retained-scope validation; SH-004 needs a precise directory-sync fault case. No new architecture or general HOLD mechanism is proposed.
 
-<!-- ref: ./SH-001-jsonl-append-boundaries.md, ./SH-002-revision-export-retry.md, ./SH-003-finding-revisions-narrow-evidence.md, ./SH-004-new-guard-directory-durability.md — audit findings -->
+<!-- ref: ./SH-001-jsonl-append-boundaries.md, ./SH-002-revision-export-retry.md, ./SH-003-finding-revisions-narrow-evidence.md, ./SH-004-new-guard-directory-durability.md, ../../../docs/plans/STATUS-safe-harbor.md, ../../../config/repository-knowledge/openclaw-watch-scope-v1.json — findings, pause state and checkpoint classifications -->
 <!-- src: ../../../chroma_write_guard.py, ../../../propose_decision.py, ../../../conflict_events.py, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/STATUS-safe-harbor.md, /home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-safe-harbor-legacy-initializer/docs/plans/VERIFY-safe-harbor.md -->

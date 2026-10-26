@@ -54,13 +54,15 @@ cross-arc snapshot and the linked arc brief below.
   is historical context, not current runtime instructions. Ad-hoc host work;
   no tripwire-policy or hardware change is authorized by this pointer.
 
-- **Arc Safe Harbor — shutdown checkpoint; SH-001 validation queued (2026-10-25):**
+- **Arc Safe Harbor — stopped; draft #418 checkpoint (2026-10-25):**
   T1–T5 are accepted/merged and bounded operational observation is complete.
   Four separate static findings remain open; none has been reproduced.
-  **Next lane after Ryan resumes: Cursor**, for SH-001 isolated validation
-  only, with Codex supervision. No session has started. Runtime corrections
+  **Next lane after Ryan resumes: Codex**, to inspect #418's final CI and
+  integrate accepted #419 shared test fixes within the delivery scope;
+  #417 remains a separate agent's routing delivery. Then Cursor's queued
+  SH-001 isolated validation only, with Codex supervision. No session has started. Runtime corrections
   and live operations are ungranted; the initializer stays parked.
-  The [issue index and resume prompt](../../Issues/Arc/Safe_Harbor/README.md)
+  The [close receipt, session ID and resume prompt](../../Issues/Arc/Safe_Harbor/README.md)
   on `docs/2026-10-25-safe-harbor-shutdown-checkpoint` are the starting point;
   [STATUS](../plans/STATUS-safe-harbor.md) records current state and limits.
 

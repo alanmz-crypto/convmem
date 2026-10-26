@@ -1,6 +1,6 @@
 # Arc Brief — Safe Harbor
 
-> **Arc: Safe Harbor — shutdown checkpoint, 2026-10-25.** T1–T5 / V1–V6 are accepted and merged; bounded operational observation is complete. Four separate static findings (SH-001–SH-004) remain open and unreproduced. The legacy initializer stays parked. Cursor is designated for SH-001 isolated validation only, queued until Ryan resumes after the planned two-week shutdown beginning October 26; no session or implementation is active. Start with the [saved issue index and resume prompt](../../Issues/Arc/Safe_Harbor/README.md). This documentation-only branch is `docs/2026-10-25-safe-harbor-shutdown-checkpoint`.
+> **Arc: Safe Harbor — stopped and checkpointed, 2026-10-25.** T1–T5 / V1–V6 are accepted and merged; bounded operational observation is complete. Draft #418 preserves the four open static findings, delivery/CI state and session resume details. Its five missing classifications are corrected; shared CI fixes landed separately in #419 but are not yet integrated here. The legacy initializer stays parked. On Ryan's return, Codex checks the final PR state before Cursor's queued SH-001 isolated validation. Start with the [close receipt and resume prompt](../../Issues/Arc/Safe_Harbor/README.md). Branch: `docs/2026-10-25-safe-harbor-shutdown-checkpoint`.
 
 ## 1. What This Is For (product goal)
 
@@ -39,6 +39,7 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Observed deployed runtime, October 25:** `runtime-main` at `4b4796b6a667509f94475a5a14424204947fbb12`, following another lane's promotion. The cited Safe Harbor implementation files are unchanged from the audit baseline `1a686753d8fd1b710883050e8a4f9c45b7ae1e26`. This checkpoint performs no promotion and does not re-review other arcs' changes.
 - **Saved operational/initializer continuation:** `feat/2026-10-22-safe-harbor-legacy-initializer` remains pushed at `2b95f58ef79802f80058b07e125bf73802db5f1e` (origin checked October 25). Its [ROLLOUT receipt](https://github.com/alanmz-crypto/convmem/blob/2b95f58ef79802f80058b07e125bf73802db5f1e/docs/plans/ROLLOUT-safe-harbor.md) preserves post-deployment observations, service-route results and recovery inputs. Cursor's initializer runtime `204f1c6`, delivery `dd0c467`, is parked unreviewed/unaccepted. Do not merge that branch just to recover its documents.
 - **New assessment:** [SH-001–SH-004](../../Issues/Arc/Safe_Harbor/README.md) are four separate proposed P2 findings covering JSONL framing, partial export retry, retained finding details and first-directory durability. No reproductions, fixes or corrective delivery exist in this assessment. The initializer's four missing tests are a different set of obligations.
+- **Checkpoint delivery:** draft #418 contains the saved assessment/routing and five required manifest classifications. Correction `b2e6ffe` has an isolated clean-tree manifest PASS (one test, no skips), not a full-suite PASS. The [close receipt](../../Issues/Arc/Safe_Harbor/README.md#close-receipt--2026-10-25-2313-cdt) preserves original failures, exact CI runs, the local transcript/session ID and dependency state. PR #419 is merged as `d54f92b`; its shared test fixes are not yet in this branch. Final-tip CI/merge remain unresolved.
 
 ## 4. Completion State
 
@@ -47,25 +48,26 @@ The scope is application cooperation, not same-user security. Read clients can p
 - **Recovery qualification remains limited:** both boot/root partition images in `2026-10-23-13-img` passed recorded integrity checks October 24. Restore/boot/application usability of that exact image is untested. The recorded owner loss policy is one day of ConvMem data and work since the latest disk image for the rest of the system. Physical image/key separation remains unverified and owner-managed; do not convert the owner's hypothetical storage statement into completed evidence.
 - **October 25 checkpoint health:** doctor exited 0 with five nonfatal warnings; local/external backup checks passed, no guard quarantine was reported, and the tripwire reported zero native faults this boot. This is a dated observation, not restore qualification, a fix for SH-001–SH-004 or a guarantee after the shutdown.
 - **Assessment complete; validation not started:** Codex found no corrective handoff for SH-001–SH-004. The contacted doctor-acknowledgment lane owns none of them. Cursor is now designated for the queued SH-001 validation only; no active session has acknowledged it. SH-002–SH-004 remain unassigned.
+- **Immediate close requested:** Ryan requested every agent preserve its work and stop within five interactions. This lane stops after pushing the updated checkpoint; no local test/implementation job remains. Hosted checks can complete independently. Other active Codex tasks were notified; the #417 owner acknowledged its separate clean pushed checkpoint. No claim of universal external-agent shutdown is made.
 
 ## 5. Your Role (read this to know what you're here to do)
 
-**Current phase: paused checkpoint.** Ryan plans to turn the workstation off October 26 for about two weeks. Preserve the pushed findings and resume prompt; leave no test or implementation process running across shutdown.
+**Current phase: stopped checkpoint.** Ryan plans to turn the workstation off October 26 for about two weeks and requested immediate closure. Preserve the pushed findings, final PR/CI receipt and session resume details; leave no local test or implementation process running across shutdown. Draft PR #418 need not merge to preserve this work.
 
-**On Ryan's return:** Codex reads the [issue index](../../Issues/Arc/Safe_Harbor/README.md), checks source drift and any intervening delivery, then supervises Cursor's isolated SH-001 validation. Cursor may add test/harness cases and collect evidence using the existing pre-import bootstrap, synthetic stores and network/production-path refusal. Return separate event-tail, export-tail and valid-control results before any runtime correction. No proof is presumed from this static assessment.
+**On Ryan's return:** Codex reads the [issue index](../../Issues/Arc/Safe_Harbor/README.md), checks #418's final-tip CI and current main including #419, and preserves #417's independent routing when considering bounded integration. Then check source drift and any intervening corrective delivery before supervising Cursor's isolated SH-001 validation. Cursor may add test/harness cases and collect evidence using the existing pre-import bootstrap, synthetic stores and network/production-path refusal. Return separate event-tail, export-tail and valid-control results before any runtime correction. No proof is presumed from this static assessment.
 
 **Ryan:** receives the validation result before deciding on correction. Recovery qualification and physical custody remain separate owner decisions. Keep the initializer parked; no initializer review or execution is part of SH-001.
 
 ## 6. What Remains (sequential)
 
-1. Resume from the pushed documentation checkpoint after Ryan returns. Re-establish current source and health; stale pre-shutdown PASS results cannot authorize live work.
+1. Resume from the pushed checkpoint after Ryan returns. Inspect #418's exact final candidate/checks and whether accepted #419 fixes have been integrated; preserve the separate #417 delivery. Re-establish current source and health before live work; stale pre-shutdown PASS results cannot authorize it. A paused draft is a saved checkpoint, not a merge-ready claim.
 2. Perform only the [bounded SH-001 validation](../../Issues/Arc/Safe_Harbor/SH-001-jsonl-append-boundaries.md#validation-before-correction) in an isolated worktree. Return reproduction or refutation with independently inspected durable effects and positive controls. Stop if isolation or the supposed source behavior cannot be established.
 3. Codex assesses the returned evidence; Ryan then decides any runtime correction and its review/delivery scope. Do not bundle SH-002–SH-004 into it or infer an existing corrective candidate.
 4. Leave the other findings and exact-image recovery qualification open until separately scoped. Completed operational observation needs no automatic rerun.
 
 ## 7. Hard Stops (models cannot cross)
 
-- The checkpoint/queued validation authorizes no runtime correction, initializer execution, production corpus mutation, service change, backup/restore, drive/key action, PR/comment, hosted CI, merge or deployment. No manual session indexing while the watcher captures this Codex session.
+- Ryan's later PR Steward grant authorized draft #418, task-branch pushes, checkpoint/CI status updates and normal hosted CI for this delivery; the shutdown request authorizes recording this close. It does not authorize runtime correction, initializer execution, production corpus mutation, service change, backup/restore, drive/key action, merge or deployment. Queued SH-001 validation remains separate from PR delivery. No manual session indexing while the watcher captures this Codex session.
 - The initializer grant is consumed and its result parked. Its four missing tests and isolation lapses remain in [the saved Claude review](https://github.com/alanmz-crypto/convmem/blob/2b95f58ef79802f80058b07e125bf73802db5f1e/docs/plans/VERIFY-safe-harbor.md#claude-verification-and-owner-parking-2026-10-22); they are not SH-001–SH-004.
 - No Recovery Authority T4/V4k, v3 authority/serving activation, migration, general HOLD, identity registry, backup freeze, permission deployment or cleanup/retention subsystem.
 - Guard containment is cooperative. File visibility is not durable publication; fixture restart is not power-loss proof. Gate PASS is availability/freshness/path evidence; ID coverage is not semantic integrity or demonstrated recovery.
@@ -94,6 +96,8 @@ The architecture records these interfaces and refuses to claim a global freeze. 
 Overwrite sections 3–6 when the actual state changes. Keep runtime observations dated and scoped; do not turn them into permanent green guarantees. Other orientation surfaces should point here instead of duplicating mutable milestones. Add one milestone-level update line; keep detailed review discussion in the architecture or review artifact. If Ryan renames the arc, rename the matching files and their pointers together.
 
 ## Update Log
+
+- 2026-10-25 — Codex: recorded immediate shutdown, draft #418's manifest correction and pending integration/CI, merged shared fixes #419, separate #417 ownership and exact session continuity; stopped local work.
 
 - 2026-10-25 — Codex: saved the four unresolved static findings for the planned two-week shutdown; designated Cursor for queued SH-001 validation only, corrected current routing and kept the initializer parked.
 
