@@ -32,6 +32,28 @@ def d1_bwrap_integration_available() -> bool:
     return bwrap_userns_available()
 
 
+def d1_watch_route_available() -> bool:
+    """The route also needs a reachable systemd user bus for its inner scope."""
+    runtime = os.environ.get("XDG_RUNTIME_DIR", "")
+    if not (
+        d1_bwrap_integration_available()
+        and shutil.which("systemd-run")
+        and runtime
+        and (Path(runtime) / "bus").is_socket()
+    ):
+        return False
+    try:
+        probe = subprocess.run(
+            ["systemctl", "--user", "show-environment"],
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return probe.returncode == 0
+
+
 BWRAP_RO_ROOT_ARGS: tuple[str, ...] = (
     "--ro-bind",
     "/",
@@ -255,3 +277,6 @@ def net_namespace_id(pid: int) -> str | None:
         return os.readlink(link)
     except OSError:
         return None
+
+
+# ref: ./test_watch_oom_live_diagnosis_d1.py — route capability gate

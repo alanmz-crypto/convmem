@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import signal
 import sqlite3
@@ -20,7 +21,6 @@ from pathlib import Path
 from unittest import mock
 
 import export_compaction as export_compaction_mod
-
 from atomic_files import PostPublicationDurabilityError, PrePublicationError
 from export_compaction import (
     MAX_RECORD_BYTES,
@@ -522,29 +522,52 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
         _write_export(self.path, "".join(rows))
         original = self.path.read_bytes()
         paths, before = self._plant_foreign_export_dir_objects()
-        captured: dict[str, object] = {}
-        real = export_compaction_mod._index_row
-        seen = 0
-
-        def wrapped(conn, uid, seq, offset, length):
-            nonlocal seen
-            real(conn, uid, seq, offset, length)
-            seen += 1
-            if seen >= 70000 and seen % 4096 == 0:
-                captured["database_list"] = conn.execute("PRAGMA database_list").fetchall()
-                captured["temp_store"] = conn.execute("PRAGMA temp_store").fetchone()[0]
-                fds = _deleted_sqlite_fds()
-                if fds:
-                    captured["fds"] = fds
-
         sqlite_parent = _non_tmpfs_parent()
         with tempfile.TemporaryDirectory(
             prefix="convmem-sqlite-tmp.", dir=str(sqlite_parent)
         ) as sqlite_tmp:
             self.assertNotIn(_fstype(sqlite_tmp), {"tmpfs", "ramfs"})
-            with mock.patch.dict(os.environ, {"SQLITE_TMPDIR": sqlite_tmp, "TMPDIR": sqlite_tmp}):
-                with mock.patch("export_compaction._index_row", wrapped):
-                    self.assertEqual(compact_units_export(self.path), 0)
+            # SQLite can select its temp root before this test runs. Start a
+            # fresh interpreter with the disk-backed root already in its env.
+            probe = """
+import json
+import os
+import sys
+from pathlib import Path
+import export_compaction as module
+from tests.test_export_compaction import _deleted_sqlite_fds
+
+captured = {}
+real = module._index_row
+seen = 0
+def wrapped(conn, uid, seq, offset, length):
+    global seen
+    real(conn, uid, seq, offset, length)
+    seen += 1
+    if seen >= 70000 and seen % 4096 == 0:
+        captured['database_list'] = conn.execute('PRAGMA database_list').fetchall()
+        captured['temp_store'] = conn.execute('PRAGMA temp_store').fetchone()[0]
+        fds = [target for target in _deleted_sqlite_fds()
+               if target.startswith(sys.argv[2] + os.sep)]
+        if fds:
+            captured['fds'] = fds
+module._index_row = wrapped
+captured['removed'] = module.compact_units_export(Path(sys.argv[1]))
+print(json.dumps(captured))
+"""
+            env = dict(os.environ, SQLITE_TMPDIR=sqlite_tmp, TMPDIR=sqlite_tmp)
+            proc = subprocess.run(
+                [sys.executable, "-c", probe, str(self.path), sqlite_tmp],
+                cwd=Path(__file__).resolve().parents[1],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            captured = json.loads(proc.stdout)
+            self.assertEqual(captured["removed"], 0)
         self.assertEqual(self.path.read_bytes(), original)
         self.assertEqual(_tree_snapshot(paths), before)
         db_list = captured["database_list"]
@@ -597,3 +620,5 @@ class ExportCompactionTests(unittest.TestCase):  # pylint: disable=too-many-publ
 
 if __name__ == "__main__":
     unittest.main()
+
+# ref: ../export_compaction.py — fresh-process SQLite temp-file placement probe

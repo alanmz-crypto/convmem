@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -29,6 +30,31 @@ from tests.watch_oom_live_diagnosis_support import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_d1_watch_route_requires_user_bus(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import tests.watch_oom_live_diagnosis_bwrap as bwrap_mod
+
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    monkeypatch.setattr(bwrap_mod, "d1_bwrap_integration_available", lambda: True)
+    monkeypatch.setattr(bwrap_mod.shutil, "which", lambda _name: "/usr/bin/systemd-run")
+    assert bwrap_mod.d1_watch_route_available() is False
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as bus:
+        bus.bind(str(tmp_path / "bus"))
+        monkeypatch.setattr(
+            bwrap_mod.subprocess,
+            "run",
+            lambda *_args, **_kwargs: subprocess.CompletedProcess([], 1),
+        )
+        assert bwrap_mod.d1_watch_route_available() is False
+        monkeypatch.setattr(
+            bwrap_mod.subprocess,
+            "run",
+            lambda *_args, **_kwargs: subprocess.CompletedProcess([], 0),
+        )
+        assert bwrap_mod.d1_watch_route_available() is True
 
 
 def test_worker_without_bwrap_fails_closed(
@@ -205,3 +231,6 @@ def test_bwrap_filesystem_capabilities(tmp_path: Path) -> None:
         repo_before.st_size,
         repo_before.st_mtime_ns,
     )
+
+
+# ref: ./watch_oom_live_diagnosis_bwrap.py — user-bus capability probe
