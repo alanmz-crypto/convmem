@@ -1,5 +1,11 @@
 # Latest cross-model handoff (single pointer)
 
+> **[Arc Codex] Historical branch — session closed 2026-10-25.** This branch
+> is preserved reader-fix evidence, not the current delivery route. Its routing
+> snapshot below is superseded by the [durable session checkpoint](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md#durable-stopping-point--read-this-before-the-historical-packet).
+> Resume through Codex owner `01a1697c` and the current `doctor-ack-g4-routing`
+> worktree. Do not restart implementation or dispatch reviews from this snapshot.
+
 **Updated:** 2026-10-23
 
 This file is intentionally short. It routes a new session to current state; it

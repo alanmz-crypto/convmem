@@ -1,5 +1,11 @@
 # Arc Brief — Kiro and Codex JSONL Incremental Production Integration
 
+> **Historical snapshot on a retired branch.** This session closed on
+> 2026-10-25; the implementation has since merged and been promoted through
+> the consolidated owner. Read the [durable stopping point](../inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md#durable-stopping-point--read-this-before-the-historical-packet)
+> for the current owner, acceptance limit, open findings and resume location.
+> The dated arc snapshot below must not be used to restart completed work.
+
 > **Arc: Codex. Every model working on this arc must read this file first.**
 > State the product goal, your role, current system state, and next action before
 > doing substantive work.

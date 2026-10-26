@@ -1,11 +1,78 @@
-# [Arc Codex] Claude review: scoped CPU-tripwire fault acknowledgment
+# [Arc Codex] Closed reader-fix session and historical review evidence
 
-**Updated:** 2026-10-23
+**Updated:** 2026-10-25 (America/Chicago; session closure)
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** Claude, independent design and implementation review
-**State:** `READER_CORRECTIONS_READY_FOR_RECHECK`; all unwaived G2 reviews open
-**Branch:** `fix/2026-10-23-doctor-ack-readers`, pushed to origin; continues `705c4cb`
+**For:** Session resumption and historical evidence; no new review dispatch
+**State:** `SESSION_CLOSED_SUPERSEDED`; this implementation lane has stood down
+**Branch:** `fix/2026-10-23-doctor-ack-readers`, preserved on origin as historical evidence
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/feat-2026-10-22-cpu-tripwire-fault-ack`
+
+## Durable stopping point — read this before the historical packet
+
+Session `01a16702-4146-71d0-8432-3d34f4fbb48d` is ready for closure.
+Ryan requested a durable stopping point on 2026-10-25. This branch's old
+review targets and pickup instructions below are historical, not an active
+implementation or G2 route. Do not merge this preserved branch or restart
+its duplicate implementation. No implementation, reviewer job, or child agent
+remains active in this session.
+
+**Preserved contribution:** code commit `3eddaca92d15239209d56963d9441d9788be8bd7`
+fixed LF-only journal records and decoding-error handling; documentation
+checkpoint `382b614670300a0be932968b9ea0630c0bf3481e` recorded the evidence.
+All 13 regressions failed before the fix; 237 tests passed afterward, with
+4/4 changed executable production lines covered and scoped Ruff/Pylint clean.
+These are historical author results; no tests were rerun for this closeout.
+The complete four-case decoding matrix remains in
+`tests/test_cpu_tripwire_readers.py` on this preserved branch.
+
+**Ownership resolved:** Codex session `01a1697c-323e-75e0-9a07-adc0e1da62d1`
+is the single remaining doctor-ack implementation and delivery-coordination
+owner. Its notice records Ryan's consolidation grant and adoption of this
+branch's useful Unicode-separator matrix. This closeout independently read
+merged tree `4b4796b`: both production reader fixes and the nine-case
+separator/reader-mode matrix are present. This session has no remaining
+comparison or implementation assignment. Other agents' lanes were not edited.
+
+**Current project orientation:** final G2 evidence targets `1a7676b`; the
+current packet records Ryan-authorized reviewer substitutions for the
+capacity-limited Copilot slot and Kiro implementation slot. Those are later
+grants, distinct from the earlier unsupported reviewer reduction. Ryan merged
+implementation PR #416 at `4b4796b6a667509f94475a5a14424204947fbb12`.
+The runtime worktree still points to that exact SHA when read at closeout.
+The current owner's STATUS records G4 promotion and G6 acceptance with a
+live-use limit: doctor exited 0 with no native faults, but no live acknowledgment
+was exercised. The old-boot event's G5 is moot. Do not replay promotion,
+restart, acknowledgment, or acceptance actions from this historical branch.
+
+**Open work belongs to the current owner/Ryan:** docs PR #417 remains open at
+`0a99bf99491aec9e987f711903b53a137ba140e7`; its pytest check was running at
+this read, while Pylint, secret scan and CodeQL had passed. CI portability
+PR #419 is included in local `origin/main` at `d54f92b`. A separate closure
+review is durably recorded at `a7a04a6bd1d1a7c5e99113603b6af35e5f56f1ed`:
+two post-commit reporting findings (lock-descriptor close and success-output
+errors) and one stale architecture-status finding remain recorded as open.
+This session read those findings; it did not reproduce or fix them. Their
+accepted ledger parent is `dec_prop_20261026_034725_6f79`. Do not claim that
+G6 acceptance closes these follow-ups or the broader Arc Codex Stage 1,
+Stage 2, residual-burn, Timeshift-maintenance, or Kiro-bootstrap questions.
+
+**Resume first:** read the current owner's `docs/inter-model/LATEST.md` and
+`docs/plans/STATUS-codex-jsonl-production-integration.md` in
+`/home/lauer/Projects/convmem/.worktrees/doctor-ack-g4-routing`, then check
+the current branch/PR and coordination notices. Continue through that owner;
+this branch is an archive, not a second delivery candidate.
+
+**Session source:** the full transcript is
+`/home/lauer/.codex/sessions/2026/10/22/rollout-2026-10-22T23-26-03-01a16702-4146-71d0-8432-3d34f4fbb48d.jsonl`.
+The existing desktop resume launcher opens this session and worktree. Track A
+is nudged at handoff; an index deferral means queued watcher work, not a
+completed ingest. The committed checkpoint and transcript provide durable
+resumption independently of `/tmp/tangles` or scratch coverage reports.
+Ledger writes/approval remain Ryan-owned; the final chat supplies the requested
+record command. This session creates no new PR and requests no merge of this
+historical branch.
+
+## Historical packet — 2026-10-23
 
 The historical KIRO filename is retained so existing links continue to work.
 Ryan assigned Claude the review role and directed Codex: “You take over,
@@ -292,12 +359,14 @@ review, with Codex supplying author evidence. Ryan separately owns G3 PR/merge, 
 promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
-**TL;DR:** [Arc Codex] Reader corrections and 13 regression cases are delivered
-at `3eddaca`, continuing the restored-review candidate. The old parallel
-candidate is superseded. Claude recheck/coverage, Copilot safety audit and Kiro
-implementation review remain open on the new target. Nothing is live.
+**TL;DR:** [Arc Codex] This reader-fix session is closed and its branch preserved.
+The consolidated implementation merged and was promoted by the current owner;
+the historical G2 routing above must not be replayed. Follow the stopping-point
+section for current ownership, recorded closure findings, and resumption.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->
 <!-- src: ../../tests/test_cpu_tripwire_readers.py — Claude C1/C2 regression cases -->
 <!-- src: /home/lauer/.claude/projects/-tmp-convmem-doctor-ack-claude-review-4d1aedd/302044cc-73e9-41a1-b026-3097d18e92aa.jsonl, /home/lauer/.codex/sessions/2026/10/22/rollout-2026-10-22T23-40-11-01a1670f-3005-75e0-8be1-f37f0c9d9955.jsonl — independent review, explicit grants and lane comparison -->
+<!-- src: /home/lauer/Projects/convmem/.worktrees/doctor-ack-g4-routing/docs/plans/STATUS-codex-jsonl-production-integration.md, /home/lauer/Projects/convmem/.worktrees/doctor-ack-g4-routing/docs/inter-model/KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md — current owner gate evidence and acceptance limit -->
+<!-- src: /tmp/tangles/codex-2026-10-23-doctor-fault-ack-01a1697c.md, /home/lauer/.local/share/convmem/decisions-approved.jsonl — consolidation grant and accepted closure-review parent -->
