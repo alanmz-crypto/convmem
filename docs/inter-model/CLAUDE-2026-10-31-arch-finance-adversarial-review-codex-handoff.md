@@ -39,7 +39,7 @@ Repository directory: `reviews/arch-finance-adversarial-review-2026-10-31/`
 ## What Codex can usefully do (pick what Ryan asks for)
 
 - **Second opinion on the verdict:** try to falsify F01–F05 using the quoted sources or newer first-party pages; report any finding you think is over- or under-rated, with a URL and retrieval date.
-- **Close verification items:** V2 (SnapTrade integrations page 2 for M1/Acorns), V5 (Plaid docs on `redirect_uri` for web Hosted Link), V6 (current wording of the Plaid Trial help page), V13 (Google scope categories) are web-readable; V1, V3, V4, V7–V11, V15 need Ryan or a live account.
+- **Close verification items:** V2, V5 and V13 were closed by Claude later on 2026-10-31 (see VERIFICATION-QUEUE.md). V6 (current wording of the Plaid Trial help page) and V14 (OpenClaw release contents) are web-readable; V1, V3, V4, V7–V11, V15 need Ryan or a live account.
 - **Check CSV integrity:** `python3 -c "import csv;print(sum(1 for _ in csv.DictReader(open('reviews/arch-finance-adversarial-review-2026-10-31/CLAIM-RESULTS.csv',encoding='utf-8-sig'))))"` should print `38`; `sha256sum` against `REVIEW-MANIFEST.json`.
 - **Do not:** connect financial accounts, create a Plaid team, install collectors, or treat the review's architecture as implemented. Everything is still research and planning.
 
@@ -61,7 +61,7 @@ The reviewed baseline packet is NOT in the repo (personal data). If you need it,
 Tasks:
 1. Read REVIEW.md fully, then every CLAIM-RESULTS.csv row whose verdict is not "supported".
 2. Try to falsify findings F01–F05 (Plaid Trial eligibility, 12-month consent refresh at Capital One/Bank of America, Statements depository-only, days_requested locked at Item creation, Item budget). Use the URLs in evidence/SOURCE-PASSAGES.md; if you have web access, re-read them and note any wording changes with today's date.
-3. Close verification items V2, V5, V6 and V13 if you have web access; mark the rest CANNOT VERIFY.
+3. If you have web access, re-check V5 and V6 with today's date and confirm or dispute the CLOSED entries V2 and V13; mark the rest CANNOT VERIFY.
 4. Say whether you would change the verdict (revise before the pilot) and why, in five sentences or fewer.
 
 Rules: do not connect accounts, create a Plaid team, install collectors, or modify anything under reviews/ or baseline/. This is research only. Report as AGREE / DISAGREE / CANNOT VERIFY per item with one line of evidence each, biggest verdict-changing item first.

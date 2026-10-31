@@ -8,13 +8,13 @@
   "files": [
     {
       "path": "REVIEW.md",
-      "bytes": 50694,
-      "sha256": "9a654ba5ff647247a8206f5e09c3de40ac7dc1e4b3a6e9ef6f22b9b11af06058"
+      "bytes": 51576,
+      "sha256": "90b205a34eb1dc5154ac8e78b38e4e4f6ee6f37b378812f0c671c085347f8b8a"
     },
     {
       "path": "CLAIM-RESULTS.csv",
-      "bytes": 31858,
-      "sha256": "69da1304dd12531f7a98c2428dcd44e35f54aded2f350612c2270cdbe7b7c4e8"
+      "bytes": 32385,
+      "sha256": "48c32ee5dd8382c08183f838ad09f97929922b98ff7781b2296686adc9a1ee8f"
     },
     {
       "path": "PILOT-GATES.md",
@@ -23,8 +23,8 @@
     },
     {
       "path": "VERIFICATION-QUEUE.md",
-      "bytes": 5598,
-      "sha256": "f5d0bfd8a496b3f1cb9e79f3f01bfcc490ca3a7d8503d76590749f238914e5ab"
+      "bytes": 5812,
+      "sha256": "2d2e15069745d7a18298801b322610e8d474861d773f86a592679cd96c875864"
     },
     {
       "path": "INDEX.md",
@@ -33,8 +33,8 @@
     },
     {
       "path": "evidence/SOURCE-PASSAGES.md",
-      "bytes": 45211,
-      "sha256": "3a9e22d3e3126c7fdd37f337b0ad2b3300eccd91ab4088ff3bd57fa559401a71"
+      "bytes": 47384,
+      "sha256": "2fb4fe4eb4807bf2d1667977c8cf4eadffadc2aa0e3f1f182f446b6f7740821d"
     },
     {
       "path": "evidence/plaid_us_institution_coverage_2026-10-31.csv",
@@ -48,8 +48,8 @@
     },
     {
       "path": "FULL-REVIEW.md",
-      "bytes": 155068,
-      "sha256": "50254f2a9bed63106b7dddd5a1382b288e6e9f49425740ac563200ddf530537f"
+      "bytes": 158865,
+      "sha256": "85b6aa3dc9bc9589fe289a518c4e135e241a2b6c42923b5faadd0a1a4d965ce9"
     }
   ],
   "codex_handoff": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md"

@@ -112,6 +112,15 @@ Method notes. The review sandbox's outbound proxy refused direct connections to 
 - "Detailed session data, including the public token, will also be available from /link/token/get for six hours after the session has completed. In general, it is recommended to use the webhook to obtain the public token, since it will allow you to get the public token more promptly, but you may want to use /link/token/get if your integration does not use webhooks, or as a backup mechanism"
 - "In /link/token/get the public_token is present in both the on_success object and the results object. It is recommended to use the results object"
 
+### https://plaid.com/docs/link/hosted-link (search snippet, mobile section)
+- "`redirect_uri` is required when `hosted_link.is_mobile_app` is `true`, and should be a URL that opens up your native mobile application, such as a Universal Link on iOS or an Android App Link on Android."
+- "The `redirect_uri` is used in situations where Plaid opens up another mobile app, like Chase, for app-to-app authentication."
+- "`hosted_link.completion_redirect_uri` [...] Unlike the `redirect_uri` value, this URI does not need to be registered with the Plaid Dashboard, nor does it need to point to a 'real' location."
+
+### https://plaid.com/docs/link/hosted-link/embedded-clients (search snippet)
+- "Webpage embeds: If the flow is embedded in a webpage [...] The merchant can redirect their entire page to the Plaid Hosted Link URI. Upon the user completing Link, Plaid will redirect that webpage to the `completion_redirect_uri` provided in the `/link/token/create` call."
+- "Continuity: With Hosted Link, Plaid manages the redirects between Plaid Link and the bank's OAuth site."
+
 ### https://plaid.com/docs/api/link/ (extract, query-focused)
 - "/link/token/get [...] This endpoint is used with Link flows that don't provide a public token via frontend callbacks, such as the Hosted Link flow and the Multi-Item Link flow."
 - "link_sessions [...] Session data will be provided for up to six hours after the session has ended."
@@ -192,8 +201,11 @@ Method notes. The review sandbox's outbound proxy refused direct connections to 
 - "Standard transaction history is refreshed daily and delayed by one day on both options."
 - "Your Personal API key only accesses your own brokerage accounts."
 
-### https://snaptrade.com/brokerage-integrations (extract, pages 1, 3, 4, 5 via search snippets)
-- Names seen: AJ Bell, Alpaca, Bank of America, Binance, BMO InvestorLine, BUX, Capital One, Chase, CIBC Investor's Edge, Citi, Coinbase, CommSec, DEGIRO, E*TRADE, Edward Jones, Empower, eToro, tastytrade, TD Direct Investing, TIAA, TradeStation, Tradier, Trading212, Transamerica, U.S. Bank, Upstox, Vanguard US, Wealthsimple, Webull Canada, Webull US, Wells Fargo, Zerodha. M1 Finance and Acorns were not seen; page 2 could not be retrieved (rate limit).
+### https://snaptrade.com/brokerage-integrations (extract; pages 1 and 2 read directly, pages 3–5 via search snippets)
+- Page 1 names: AJ Bell, Alpaca, Bank of America, Binance, BMO InvestorLine, BUX, Capital One, Chase, CIBC Investor's Edge, Citi, Coinbase, CommSec, DEGIRO, E*TRADE, Edward Jones, Empower, eToro.
+- Page 2 names (https://snaptrade.com/brokerage-integrations?page=2, extract): Empower, eToro, Fidelity, Hargreaves Lansdown, Interactive Brokers, Kraken, moomoo, National Bank Direct Brokerage, PNC, Public, Qtrade Direct Investing, Questrade, Robinhood, Schwab, Stake Australia.
+- Pages 3–5 names: tastytrade, TD Direct Investing, TIAA, TradeStation, Tradier, Trading212, Transamerica, U.S. Bank, Upstox, Vanguard US, Wealthsimple, Webull Canada, Webull US, Wells Fargo, Zerodha.
+- M1 Finance and Acorns do not appear anywhere in the alphabetical listing (they would fall between Kraken and moomoo, and between AJ Bell and Alpaca).
 
 ## Tiller
 
@@ -227,6 +239,13 @@ Method notes. The review sandbox's outbound proxy refused direct connections to 
 ### https://support.google.com/cloud/answer/7454865 (extract, "Unverified apps")
 - "An unverified app is an app or Apps Script that requests a sensitive or restricted OAuth scope, but hasn't gone through the Google verification process."
 - "If your app remains unverified, the unverified app screen will be displayed before the consent screen, and your app will be limited to 100 new users until it is [verified]"
+
+### https://support.google.com/cloud/answer/13807380 (search snippet, "Requesting Minimum Scopes")
+- "gmail.readonly | Read all resources and their metadata—no write operations. | Restricted"
+- "drive.readonly | This app wants permission to: See your Google Drive files; Download your files; See the names and emails of people you share files with [...] | Restricted | drive.file"
+
+### https://developers.google.com/workspace/gmail/api/auth/scopes (search snippet)
+- "Restricted: These scopes provide wide access to Google user data and require restricted scope OAuth App Verification." "If you store restricted scope data on servers (or transmit), then you must go through a security assessment."
 
 ### https://support.google.com/cloud/answer/9110914 (extract, "OAuth App Verification Help Center")
 - "When you add scopes to your project, scope categories (non-sensitive, sensitive, or restricted) are indicated automatically in the Google Cloud Console."
