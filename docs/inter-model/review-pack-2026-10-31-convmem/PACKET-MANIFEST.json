@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "created_date": "2026-10-31",
+  "assessed_source_commit": "d54f92bcd78248c8aee8a54df758564752d79aa4",
+  "delivery_branch": "docs/2026-10-31-general-memory-fable-review",
+  "path_base": "repository root",
+  "exclusions": [
+    "this manifest (avoids self-reference)",
+    "docs/inter-model/LATEST.md (routing pointer; included in delivery commit)"
+  ],
+  "files": [
+    {
+      "path": "docs/inter-model/CODEX-2026-10-31-convmem-general-memory-fable-review-handoff.md",
+      "bytes": 12587,
+      "sha256": "47ec09b8fd6087c981c5b16c5dee6ec4bbb64c59c023907a45fa6dd0210b7a65"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/ASSESSMENT.md",
+      "bytes": 9473,
+      "sha256": "e4778c2a07e7fb0cbdfc7b40d6c033f421870867148916e5a27eb369ec85d854"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/CLAIMS.md",
+      "bytes": 17912,
+      "sha256": "7ccbbd379b7f569cc0b03af87aadafe68ea14a5112e0bf5583d131e7e673b535"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/FIELD-GUIDE.md",
+      "bytes": 7328,
+      "sha256": "56360f8e7af8bd8968dee1905b590aadfe6b9be3be2d48dfd1e7444488cdd400"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/RESEARCH.md",
+      "bytes": 30090,
+      "sha256": "69a921dd221b70c1e8194d7b8b996185527db4c159cbd43aac842258be44f061"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/SOURCE-REGISTER.json",
+      "bytes": 11294,
+      "sha256": "f7f7290ac7315eb74381d787a0883f0eedcd7931f849724881e740a8fbcd984a"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/VALIDATION.md",
+      "bytes": 1156,
+      "sha256": "cc4137522539dcbb9ee59edb48a7417ca5f9f7049592a45e72048084c8407c60"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/convmem-research.pdf",
+      "bytes": 83832,
+      "sha256": "938deadfedc2b5837181404706c85326c310f8384ef15b67f57506112385f2e4"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/make_pdf.py",
+      "bytes": 4171,
+      "sha256": "240b441e6a9dfe8f4d76afb18b80d7eb5409304d7bed8d511ae7652a9c7d9afb"
+    },
+    {
+      "path": "docs/inter-model/review-pack-2026-10-31-convmem/research.html",
+      "bytes": 33810,
+      "sha256": "48dbbb9f783c1280370c2ae82e8b216affdfb0f41905b3176d4be44f4a8fe8e8"
+    }
+  ]
+}

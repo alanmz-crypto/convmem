@@ -1,0 +1,223 @@
+{
+  "date": "2026-10-31",
+  "scope": "selected public sources; not a raw search log",
+  "search_accounting": {
+    "requested_result_slots": 184,
+    "search_calls": 30,
+    "workstreams": [
+      {
+        "name": "architecture and source-first alternatives",
+        "calls": 4,
+        "slots": 26
+      },
+      {
+        "name": "memory and time",
+        "calls": 5,
+        "slots": 25
+      },
+      {
+        "name": "retrieval and multilingual search",
+        "calls": 5,
+        "slots": 35
+      },
+      {
+        "name": "ingestion and structured documents",
+        "calls": 6,
+        "slots": 30
+      },
+      {
+        "name": "evaluation",
+        "calls": 5,
+        "slots": 33
+      },
+      {
+        "name": "learning and memory trust",
+        "calls": 5,
+        "slots": 35
+      }
+    ]
+  },
+  "limits": [
+    "Search results included duplicates, mirrors, paper versions and rejected sources.",
+    "Some primary pages were read through bounded extracts, not complete-paper line audits.",
+    "Raw agent search transcripts were not preserved in this package.",
+    "No private Drive text was sent to web search."
+  ],
+  "selected_references": [
+    {
+      "description": "**[1] LongMemEval.** [Original paper, ICLR 2025.](https://arxiv.org/html/2410.10813v2) Five memory abilities, source granularity and extraction experiments. Evidence conversations are constructed and edited; not a personal-file deployment.",
+      "urls": [
+        "https://arxiv.org/html/2410.10813v2"
+      ]
+    },
+    {
+      "description": "**[2] Filesystem-Based Memory for LLM Agents.** [July 2026 preprint.](https://arxiv.org/html/2607.26637) Organization, growth and search-cost comparisons. Small per-condition samples and model/harness dependence limit generalization.",
+      "urls": [
+        "https://arxiv.org/html/2607.26637"
+      ]
+    },
+    {
+      "description": "**[3] SUMER.** [Goal-Directed Search Outperforms Goal-Agnostic Memory Compression.](https://arxiv.org/html/2511.21726v1) Raw-memory search with reinforcement learning. Training and benchmark choices are part of the result; it does not show that a simple untrained search loop reproduces the gain.",
+      "urls": [
+        "https://arxiv.org/html/2511.21726v1"
+      ]
+    },
+    {
+      "description": "**[4] LightMem.** [Original paper, version 4.](https://arxiv.org/html/2510.18866v4) Lightweight stages and offline consolidation. Borrow the separation of costs; test compression and update semantics independently.",
+      "urls": [
+        "https://arxiv.org/html/2510.18866v4"
+      ]
+    },
+    {
+      "description": "**[5] MemoryBench.** [Version 4.](https://arxiv.org/html/2510.17281v4) Feedback-based learning across tasks and languages; complex memory does not consistently win. Simulated users and assisted grading remain limitations.",
+      "urls": [
+        "https://arxiv.org/html/2510.17281v4"
+      ]
+    },
+    {
+      "description": "**[6] RealMem.** [Original project-oriented memory study.](https://arxiv.org/html/2601.06966) Useful evolving-project design; interactions are synthesized despite the name.",
+      "urls": [
+        "https://arxiv.org/html/2601.06966"
+      ]
+    },
+    {
+      "description": "**[7] HippoRAG 2.** [Original paper.](https://arxiv.org/html/2502.14802) Passage-preserving graph retrieval with error analysis. Heavy reference models and extra retrieval stages complicate local transfer.",
+      "urls": [
+        "https://arxiv.org/html/2502.14802"
+      ]
+    },
+    {
+      "description": "**[8] QMD.** [Official repository.](https://github.com/tobi/qmd) Inspectable local lexical/vector search and source-reading interface. Implementation reference, not an independent quality comparison.",
+      "urls": [
+        "https://github.com/tobi/qmd"
+      ]
+    },
+    {
+      "description": "**[9] Hybrid fusion analysis.** [Bruch, Gai and Ingber.](https://arxiv.org/html/2210.11934v4) Comparative fusion evidence; no universal parameter choice for this corpus.",
+      "urls": [
+        "https://arxiv.org/html/2210.11934v4"
+      ]
+    },
+    {
+      "description": "**[10] Contextual Retrieval.** [Anthropic's original engineering report.](https://www.anthropic.com/engineering/contextual-retrieval) Vendor-run retrieval experiment. Retrieval-failure rates are not answer accuracy or ConvMem forecasts.",
+      "urls": [
+        "https://www.anthropic.com/engineering/contextual-retrieval"
+      ]
+    },
+    {
+      "description": "**[11] Stronger Baselines / DOS RAG.** [EMNLP 2025 paper.](https://aclanthology.org/2025.emnlp-main.1656/) Source-order reading under matched budgets. English long-document benchmarks differ from changing personal projects.",
+      "urls": [
+        "https://aclanthology.org/2025.emnlp-main.1656/"
+      ]
+    },
+    {
+      "description": "**[12] Question Decomposition for RAG.** [Original paper.](https://arxiv.org/html/2507.00355v1) Useful compound-query experiments; additional calls and harmful single-hop cases.",
+      "urls": [
+        "https://arxiv.org/html/2507.00355v1"
+      ]
+    },
+    {
+      "description": "**[13] ChainRAG.** [Original paper.](https://arxiv.org/html/2502.14245v1) Entity preservation in multi-step retrieval; its full graph architecture is unnecessary to test that principle.",
+      "urls": [
+        "https://arxiv.org/html/2502.14245v1"
+      ]
+    },
+    {
+      "description": "**[14] Zep / Graphiti.** [Original paper.](https://arxiv.org/html/2501.13956) Bitemporal graph design and vendor evaluation. Aggregate gains conceal some category regressions; new-ingestion priority requires caution with archives.",
+      "urls": [
+        "https://arxiv.org/html/2501.13956"
+      ]
+    },
+    {
+      "description": "**[15] LlamaIndex ingestion.** [Official pipeline documentation.](https://developers.llamaindex.ai/python/framework/module_guides/loading/ingestion_pipeline/) Transformation caching and document management. Complete-scope deletion semantics must be distinguished from partial watcher batches.",
+      "urls": [
+        "https://developers.llamaindex.ai/python/framework/module_guides/loading/ingestion_pipeline/"
+      ]
+    },
+    {
+      "description": "**[16] Docling.** [Document model](https://docling-project.github.io/docling/concepts/docling_document/), [technical report](https://arxiv.org/html/2408.09869v4), and [local deployment options](https://docling-project.github.io/docling/usage/advanced_options/). Structured extraction and locators; actual parser correctness still requires a corpus-specific check.",
+      "urls": [
+        "https://docling-project.github.io/docling/concepts/docling_document/",
+        "https://arxiv.org/html/2408.09869v4",
+        "https://docling-project.github.io/docling/usage/advanced_options/"
+      ]
+    },
+    {
+      "description": "**[17] Spreadsheet execution.** [openpyxl formula documentation](https://openpyxl.readthedocs.io/en/stable/simple_formulae.html) and [LibreOffice recalculation](https://help.libreoffice.org/latest/en-US/text/scalc/01/calculate.html). Parsing formulas, reading caches and recalculating are distinct operations.",
+      "urls": [
+        "https://openpyxl.readthedocs.io/en/stable/simple_formulae.html",
+        "https://help.libreoffice.org/latest/en-US/text/scalc/01/calculate.html"
+      ]
+    },
+    {
+      "description": "**[18] OmniDocBench.** [Original benchmark paper.](https://arxiv.org/html/2412.07626) Separate text, table, formula and reading-order metrics; Chinese/English coverage cannot establish Thai results.",
+      "urls": [
+        "https://arxiv.org/html/2412.07626"
+      ]
+    },
+    {
+      "description": "**[19] PyThaiNLP.** [Official tokenizer documentation.](https://pythainlp.org/docs/5.1/api/tokenize.html) Local segmentation choices and dictionaries; select with names and mixed-language tests.",
+      "urls": [
+        "https://pythainlp.org/docs/5.1/api/tokenize.html"
+      ]
+    },
+    {
+      "description": "**[20] SEA-BED.** [ACL July 2026 paper.](https://aclanthology.org/2026.acl-long.397/) Region-specific embedding evaluation. Useful candidates include [BGE-M3](https://huggingface.co/BAAI/bge-m3) and [multilingual E5](https://arxiv.org/html/2402.05672), subject to local evidence.",
+      "urls": [
+        "https://aclanthology.org/2026.acl-long.397/",
+        "https://huggingface.co/BAAI/bge-m3",
+        "https://arxiv.org/html/2402.05672"
+      ]
+    },
+    {
+      "description": "**[21] Thai OCR.** [Official PaddleOCR model card](https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec) and [multilingual documentation](https://www.paddleocr.ai/latest/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.html). Developer-reported recognition metrics do not establish complete-document fidelity.",
+      "urls": [
+        "https://huggingface.co/PaddlePaddle/th_PP-OCRv5_mobile_rec",
+        "https://www.paddleocr.ai/latest/en/version3.x/algorithm/PP-OCRv5/PP-OCRv5_multi_languages.html"
+      ]
+    },
+    {
+      "description": "**[22] Reflexion and Voyager.** [Reflexion paper](https://arxiv.org/html/2303.11366) and [Voyager project](https://voyager.minedojo.org/). Outcome-informed lessons and skill reuse in bounded environments.",
+      "urls": [
+        "https://arxiv.org/html/2303.11366",
+        "https://voyager.minedojo.org/"
+      ]
+    },
+    {
+      "description": "**[23] ACE.** [Agentic Context Engineering paper.](https://arxiv.org/html/2510.04618) Itemized lessons and incremental updates. Reflection quality and task suitability constrain benefits.",
+      "urls": [
+        "https://arxiv.org/html/2510.04618"
+      ]
+    },
+    {
+      "description": "**[24] MemoryGraft.** [Primary preprint.](https://arxiv.org/abs/2512.16962) Experience-memory poisoning in a specific agent setup; motivates source-origin and promotion-boundary tests, not a diagnosis of ConvMem.",
+      "urls": [
+        "https://arxiv.org/abs/2512.16962"
+      ]
+    },
+    {
+      "description": "**[25] Context engineering.** [Anthropic engineering.](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) Firsthand guidance on bounded context and selective reading; operational guidance rather than a controlled product benchmark.",
+      "urls": [
+        "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"
+      ]
+    },
+    {
+      "description": "**[26] MemGPT.** [Original paper.](https://arxiv.org/abs/2310.08560) Working context versus external recall; older model/context assumptions.",
+      "urls": [
+        "https://arxiv.org/abs/2310.08560"
+      ]
+    },
+    {
+      "description": "**[27] Mem0.** [Original paper.](https://arxiv.org/html/2504.19413) Vendor research with cost-quality tradeoffs; excludes unanswerable/adversarial cases in the reported evaluation. Retrieved-context token counts are not total lifetime processing cost.",
+      "urls": [
+        "https://arxiv.org/html/2504.19413"
+      ]
+    },
+    {
+      "description": "**[28] Late Chunking.** [Version 3.](https://arxiv.org/html/2409.04701v3) Contextual token encoding before chunk pooling. Promising, but task-dependent and a change to embedding/runtime and incremental-cache assumptions.",
+      "urls": [
+        "https://arxiv.org/html/2409.04701v3"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Latest cross-model handoff (single pointer)
 
-**Updated:** 2026-10-24
+**Updated:** 2026-10-31
 
 This file is intentionally short. It routes a new session to current state; it
 is not a status log, decision ledger, or archive. For live corpus and service
@@ -8,6 +8,8 @@ state, run `convmem brief --stdout-only`. For project and arc state, use the
 cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
+
+- **General-purpose memory assessment — saved for Claude Fable adversarial review (2026-10-31, Codex; ad-hoc):** Ryan requested a broad local-PC memory assessment, deeper web research and this review handoff. The [review packet](CODEX-2026-10-31-convmem-general-memory-fable-review-handoff.md) and [field guide](review-pack-2026-10-31-convmem/FIELD-GUIDE.md) preserve the assessed source revision, research, claims and exact-content manifest. **Next lane:** Claude Fable reviews; no new capability is implemented and no existing arc grant changes. Private corpus evidence is saved separately.
 
 - **[Arc Codex #286] Priority #1: acknowledgment PR #416 is open for Ryan's G3 decision
   (2026-10-24, Codex):** The sole takeover branch is
