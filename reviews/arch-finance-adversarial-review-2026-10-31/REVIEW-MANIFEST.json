@@ -28,8 +28,8 @@
     },
     {
       "path": "INDEX.md",
-      "bytes": 1481,
-      "sha256": "e58a17f72594ed003a2de740779344fbb8597fe42199362920c7466a4f059872"
+      "bytes": 1738,
+      "sha256": "9aa2a6bbf99a76b77910e86f96242470b8654dace6f4b04860f9c91f8af83c8a"
     },
     {
       "path": "evidence/SOURCE-PASSAGES.md",
@@ -45,6 +45,12 @@
       "path": "evidence/plaid-directory-extract-2026-10-31.csv",
       "bytes": 4745,
       "sha256": "6f059ce2c7ec997225b1371f7af4fa408dd77a2fde3054caa56ace105a82429b"
+    },
+    {
+      "path": "FULL-REVIEW.md",
+      "bytes": 155068,
+      "sha256": "50254f2a9bed63106b7dddd5a1382b288e6e9f49425740ac563200ddf530537f"
     }
-  ]
+  ],
+  "codex_handoff": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md"
 }
