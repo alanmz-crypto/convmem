@@ -12,7 +12,7 @@ The decision is whether this proposed direction deserves a bounded implementatio
 
 | Field | Value |
 |---|---|
-| Review state | `NOT_STARTED` — this packet is ready; Claude Fable has not reviewed it |
+| Review state | `DELIVERED`; verdict: `REVISE_BEFORE_PLANNING`; reviewer: [CLAUDE-2026-10-31-convmem-general-memory-adversarial-review.md](CLAUDE-2026-10-31-convmem-general-memory-adversarial-review.md) |
 | Assessed source | `d54f92bcd78248c8aee8a54df758564752d79aa4` |
 | Delivery branch | `docs/2026-10-31-general-memory-fable-review` |
 | Exact content target | The delivery commit supplied with this handoff and `review-pack-2026-10-31-convmem/PACKET-MANIFEST.json`; report both in your verdict |
