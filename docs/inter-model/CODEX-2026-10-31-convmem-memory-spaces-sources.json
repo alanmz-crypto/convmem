@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-31",
+  "arc": "none (ad-hoc)",
+  "assessedSource": "d54f92bcd78248c8aee8a54df758564752d79aa4",
+  "method": "Six Exa searches; relevant passages from nine unique primary pages fetched and inspected. Raw connector responses retained in additive private delivery. No whole-page completeness claim.",
+  "accounting": {
+    "searchCalls": 6,
+    "requestedResultSlots": 30,
+    "uniquePrimaryPagesFetched": 9,
+    "pageFetchRequestsIncludingRefetch": 10,
+    "fetchToolCalls": 3
+  },
+  "queries": [
+    {
+      "record": "storage-01.json",
+      "query": "Official Chroma documentation tenants databases collections data isolation authentication authorization multi tenancy local persistent client",
+      "numResults": 5
+    },
+    {
+      "record": "storage-02.json",
+      "query": "Official Qdrant multitenancy documentation separate collections payload partitioning tenant indexes resource overhead small tenants",
+      "numResults": 5
+    },
+    {
+      "record": "storage-03.json",
+      "query": "Official LangGraph long term memory store namespaces user organization agent access scopes thread memory separation",
+      "numResults": 5
+    },
+    {
+      "record": "mobile/searches.json",
+      "workstream": "Three distinct remote-access, filtering, and synchronization searches; exact requests preserved in raw delivery",
+      "numResultsPerSearch": 5,
+      "searchCount": 3
+    }
+  ],
+  "sources": [
+    {
+      "id": "S01",
+      "url": "https://docs.trychroma.com/docs/run-chroma/clients",
+      "title": "Chroma clients",
+      "kind": "Official documentation",
+      "supports": "PersistentClient stores data at a selected path; client/server alternatives exist.",
+      "limits": "Current upstream documentation does not verify this checkout or installed dependency versions. No destructive reset example was executed.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S02",
+      "url": "https://cookbook.chromadb.dev/strategies/multi-tenancy/",
+      "title": "Chroma multi-tenancy strategies",
+      "kind": "Project cookbook",
+      "supports": "Naive multi-tenancy puts enforcement responsibility on the application.",
+      "limits": "Not a present-version authentication implementation guide; no named auth stack selected.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S03",
+      "url": "https://qdrant.tech/documentation/manage-data/multitenancy/",
+      "title": "Qdrant multitenancy",
+      "kind": "Official documentation",
+      "supports": "Separate collections carry overhead; shared payload partitions are an alternative.",
+      "limits": "Architecture comparison only, not Chroma benchmarks or a migration recommendation. Fetch capped at 24000 characters; opening tradeoff and relevant passages inspected.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S04",
+      "url": "https://docs.langchain.com/oss/python/langgraph/stores",
+      "title": "LangGraph stores",
+      "kind": "Official documentation",
+      "supports": "Long-term namespaces can represent arbitrary groupings and are separate from threads; prefix searches can broaden scope.",
+      "limits": "Namespace support is not an authorization guarantee; no framework adoption selected.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S05",
+      "url": "https://docs.trychroma.com/docs/run-chroma/client-server",
+      "title": "Chroma client-server mode",
+      "kind": "Official documentation",
+      "supports": "HTTP clients connect to a separate server without a whole database copy on each client.",
+      "limits": "No proof of current ConvMem remote service or phone app compatibility.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S06",
+      "url": "https://pouchdb.com/2015/04/05/filtered-replication.html",
+      "title": "PouchDB filtered replication",
+      "kind": "Official project article, 2015-04-05",
+      "supports": "Filters do not replace authentication; changing membership and deletion fields can affect propagation.",
+      "limits": "Historical PouchDB 3.4.0 article; old API and purge statements are not treated as current. Corroborated for authorization distinction by S07.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S07",
+      "url": "https://docs.couchdb.org/en/stable/api/database/security.html",
+      "title": "CouchDB database security",
+      "kind": "Official documentation",
+      "supports": "Database members may read all document types in the database.",
+      "limits": "CouchDB-specific access rules, not verified ConvMem behavior.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S08",
+      "url": "https://docs.couchbase.com/couchbase-lite/current/c/replication.html",
+      "title": "Couchbase Lite replication",
+      "kind": "Official documentation",
+      "supports": "Local/remote copies, collection selection, conflict handling and checkpoints; revocation auto-purge occurs on next pull with exceptions.",
+      "limits": "Illustrative sync design, not adoption. Some parameter prose inconsistent; no flag advice derived. Refetched for revocation section. Modern protocol is not CouchDB-compatible.",
+      "accessed": "2026-10-31"
+    },
+    {
+      "id": "S09",
+      "url": "https://docs.couchbase.com/sync-gateway/current/database-management.html",
+      "title": "Couchbase database management",
+      "kind": "Official documentation",
+      "supports": "Revision pruning and tombstone purging require policies.",
+      "limits": "Database revision machinery does not establish permanent original-file preservation.",
+      "accessed": "2026-10-31"
+    }
+  ]
+}

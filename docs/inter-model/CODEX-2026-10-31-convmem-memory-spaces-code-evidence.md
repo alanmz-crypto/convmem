@@ -1,0 +1,54 @@
+# ConvMem memory spaces — static source evidence
+
+Date: 2026-10-31. Arc: none (ad-hoc). Assessed source: `d54f92bcd78248c8aee8a54df758564752d79aa4`. Source paths and line numbers below refer to [that commit](https://github.com/alanmz-crypto/convmem/tree/d54f92bcd78248c8aee8a54df758564752d79aa4). The inspected implementation files have no diff from that commit. This is a bounded static audit, not a proof that every path has been found. No project code, tests, fixtures, model calls, services, or corpus operations were run. No implementation is proposed as already available.
+
+## Architectural recommendation
+
+Use **memory space** for an independently owned corpus with its own admission policy, derived memory, preserved originals, and lifecycle. An activity can have its own initially empty space; several authorized people or clients can use the same shared space. A person, model, or application is not itself the space. Blank means no inherited user-derived knowledge or conversation records; the installed program and generic model weights need not be copied.
+
+A simple starting candidate supported by the current code is **one complete configuration and data root per space, selected before a fresh process starts**. Keep the existing corpus as a separately selected legacy space. Do not implement spaces as domain labels, and do not assume that separate Chroma directories alone isolate associated files. This is a compatibility judgment, not a measured cost or performance result.
+
+`CONVMEM_CONFIG` is useful selection machinery, but **does not by itself prove full isolation**. A complete path inventory and explicit binding of intake, reads, writes, evidence expansion, state, exports, and recovery are prerequisites to any later implementation claim.
+
+## Evidence and consequences
+
+| Mechanism | Source evidence | Consequence |
+| --- | --- | --- |
+| Configuration selection | `config.py:29–31` resolves `CONVMEM_CONFIG` at import; `config.py:715–735` loads TOML and expands known paths. | Set the selection before importing ConvMem. Changing the environment after import does not reselect `CONFIG_PATH`. Loading a different TOML does not establish a containment sandbox. |
+| Path-specific Chroma store | `chroma_store.py:132–166` canonicalizes `chroma_dir` and constructs `PersistentClient(path=...)`; `chroma_store.py:25–26,298–306` uses fixed collection names. | Separate complete data roots fit the existing interface. The wrapper supplies neither tenant nor database identity. |
+| Custom SQLite readers | `chroma_readonly.py:59–84` joins collections using collection name, and `chroma_readonly.py:194–205` retrieves collection metadata by name. | Native Chroma tenants/databases would require a full custom-reader audit and likely changes; they are not a safe configuration-only toggle. Two tenants with identically named collections in one store must not be assumed isolated by these queries. |
+| Domain classification | `domains.py:1–13,62–72` defines a permissive dotted taxonomy; `read_scope.py:63–90` explicitly lets `cross_domain` widen a call to unscoped retrieval. | Domain is a retrieval convenience, not a membership boundary. Domain selection does not create a blank corpus. |
+| Other MCP reads | `mcp_server.py:802–815` expands by ID, `mcp_server.py:915–925` follows ledger relations, `mcp_server.py:959–985` reports whole-store statistics. | Filtering only search would leave other memory operations outside the boundary. All operations must resolve an authorized selected space. |
+| Current MCP transport | `mcp_server.py:525–528,997–1000` instantiates FastMCP and runs stdio. | This entry point supports a local process integration. It provides no source evidence of a deployed remotely authenticated multiuser space service. Existing write approval/guard mechanisms should not be described as that service. |
+| Production writer bindings | `chroma_write_store.py:1096–1129` accepts explicit config, lock, attestation, and census paths and reopens the live configuration. `repository_knowledge_index.py:99–110,275–277` accepts `chroma_dir` but opens the production session without passing those bindings. | A caller-provided `chroma_dir` or parsed config is insufficient evidence that a write uses that destination. Follow the live writer boundary and its auxiliary paths. |
+| Raw evidence resolution | `chunk_expand.py:455–474` resolves record metadata in the configured store and then resolves its `source_path`; `chunk_expand.py:477–486` tells callers to open non-session source paths. | A store boundary does not automatically confine access to original files. Full-original preservation requires an explicit space/revision/bytes binding and an authorized evidence-read route. |
+
+## Paths and state that prevent a one-variable isolation claim
+
+These are concrete examples, not an exhaustive inventory. Do not copy deployed personal paths into new public profiles.
+
+| Artifact | Evidence and concern |
+| --- | --- |
+| Main stores and exports | `config.example.toml:23–32` configures Chroma, processed state, JSONL export, and incremental state separately. Every value must belong to the intended space. |
+| Decision queues | `propose_decision.py:30–39` places pending and approved decisions in the **parent** of `chroma_dir`. Two sibling Chroma directories under one common parent therefore share these filenames. Each space needs its own whole parent root. |
+| Watch coordination and failures | `watch.py:563–568` derives the watch lock from the Chroma parent; `watch_circuit_breaker.py:49–54` does the same for circuit-breaker state. `watch.py:67` defines a home-relative native-crash log separately. |
+| Intake scope | `watch.py:694–703` combines watch/source paths with extra paths. A new empty database can immediately refill from old conversations if inherited source paths or background jobs remain enabled. Blank creation must begin with no implicit admission or capture. |
+| Writer coordination/evidence | `chroma_write_store.py:41–42,274,446` defaults writer lock and attestation locations separately from config; `writer_census.py:25,233` has a separate census default. A shared lock may serialize work rather than leak records, but shared logs/state still violate a claim of wholly separate artifacts. |
+| Session read defaults | `read_scope.py:12–19,38–48` has a separate home-relative persisted scope file with its own environment override. A selected-space design must not accidentally reuse another space's session defaults. |
+| Generated briefs and failure logs | `brief.py:20,945–953` uses its own default brief destination unless explicitly overridden. `ingest.py:50` has a separate synthesis-failure log. Generated context and diagnostics can contain corpus-derived information. |
+| In-process caches | `watch.py:104–117` caches processed state once; `rerank.py:14–26` caches one model object without a model-name key. `ledger.py:386–402` and `chroma_store.py:31–33` key their caches by Chroma path. Fresh selected-space processes avoid assuming every module supports live switching. |
+| External model resources | `config.example.toml:35–41` selects model names and endpoints. `rerank.py:17–25` delegates model loading to the library. Separate corpora do not require duplicating generic model weights, but library caches, request logging, providers, credentials and any model session state need explicit classification before shared-service claims. |
+| Existing isolation helper | `incremental_jsonl_isolation.py:109–175,184–199` inventories multiple roots, relocates discovery/cache paths, and writes a fake-model test configuration. This corroborates that isolation spans more than TOML. It is not a ready operational profile and was not run. |
+
+## Requirements for a later bounded design
+
+1. Give each space a stable identity and a complete owned artifact inventory: preserved source versions, source/revision bindings, derived units and embeddings, sidecars, summaries, admitted chat transcripts, decisions, processed state, caches containing source content, logs, generated briefs, exports, backups, and recovery metadata. Generic installed code and model weights may be shared deliberately; space-derived state must remain attributable.
+2. Keep membership separate from memory. One person can select several spaces; several authorized people can share one space. Selecting a different client/model must not silently select a different copy of the corpus. Existing domain filters remain useful within a selected space.
+3. Keep ordinary-document scope and repository-knowledge scope as sibling content types, distinct from memory-space membership. A space may eventually contain either or both. Do not overload `scope_id`, `domain`, project slug, or user identity as an interchangeable tenant key without an explicit design.
+4. Specify explicit selected-space launch and ingestion policies. A fresh space starts with no inherited memory, source admission, watched chat directories, archived originals, exports, or content-bearing caches. Do not migrate, clone, reset, or mutate the legacy corpus merely to introduce a new space.
+5. Bind every read/write/expand/export/backup/restore operation to the selected space, including the writer's reloaded live configuration. Future remote access must authenticate the caller and authorize membership server-side. Physical directories under one OS account are organizational separation, not security against that account or a wrongly authorized server.
+6. Treat preserved originals under F18 as part of the same boundary. Full admitted revision bytes must remain verifiable and retrievable after the working file changes or disappears. Whether identical bytes can be physically deduplicated across spaces is a later storage choice; cross-space equality, existence, retrieval, deletion, and retention must not become accidental information channels. Do not confuse a SHA-256 reference with preserved bytes.
+7. Define later acceptance evidence for empty initialization, read/write separation, same-ID collisions, shared authorized access, denied cross-space access, background intake, original-file expansion, export/restore destinations, and unchanged legacy data. No fixtures or tests are created in this audit.
+8. Keep remote application access and synchronization deferred. A phone can request a small authorized result from one space without holding or mirroring its whole corpus. An offline replica would add conflict handling, deletion propagation, permissions, encryption and recovery obligations; it is a separate design decision, not a requirement implied by having several spaces.
+
+The owner decisions for F17–F19 inform this research. G01–G07 and the reviewed ordinary-document first-slice exclusions remain in force. The source findings do not promote a plan or authorize implementation, fixtures, runtime activity, corpus writes, deployment, or a PR.
