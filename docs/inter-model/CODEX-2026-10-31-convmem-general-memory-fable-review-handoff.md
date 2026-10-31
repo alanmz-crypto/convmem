@@ -12,7 +12,7 @@ The decision is whether this proposed direction deserves a bounded implementatio
 
 | Field | Value |
 |---|---|
-| Review state | `DELIVERED`; verdict: `REVISE_BEFORE_PLANNING`; reviewer: [CLAUDE-2026-10-31-convmem-general-memory-adversarial-review.md](CLAUDE-2026-10-31-convmem-general-memory-adversarial-review.md) |
+| Review state | `DELIVERED` (round 2); verdict: `PASS_FOR_BOUNDED_PLANNING`, conditional on [reassessment §5](CLAUDE-2026-10-31-convmem-general-memory-reassessment.md#5-requirements-for-the-bounded-plan) (G01–G05); reviewer: [CLAUDE-2026-10-31-convmem-general-memory-reassessment.md](CLAUDE-2026-10-31-convmem-general-memory-reassessment.md); plan-promotion gate: Ryan F17–F19 |
 | Assessed source | `d54f92bcd78248c8aee8a54df758564752d79aa4` |
 | Delivery branch | `docs/2026-10-31-general-memory-fable-review` |
 | Exact content target | The delivery commit supplied with this handoff and `review-pack-2026-10-31-convmem/PACKET-MANIFEST.json`; report both in your verdict |
