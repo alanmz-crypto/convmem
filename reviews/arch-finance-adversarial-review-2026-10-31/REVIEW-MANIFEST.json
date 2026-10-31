@@ -1,0 +1,50 @@
+{
+  "review_date": "2026-10-31",
+  "reviewer": "Claude, independent adversarial reviewer",
+  "verdict": "revise before the pilot",
+  "baseline_archive_sha256": "9eb49893ff57e239f69b998b57a9a0a19919af4d19dd9eb3eed02c2288b6cc3c",
+  "baseline_unchanged": true,
+  "live_account_tests_performed": false,
+  "files": [
+    {
+      "path": "REVIEW.md",
+      "bytes": 50694,
+      "sha256": "9a654ba5ff647247a8206f5e09c3de40ac7dc1e4b3a6e9ef6f22b9b11af06058"
+    },
+    {
+      "path": "CLAIM-RESULTS.csv",
+      "bytes": 31858,
+      "sha256": "69da1304dd12531f7a98c2428dcd44e35f54aded2f350612c2270cdbe7b7c4e8"
+    },
+    {
+      "path": "PILOT-GATES.md",
+      "bytes": 15095,
+      "sha256": "2cff3a3352e4f06c95134a5c97e455a0ba9d9724c80d9fe3815fa0435b94f71a"
+    },
+    {
+      "path": "VERIFICATION-QUEUE.md",
+      "bytes": 5598,
+      "sha256": "f5d0bfd8a496b3f1cb9e79f3f01bfcc490ca3a7d8503d76590749f238914e5ab"
+    },
+    {
+      "path": "INDEX.md",
+      "bytes": 1481,
+      "sha256": "e58a17f72594ed003a2de740779344fbb8597fe42199362920c7466a4f059872"
+    },
+    {
+      "path": "evidence/SOURCE-PASSAGES.md",
+      "bytes": 45211,
+      "sha256": "3a9e22d3e3126c7fdd37f337b0ad2b3300eccd91ab4088ff3bd57fa559401a71"
+    },
+    {
+      "path": "evidence/plaid_us_institution_coverage_2026-10-31.csv",
+      "bytes": 832555,
+      "sha256": "6dfdc02755f77e7d0e3ab252626bb302034e6a3286cd9a0d0551e289c9cf5876"
+    },
+    {
+      "path": "evidence/plaid-directory-extract-2026-10-31.csv",
+      "bytes": 4745,
+      "sha256": "6f059ce2c7ec997225b1371f7af4fa408dd77a2fde3054caa56ace105a82429b"
+    }
+  ]
+}
