@@ -9,7 +9,7 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **General-purpose memory — round-2 reassessment delivered (2026-10-31; Arc: none, ad-hoc):** `PASS_FOR_BOUNDED_PLANNING`, conditional on [reassessment §5 / G01–G05](CLAUDE-2026-10-31-convmem-general-memory-reassessment.md#5-requirements-for-the-bounded-plan); [G01–G07 responses and promotion gate](CODEX-2026-10-31-convmem-general-memory-reassessment-response.md); next lane: Ryan for F17–F19 and plan authorization before any plan promotion; no implementation authorization.
+- **General-purpose memory — owner decisions recorded (2026-10-31; Arc: none, ad-hoc):** [F17–F19](CODEX-2026-10-31-convmem-general-memory-owner-decisions.md) select sourced markers, complete verifiable originals for admitted revisions, and CLI-first access across models with later mobile/off-site access; next: bounded-plan draft carrying [reassessment §5](CLAUDE-2026-10-31-convmem-general-memory-reassessment.md#5-requirements-for-the-bounded-plan), G01–G07 and the stronger preservation design for review; Ryan retains plan-promotion authority; no implementation authorization.
 
 - **[Arc Codex #286] Priority #1: acknowledgment PR #416 is open for Ryan's G3 decision
   (2026-10-24, Codex):** The sole takeover branch is
