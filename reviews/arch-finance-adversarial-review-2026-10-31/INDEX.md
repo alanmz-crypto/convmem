@@ -13,3 +13,5 @@
 Codex handoff notes: `docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md`.
 
 `baseline/` is unchanged. The packet-level files (`REVIEW-STATE.json`, `REVIEW-BUNDLE-MANIFEST.json`, `review/README.txt`) were left untouched so that `VERIFY-BUNDLE.py` still passes; `review/README.txt` therefore still says no review has been performed, which is now outdated.
+
+Pre-PC work handoff (owner + lower-tier agent tasks, escalation protocol, agent prompt): `docs/inter-model/CLAUDE-2026-10-31-arch-finance-pre-pc-work-handoff.md`.
