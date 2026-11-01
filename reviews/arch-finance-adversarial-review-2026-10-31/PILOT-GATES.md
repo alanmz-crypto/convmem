@@ -14,10 +14,10 @@ Scope rules for the pilot: two Plaid Items only (Bank of America, Capital One), 
 
 ## G1 Hosted Link onboarding from the local PC
 
-- Prerequisites: G0; the `link` command implemented; `transactions.days_requested=730` and products `transactions,liabilities` in the request; no webhook.
-- Input or trial: call `/link/token/create` with a `hosted_link` object (`url_lifetime_seconds` set to 3600). Try first without `redirect_uri`; if Production rejects the request, add one static HTTPS URL that the owner controls and retry. Open `hosted_link_url` in the owner's normal browser; complete Bank of America OAuth. Poll `/link/token/get` every 30 seconds; exchange the public token.
-- Expected output: `link_sessions[].results.item_add_results[].public_token` within the session; `/item/public_token/exchange` succeeds; `/accounts/get` lists the expected accounts.
-- Pass/fail: pass if an access token is obtained without any always-on public service. Record whether `redirect_uri` was required. Fail if the session cannot complete (then test the web Link SDK on a static HTTPS page as the fallback before abandoning Plaid).
+- Prerequisites: G0; the `link` command implemented; `transactions.days_requested=730`; `products: ["transactions"]` with `required_if_supported_products: ["liabilities"]` (and `statements` for Bank of America); no webhook; no `redirect_uri`.
+- Input or trial (route A, Plaid's preferred path): the collector serves a one-page Link web SDK page on `http://localhost`; open it in the owner's normal desktop browser; Link opens Bank of America's OAuth in a pop-up; on `onSuccess` the page posts the public token to the collector, which exchanges it. Route B (alternate, only if A fails): `/link/token/create` with a `hosted_link` object (`url_lifetime_seconds` 3600), open `hosted_link_url`, complete OAuth, poll `/link/token/get` every 30 seconds, exchange.
+- Expected output: `/item/public_token/exchange` succeeds; `/accounts/get` lists the expected accounts; for route B, `link_sessions[].results.item_add_results[].public_token` appears within the session.
+- Pass/fail: pass if an access token is obtained by either route without any always-on public service; record which route worked and whether Plaid ever demanded a redirect URI. Fail if neither route completes (escalate before abandoning Plaid).
 - Decision resolved: HANDOFF priority question 1 (whether the first connections can actually be made from a local PC).
 
 ## G2 Item accounting

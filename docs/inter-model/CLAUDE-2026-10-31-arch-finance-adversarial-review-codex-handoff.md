@@ -47,6 +47,12 @@ Repository directory: `reviews/arch-finance-adversarial-review-2026-10-31/`
 
 For each item: `AGREE / DISAGREE / CANNOT VERIFY` + one line of evidence (URL + retrieval date, or file path + line). Lead with anything that would change the verdict; keep the rest short. Put new findings in the same severity scale as `REVIEW.md` (Critical / High / Medium / Low) and separate observed contradictions from inferred risks and open questions.
 
+## Second opinion received (2026-10-31, filed 2026-11-01)
+
+Codex's response is filed verbatim at `reviews/arch-finance-adversarial-review-2026-10-31/codex-second-opinion-2026-10-31.md`. Summary: AGREE on the verdict and on F01, F02, F03; AGREE with qualification on F04 (history lock applies when Transactions is initialized, not at Item creation); AGREE as a risk on F05 (eight directory rows are not eight demonstrated logins; eight plus one is nine); V5 closed with the stronger point that desktop-web Link needs no redirect URI; V6 and V13 confirmed; the rest CANNOT VERIFY without the owner or a live account. Codex also objected to the "all products upfront" instruction because it filters institutions.
+
+Claude adopted all of it on 2026-11-01: F04, F05, F07, C-4, C-9, the architecture `link` route and gate G1 were revised; `CLAIM-RESULTS.csv` rows A01, A09, C02 and C04 were updated; the pre-PC handoff's facts list and task T8 were aligned. Verdict unchanged: revise before the pilot.
+
 ## Prompt Ryan can paste into Codex
 
 ```text

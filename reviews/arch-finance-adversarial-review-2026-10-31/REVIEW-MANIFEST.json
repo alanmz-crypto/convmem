@@ -8,28 +8,28 @@
   "files": [
     {
       "path": "REVIEW.md",
-      "bytes": 51576,
-      "sha256": "90b205a34eb1dc5154ac8e78b38e4e4f6ee6f37b378812f0c671c085347f8b8a"
+      "bytes": 55546,
+      "sha256": "4437bff09ff1aabbc7b62755e4a9928879fd02793f473feb4cdfc49230b6d590"
     },
     {
       "path": "CLAIM-RESULTS.csv",
-      "bytes": 32385,
-      "sha256": "48c32ee5dd8382c08183f838ad09f97929922b98ff7781b2296686adc9a1ee8f"
+      "bytes": 33662,
+      "sha256": "637371a70458180a45546925613d427020b659f198ac15d3e7914f8436e1ab95"
     },
     {
       "path": "PILOT-GATES.md",
-      "bytes": 15095,
-      "sha256": "2cff3a3352e4f06c95134a5c97e455a0ba9d9724c80d9fe3815fa0435b94f71a"
+      "bytes": 15310,
+      "sha256": "d1bdb6362a3a8d3a42da9f118fb6df65f792d6f912496e6fdba4e58b2ff684d1"
     },
     {
       "path": "VERIFICATION-QUEUE.md",
-      "bytes": 5812,
-      "sha256": "2d2e15069745d7a18298801b322610e8d474861d773f86a592679cd96c875864"
+      "bytes": 5948,
+      "sha256": "50b92e4dd537affc78a091ea72c4c518f2683a7fa61efc6760e7a25a84b11384"
     },
     {
       "path": "INDEX.md",
-      "bytes": 1738,
-      "sha256": "9aa2a6bbf99a76b77910e86f96242470b8654dace6f4b04860f9c91f8af83c8a"
+      "bytes": 1902,
+      "sha256": "04de344e3f97c85f3e469e47879a611658d9b97986f044fed64dbf5599a2c302"
     },
     {
       "path": "evidence/SOURCE-PASSAGES.md",
@@ -48,9 +48,15 @@
     },
     {
       "path": "FULL-REVIEW.md",
-      "bytes": 158865,
-      "sha256": "85b6aa3dc9bc9589fe289a518c4e135e241a2b6c42923b5faadd0a1a4d965ce9"
+      "bytes": 170064,
+      "sha256": "2f1f05cf4227309ed7b9917a0dcbe578a5160a83f8c3beed1edf385fa57b6f72"
+    },
+    {
+      "path": "codex-second-opinion-2026-10-31.md",
+      "bytes": 5297,
+      "sha256": "abc9c56d2f046574875a6c56d7266b810cabe9de4248ddf728b018dd917b32ef"
     }
   ],
-  "codex_handoff": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md"
+  "codex_handoff": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md",
+  "second_opinion": "codex-second-opinion-2026-10-31.md (AGREE; two qualifications adopted 2026-11-01)"
 }
