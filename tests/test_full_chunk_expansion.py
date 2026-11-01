@@ -12,12 +12,16 @@ import pytest
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 from chunk_expand import (
     DEFAULT_MAX_CHARS,
+    ExpandResult,
+    _expected_record_hashes,
+    _render_window,
     expand_record,
     format_expand_output,
     redact_secrets,
     truncate_text,
 )
 from ingest import render_chunk, render_chunk_message_views
+from provenance import canonical_hash
 from provenance_binding import attach_unit_provenance, build_ingest_envelope, projection_metadata
 from tests.incremental_jsonl_helpers import (
     kiro_record,
@@ -198,6 +202,225 @@ def test_exact_cursor_chunk(expand_env) -> None:
     assert result.status == "exact"
     assert "hello expand" in result.text
     assert "world" in result.text
+
+
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "Client S-104 requests a quiet room and email follow-up, not phone calls.",
+        "Rollback deployment build-42 to build-41 before retrying the migration.",
+    ],
+    ids=["synthetic-salon-preference", "development-rollback"],
+)
+def test_expansion_recovers_detail_clipped_before_indexing(expand_env, detail) -> None:
+    """A detail late in a message must survive full-chunk expansion."""
+    cfg, store, home = expand_env
+    content = "Background context. " * 20 + detail
+    path = _cursor_source(
+        home,
+        [_cursor_line("user", content)]
+        + [_cursor_line("assistant", f"Other turn {i}") for i in range(59)],
+    )
+    messages = get_parser(path)(str(path))
+    assert detail not in render_chunk(messages)
+    _seed_unit(
+        store,
+        unit_id="unit-late-detail",
+        source_path=str(path),
+        start=0,
+        end=59,
+        window=messages,
+        tool="cursor",
+    )
+
+    result = expand_record("unit-late-detail", cfg=cfg)
+
+    assert detail in result.text
+    assert result.status == "exact"  # Full source records match their stored hashes.
+    assert not result.truncated
+    assert not result.warning
+
+
+def test_expansion_preserves_long_message_with_explicit_budget(expand_env) -> None:
+    cfg, store, home = expand_env
+    detail = "\n    rollback_target = 'build-41'\n"
+    content = "x" * 21_000 + detail
+    path = _cursor_source(home, [_cursor_line("assistant", content)])
+    messages = get_parser(path)(str(path))
+    assert detail.strip() not in render_chunk(messages)
+    _seed_unit(
+        store,
+        unit_id="unit-long-detail",
+        source_path=str(path),
+        start=0,
+        end=0,
+        window=messages,
+        tool="cursor",
+    )
+
+    bounded = expand_record("unit-long-detail", cfg=cfg)
+    complete = expand_record("unit-long-detail", cfg=cfg, max_chars=25_000)
+
+    assert bounded.truncated
+    assert len(bounded.text) <= DEFAULT_MAX_CHARS
+    assert "truncated" in bounded.text
+    assert not complete.truncated
+    assert complete.text == f"assistant: {messages[0]['content']}"
+    assert detail.strip() in complete.text
+    assert not complete.warning
+
+
+def test_newly_expanded_tail_is_redacted(expand_env) -> None:
+    cfg, store, home = expand_env
+    secret = "sk-" + "b" * 24
+    path = _cursor_source(home, [_cursor_line("user", "x" * 11_000 + " " + secret)])
+    messages = get_parser(path)(str(path))
+    assert secret not in render_chunk(messages)
+    _seed_unit(
+        store,
+        unit_id="unit-tail-secret",
+        source_path=str(path),
+        start=0,
+        end=0,
+        window=messages,
+        tool="cursor",
+    )
+
+    redacted = expand_record("unit-tail-secret", cfg=cfg)
+    plain = expand_record("unit-tail-secret", cfg=cfg, redact=False)
+
+    assert secret not in redacted.text
+    assert "[REDACTED]" in redacted.text
+    assert secret in plain.text
+
+
+def test_changed_tail_is_detected_even_when_indexed_rendering_matches(expand_env) -> None:
+    """Full record commitments catch drift invisible to the lossy hash."""
+    cfg, store, home = expand_env
+    prefix = "x" * 11_000
+    path = _cursor_source(home, [_cursor_line("user", prefix + " original tail")])
+    messages = get_parser(path)(str(path))
+    _seed_unit(
+        store,
+        unit_id="unit-tail-drift",
+        source_path=str(path),
+        start=0,
+        end=0,
+        window=messages,
+        tool="cursor",
+    )
+    path.write_text(_cursor_line("user", prefix + " changed tail") + "\n", encoding="utf-8")
+
+    result = expand_record("unit-tail-drift", cfg=cfg)
+
+    assert "changed tail" in result.text
+    assert result.status == "drifted"
+    assert "Full source records changed since indexing" in result.warning
+
+
+def test_legacy_lossy_hash_warns_about_unverified_tail(expand_env) -> None:
+    _cfg, _store, home = expand_env
+    content = "x" * 11_000 + " late detail"
+    path = _cursor_source(home, [_cursor_line("user", content)])
+    messages = get_parser(path)(str(path))
+    sha = hashlib.sha256(render_chunk(messages).encode()).hexdigest()
+
+    result = _render_window(
+        source_path=str(path), start=0, end=0, tool="cursor", expected_sha=sha
+    )
+
+    assert "late detail" in result.text
+    assert "hash does not verify that additional text" in result.warning
+
+
+def test_missing_hash_warns_even_for_short_source(expand_env) -> None:
+    _cfg, _store, home = expand_env
+    path = _cursor_source(home, [_cursor_line("user", "short note")])
+    result = _render_window(
+        source_path=str(path), start=0, end=0, tool="cursor", expected_sha=""
+    )
+    assert "source text is unverified" in result.warning
+
+
+@pytest.mark.parametrize("invalid", ["commitment", "source", "locator", "count", "bounds"])
+def test_full_hashes_require_consistent_matching_binding(invalid) -> None:
+    source = "/tmp/synthetic-session.jsonl"
+    window = [{"role": "user", "content": "source note"}]
+    sha = hashlib.sha256(render_chunk(window).encode()).hexdigest()
+    meta = _envelope_for_window(
+        source_path=source, window=window, start=0, end=0, sha=sha
+    )
+    assert _expected_record_hashes(meta, source, 0, 0) == (canonical_hash(window[0]),)
+    if invalid == "commitment":
+        meta["provenance_commitment"] = "0" * 64
+    else:
+        envelope = json.loads(meta["provenance_envelope"])
+        if invalid == "source":
+            envelope["root_bindings"][0]["source_identity"] = "/tmp/another-session.jsonl"
+        elif invalid == "locator":
+            envelope["root_bindings"][0]["record_locator"] = "chunk:9:0"
+        elif invalid == "count":
+            envelope["root_bindings"].append(dict(envelope["root_bindings"][0]))
+        else:
+            envelope["selection_parameters"]["chunk_end"] = 2
+        meta = projection_metadata(attach_unit_provenance({}, envelope))
+    assert _expected_record_hashes(meta, source, 0, 0) is None
+
+
+def test_missing_full_binding_warns_even_when_short_rendering_matches(expand_env) -> None:
+    _cfg, _store, home = expand_env
+    path = _cursor_source(home, [_cursor_line("user", "short note")])
+    messages = get_parser(path)(str(path))
+    sha = hashlib.sha256(render_chunk(messages).encode()).hexdigest()
+    result = _render_window(
+        source_path=str(path), start=0, end=0, tool="cursor", expected_sha=sha
+    )
+    assert "Full source-record consistency could not be checked" in result.warning
+
+
+def test_offset_recovery_uses_full_hashes_to_disambiguate_clipped_prefixes(expand_env) -> None:
+    cfg, store, home = expand_env
+    prefix = "x" * 11_000
+    original = prefix + " correct rollback instruction"
+    path = _cursor_source(home, [_cursor_line("user", original)])
+    messages = get_parser(path)(str(path))
+    _seed_unit(
+        store,
+        unit_id="unit-relocated-detail",
+        source_path=str(path),
+        start=0,
+        end=0,
+        window=messages,
+        tool="cursor",
+    )
+    path.write_text(
+        "\n".join([
+            _cursor_line("user", "new leading message"),
+            _cursor_line("user", prefix + " different instruction"),
+            _cursor_line("user", original),
+        ]) + "\n",
+        encoding="utf-8",
+    )
+
+    result = expand_record("unit-relocated-detail", cfg=cfg)
+
+    assert result.status == "exact"
+    assert result.start_offset == result.end_offset == 2
+    assert "correct rollback instruction" in result.text
+    assert "stale" in result.warning
+
+
+@pytest.mark.parametrize("budget", [1, 10, 40, 80])
+def test_truncation_marker_respects_small_budgets(budget) -> None:
+    text, truncated = truncate_text("x" * 500, budget)
+    assert truncated
+    assert len(text) <= budget
+
+
+def test_cli_reports_truncation_even_when_marker_cannot_fit() -> None:
+    text, truncated = truncate_text("source detail", 1)
+    result = ExpandResult(record_id="tiny", status="exact", text=text, truncated=truncated)
+    assert "truncated: true" in format_expand_output(result)
 
 
 @pytest.mark.parametrize(
@@ -428,8 +651,6 @@ def test_not_session_custom_doc_tool(expand_env, tmp_path) -> None:
 
 
 def test_recover_exact_when_stored_offsets_stale(expand_env) -> None:
-    from chunk_expand import _render_window
-
     _cfg, _store, home = expand_env
     path = _cursor_source(
         home,
@@ -609,8 +830,6 @@ def test_expand_never_calls_providers(expand_env, monkeypatch) -> None:  # noqa:
 
 
 def test_format_expand_output_header() -> None:
-    from chunk_expand import ExpandResult
-
     text = format_expand_output(
         ExpandResult(
             record_id="abc",

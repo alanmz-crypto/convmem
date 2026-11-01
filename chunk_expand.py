@@ -12,7 +12,8 @@ from typing import Any
 
 from adapters.detect import TOOL_BY_FORMAT, detect_format, get_parser
 from chunk_render import chunk_date, load_processed, path_is_excluded, render_chunk
-from provenance_binding import envelope_from_unit
+from provenance import canonical_hash
+from provenance_binding import envelope_from_unit, validate_projection
 
 DEFAULT_MAX_CHARS = 20_000
 
@@ -102,6 +103,8 @@ def truncate_text(text: str, max_chars: int) -> tuple[str, bool]:
     if max_chars <= 0 or len(text) <= max_chars:
         return text, False
     marker = "\n\n[… truncated — use --max-chars to raise the cap …]\n\n"
+    if max_chars < len(marker):
+        return marker[:max_chars], True
     keep = max(0, max_chars - len(marker))
     return text[:keep] + marker, True
 
@@ -120,6 +123,8 @@ def format_expand_output(result: ExpandResult) -> str:
     if result.format:
         lines.append(f"format: {result.format}")
     lines.append(f"status: {result.status}")
+    if result.truncated:
+        lines.append("truncated: true")
     if result.warning:
         lines.append(f"warning: {result.warning}")
     if result.message and result.status not in ("exact", "drifted"):
@@ -151,6 +156,39 @@ def _expected_chunk_sha(meta: Mapping[str, Any]) -> str:
     selection = _selection_parameters(meta)
     raw = selection.get("rendered_chunk_sha256")
     return str(raw).strip() if raw else ""
+
+
+def _expected_record_hashes(
+    meta: Mapping[str, Any], source_path: str, start: int, end: int
+) -> tuple[str, ...] | None:
+    """Read full-message commitments only from a consistent, matching binding.
+
+    This checks local projection consistency, not source authenticity or truth.
+    Locators refer to the original indexed offsets, before any offset recovery.
+    """
+    checked = validate_projection(meta)
+    if checked["status"] != "self-consistent":
+        return None
+    envelope = checked["envelope"]
+    selection = envelope["selection_parameters"]
+    if (
+        envelope["transformer_recipe_id"] != "normal-ingest-distill-v1"
+        or selection.get("chunk_start") != start
+        or selection.get("chunk_end") != end
+        or start < 0
+        or end < start
+    ):
+        return None
+    roots = envelope["root_bindings"]
+    if len(roots) != end - start + 1:
+        return None
+    if any(
+        root["source_identity"] != source_path
+        or root["record_locator"] != f"chunk:{start}:{index}"
+        for index, root in enumerate(roots)
+    ):
+        return None
+    return tuple(root["raw_record_sha256"] for root in roots)
 
 
 def _bounds_from_meta(meta: Mapping[str, Any]) -> tuple[int | None, int | None]:
@@ -197,6 +235,7 @@ def _find_window_by_sha(
     *,
     session_id: str | None,
     max_span: int,
+    expected_record_hashes: tuple[str, ...] | None = None,
 ) -> tuple[int, int] | None:
     if not expected_sha or not messages:
         return None
@@ -215,6 +254,10 @@ def _find_window_by_sha(
             if session_id and not all(m.get("session_id") == session_id for m in window):
                 continue
             if _chunk_sha(window) == expected_sha:
+                if expected_record_hashes is not None and tuple(
+                    canonical_hash(message) for message in window
+                ) != expected_record_hashes:
+                    continue
                 return start, end
     return None
 
@@ -288,6 +331,7 @@ def _render_window(
     expected_sha: str,
     session_id: str | None = None,
     max_window_span: int = 64,
+    expected_record_hashes: tuple[str, ...] | None = None,
 ) -> ExpandResult:
     path = Path(source_path)
     fmt = detect_format(path)
@@ -356,6 +400,7 @@ def _render_window(
                 expected_sha,
                 session_id=session_id,
                 max_span=max_window_span,
+                expected_record_hashes=expected_record_hashes,
             )
         elif _chunk_sha(messages[start : end + 1]) != expected_sha:
             located = _find_window_by_sha(
@@ -363,6 +408,7 @@ def _render_window(
                 expected_sha,
                 session_id=session_id,
                 max_span=max_window_span,
+                expected_record_hashes=expected_record_hashes,
             )
     if located:
         start, end = located
@@ -409,8 +455,12 @@ def _render_window(
             )
 
     window = messages[start : end + 1]
-    text = render_chunk(window)
-    live_sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    # The index hash commits to the historical, lossy ingestion view. Keep
+    # that view for matching/offset recovery, but never reuse it as expanded
+    # evidence: facts after a message's ingestion allowance would vanish again.
+    indexed_view = render_chunk(window)
+    live_sha = hashlib.sha256(indexed_view.encode("utf-8")).hexdigest()
+    text = "\n".join(f"{message['role']}: {message['content']}" for message in window)
     status = "exact"
     warning = recovery_note
     if recovery_note and "shorter than indexed" in recovery_note:
@@ -424,6 +474,26 @@ def _render_window(
             )
             if recovery_note:
                 warning = f"{recovery_note} {warning}"
+    if expected_record_hashes is not None:
+        if tuple(canonical_hash(message) for message in window) != expected_record_hashes:
+            status = "drifted"
+            warning = (
+                f"{warning} Full source records changed since indexing; "
+                "expanded text does not match the stored source-record hashes."
+            ).strip()
+    else:
+        warning = (
+            f"{warning} Full source-record consistency could not be checked; "
+            "no matching validated full-record hashes are available."
+        ).strip()
+        if text != indexed_view:
+            fidelity_note = (
+                "Expansion includes source text outside the indexed rendering; "
+                "the indexed hash does not verify that additional text."
+            )
+            warning = f"{warning} {fidelity_note}".strip()
+    if not expected_sha and expected_record_hashes is None:
+        warning = f"{warning} No indexed content hash available; source text is unverified.".strip()
     date = chunk_date(window)
     resolved_tool = tool or TOOL_BY_FORMAT.get(fmt or "", fmt or "")
     return ExpandResult(
@@ -547,6 +617,7 @@ def expand_record(
             expected_sha=expected_sha,
             session_id=session_id if (detect_format(Path(path_key)) == "sqlite_crush") else None,
             max_window_span=_max_window_span(selection),
+            expected_record_hashes=_expected_record_hashes(meta, path_key, start, end),
         )
         body = rendered.text
         if redact:

@@ -10,6 +10,17 @@ A local-first working system I build and use for my own AI-assisted development 
 
 `convmem` is a working system I build and use for my own AI-assisted development workflow. It is public because I’m happy for people to inspect it, learn from it, or adapt it, but it is not currently packaged or maintained as a turnkey application for general installation. Expect a working but evolving codebase, personal deployment assumptions, experimental features, and documentation that sometimes describes my own environment. Contributions and cleanup are not expected; I optimize the repository for my own workflow first.
 
+**Professional-use direction:** The next goal is dependable evidence for software
+development and staff-only client history and follow-up preparation at a massage
+salon. Accuracy and source fidelity take priority over minimizing model cost.
+This is a development target: current tests do not establish business readiness,
+client access isolation, or suitability for real salon records. The
+[professional-readiness roadmap](docs/ROADMAP.md#professional-readiness--next-priorities)
+sets the sequence: preserve evidence, measure answer quality, enforce client and
+provider-data boundaries, then evaluate a supervised staff pilot. Client-facing
+messages require human review; clinical decision-making is outside that first
+workflow.
+
 This README serves two purposes: it explains the architecture for curious readers and records the operational commands I use on my own workstation. Paths, hosts, model names, and deployment instructions below may be specific to my setup. If you are an agent helping with this repository, read [`AGENTS.md`](AGENTS.md) for repository workflow and safety rules; this README is project and personal-operations context.
 
 > **Personal-data warning:** My local corpus contains real AI conversations and security findings. The repository does not contain that corpus, but do not publish or share `~/.local/share/convmem/`.
@@ -59,7 +70,7 @@ These are current personal capabilities, not a promise that every path is equall
 
 Past conversations and security findings become a **queryable evidence layer** — not live agent-to-agent chat. The repository also contains the controls used to test, govern, back up, recover, and evaluate that layer.
 
-**Personal development roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
+**Development and professional-readiness roadmap:** [docs/ROADMAP.md](docs/ROADMAP.md)
 
 **Current personal deployment:** `staging2.willowyhollow.com`
 
@@ -166,6 +177,22 @@ convmem ask -i                                 # interactive multi-turn
 ```
 
 `--evidence` re-ranks by ledger graph: prefers **unresolved** observations and **failed** verifications; deprioritizes resolved/passed. Does not auto-detect intent — flag must be explicit. Skips raw-summary hybrid fallback.
+
+To inspect the source behind a retrieved conversation record:
+
+```bash
+convmem expand <record-id>
+convmem expand <record-id> --max-chars 40000
+```
+
+Expansion reads complete parsed message text before applying secret-pattern
+redaction and the explicit output cap. It checks full-message hashes when a
+matching provenance record is available, and reports changes or incomplete
+verification. Hash agreement establishes consistency with indexed records, not
+the truth of their contents. Check warnings and truncation before relying on
+the excerpt. Redaction is not client anonymization or access control. `ask`
+does not yet load these expanded passages automatically; `--raw` still means
+stored conversation summaries.
 
 **Ask model:** `config.toml` → `[models] distill_model = "deepseek-v4-flash"` in my current setup. The generation model is configurable; using DeepSeek requires `DEEPSEEK_API_KEY` in `~/.config/convmem/env.local`.
 

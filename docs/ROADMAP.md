@@ -5,7 +5,63 @@ ledger: dec_prop_20260623_215943_5abe
 
 # convmem Roadmap — Lauer
 
-North-star: local evidence bus on **this workstation** (Arch Linux, Ollama local). Watch/refine/monitor run as user systemd units here — no separate corpus host. **Operate-and-document** — not foundation-build.
+North-star (Ryan, 2026-11-01): dependable professional memory for **staff-only
+client history and follow-up preparation at a massage salon**, and for software
+development. Accuracy and evidence preservation take priority over minimizing
+model cost. Model, retrieval, and context-budget choices must earn their place
+through measured quality; a cheaper configuration is acceptable only when it
+meets the same release criteria.
+
+The current deployment remains a local evidence system on one workstation
+(Arch Linux, local Ollama, user systemd services). This direction does not claim
+that the current software is ready for client records or shared business use.
+
+## Professional readiness — next priorities
+
+The first salon workflow is staff reviewing a client's recorded history and
+preparing a follow-up for human approval. Software workflows include recovering
+decisions, failed attempts, exact commands, and subsequent verification. These
+need separate evidence sets and evaluation results. Client communication remains
+human-reviewed; generating diagnoses, treatment eligibility, or medical advice
+is outside this first workflow.
+
+The sequence below is a delivery proposal, not a completed capability or a
+replacement for existing execution approvals. Build on existing retrieval traces,
+provenance, evaluation, and recovery machinery rather than creating parallel
+frameworks.
+
+| Order | Deliverable | Acceptance evidence before advancing |
+| --- | --- | --- |
+| 1 | Preserve evidence through source expansion, then ingestion and answer context. Fix expansion's reuse of clipped ingestion text first. Next, replace lossy message clipping with coverage-preserving passages and add deliberate source loading to `ask`. | Regression cases retain decisive facts in the middle/end of long messages. Every omitted span is visible as truncation or incomplete evidence. Source mismatch, missing source, and incomplete legacy hash coverage remain distinguishable. Existing provenance and ingest compatibility tests pass. |
+| 2 | Establish separate frozen accuracy suites for salon staff work and software work, starting with synthetic records. | Independently phrased questions have human-reviewed answers, supporting source spans, dates/client or project identity, and expected abstentions. Measure source coverage, retrieval of **all** required evidence, delivered-context coverage, supported answers, contradictions, and abstentions separately. Keep a held-out set; report counts and uncertainty alongside percentages. |
+| 3 | Enforce business/client authorization and provider-data policy before any real salon intake. | Denied clients and software/personal records cannot enter salon retrieval, source expansion, model prompts, caches, exports, or logs. Missing identity refuses access. Tests cover similarly named clients, multi-turn carryover, and attempts to broaden scope. Verify permitted model/provider routes and redacted operational logs. Existing domain/site filters are retrieval conveniences, not a proven access-control boundary. |
+| 4 | Improve reasoning where the measured failures justify it. | Compare source-backed answers, multi-step retrieval, query decomposition, and hierarchical aggregation individually against the frozen baseline. Require accuracy gains or equivalent quality with an operational benefit; report latency and token/currency cost. Preserve exact quotes, dates, conflicts, and superseded records rather than silently resolving them by model preference. |
+| 5 | Run a supervised staff pilot after operational readiness. | Named staff roles, access audit, record correction, retention/deletion, provider policy, and tested restore/rollback procedures exist. A restore drill meets an agreed maximum data-loss window and recovery time. Staff can inspect sources, correct records, and report failures. Review every pilot output before client communication; stop on a critical error. |
+
+**Proposed initial pilot-entry targets — to freeze before evaluation, not results:**
+at least 100 independently authored held-out questions per workflow; at least
+95% fully correct and complete answers on answerable questions; at least 95%
+correct abstention on insufficient-evidence questions; and no critical failure
+in the release suite. Critical failures include cross-client disclosure,
+wrong-client attribution, fabricated client-specific facts or commitments, and
+presenting a superseded or contradicted client-care record as current without
+flagging the conflict. For software work, include wrong-project attribution,
+invented verification results, and presenting a failed or superseded procedure
+as a verified fix. Include explicit negative cases for each class. Count
+abstention on an answerable question as a failure, not a way to raise accuracy.
+Report each workflow and failure class separately; these finite-sample targets
+are a starting pilot gate, not a guarantee of production reliability. Confirm
+targets with the salon operator before using real records.
+
+**Current evidence boundary:** the eight-query retrieval fixture and three-case
+synthesis baseline are engineering checks, not business-readiness evidence.
+See [research limitations](RESEARCH.md#7-current-evidence-and-its-limits).
+The [JudgeBench calibration work](plans/STATUS-judgebench.md) and
+[naturalistic product-value study](plans/STATUS-naturalistic-product-value.md)
+retain their existing scopes and execution status. This roadmap does not claim
+that their pending experiments ran, select a judge, authorize private-data
+transfer, or activate a live pilot. Real client records must remain outside
+public fixtures and repository history.
 
 Test count is not pinned in this roadmap (it drifts with every merge). Canonical: `convmem brief --with-tests`, or `python -m unittest discover -s tests -q`.
 
