@@ -1962,6 +1962,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-adversarial-review-codex-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "docs/inter-model/CLAUDE-2026-10-31-arch-finance-pre-pc-work-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -5678,6 +5688,61 @@
     },
     {
       "path": "restic_snapshot.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/CLAIM-RESULTS.csv",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/FULL-REVIEW.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/INDEX.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/PILOT-GATES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/REVIEW-MANIFEST.json",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/REVIEW.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/VERIFICATION-QUEUE.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/codex-second-opinion-2026-10-31.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/evidence/SOURCE-PASSAGES.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/evidence/plaid-directory-extract-2026-10-31.csv",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "reviews/arch-finance-adversarial-review-2026-10-31/evidence/plaid_us_institution_coverage_2026-10-31.csv",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
