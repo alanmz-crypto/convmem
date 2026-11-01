@@ -8,8 +8,8 @@
   "files": [
     {
       "path": "REVIEW.md",
-      "bytes": 55546,
-      "sha256": "4437bff09ff1aabbc7b62755e4a9928879fd02793f473feb4cdfc49230b6d590"
+      "bytes": 55607,
+      "sha256": "c348782760a9e3ed3e8b7035dd56f34c035bd9f630d5b59c01a209a042b41227"
     },
     {
       "path": "CLAIM-RESULTS.csv",
@@ -28,8 +28,8 @@
     },
     {
       "path": "INDEX.md",
-      "bytes": 1902,
-      "sha256": "04de344e3f97c85f3e469e47879a611658d9b97986f044fed64dbf5599a2c302"
+      "bytes": 2043,
+      "sha256": "9ddb769d276b5c5f5b433b606279870e817268a6bac26bf36cbaa506574f738e"
     },
     {
       "path": "evidence/SOURCE-PASSAGES.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "FULL-REVIEW.md",
-      "bytes": 170064,
-      "sha256": "2f1f05cf4227309ed7b9917a0dcbe578a5160a83f8c3beed1edf385fa57b6f72"
+      "bytes": 170266,
+      "sha256": "a71fa84763b03901dffd29660a78cc93ff75af573e59426928a18aefd130ef27"
     },
     {
       "path": "codex-second-opinion-2026-10-31.md",
