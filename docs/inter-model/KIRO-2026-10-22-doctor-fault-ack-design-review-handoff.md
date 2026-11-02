@@ -1,14 +1,22 @@
 # [Arc Codex] G2 review: scoped CPU-tripwire fault acknowledgment
 
-**Updated:** 2026-10-24
+**Updated:** 2026-10-25 (routing state; G2 evidence remains dated)
 **Author:** Codex, implementation takeover under Ryan's direct instruction
-**For:** Ryan's G3 PR/merge decision after completed G2 reviews
-**State:** `G2_PASS`; all required independent reviews cover the final content SHA
+**For:** G2 review evidence and G6 acceptance disposition
+**State:** `G2_PASS`; G3 merged; G4 promoted; old-event G5 moot; G6 accepted with live-use limit
 **Branch:** `feat/2026-10-22-doctor-fault-ack-takeover`, pushed to origin
-**G3 PR:** [#416](https://github.com/alanmz-crypto/convmem/pull/416), open for Ryan's merge decision
+**G3 PR:** [#416](https://github.com/alanmz-crypto/convmem/pull/416), Ryan squash-merged as `4b4796b6a667509f94475a5a14424204947fbb12`
 **Checkout:** `/home/lauer/Projects/convmem/.worktrees/doctor-fault-ack-takeover`
 
 The historical KIRO filename is retained so existing links continue to work.
+On 2026-10-25, Codex fast-forwarded the clean `.worktrees/runtime-main` to
+the merged SHA under Ryan's G4 direction. The watcher stayed at PID 1149 with
+`NRestarts=0`; post-promotion doctor exited 0 with zero native faults, and no
+acknowledgment was made. The investigated boot has ended, making its G5 moot.
+Historical review sections below describe evidence and gates as they stood
+before the merge. Ryan accepted G6 on 2026-10-25 for the current deployment's
+doctor criterion based on the post-promotion exit 0. Live acknowledgment was
+not exercised and remains unproven; any future event needs a separate grant.
 Ryan assigned a fresh Claude Opus-class session to the original Kiro G2
 implementation-review slot. This is a separate review from Claude's completed
 delta and R4 checks.
@@ -182,10 +190,10 @@ The verdict was **PASS-WITH-CHANGES**, with three required corrections:
    zsh. An absent shell now skips with an explicit reason; both arms pass
    locally. Hosted CI has not been run on this branch.
 
-**Next task:** Ryan reviews PR #416 and decides G3 merge disposition for the
-G2-PASSed content revision. The independent implementation and safety rechecks
-are complete. The PR Steward grant opened the PR; no merge, promotion or live
-use is authorized by the reviews alone.
+**At the 2026-10-24 G2 handoff:** Ryan still had to decide G3 merge disposition
+for the G2-PASSed content revision. The independent implementation and safety
+rechecks were complete. Those reviews alone granted no merge, promotion or
+live use. The current G3/G4 state is recorded at the top of this packet.
 
 ## Earlier independent review at `4d1aedd` — 2026-10-23
 
@@ -279,9 +287,10 @@ three issues; it supplies no technical approval:
   This is a narrow instruction violation and does not itself invalidate the
   review findings.
 
-**Next owner:** Ryan decides whether to merge PR #416. Final independent Opus
-and safety PASSes cover `1a7676b`; Codex's corrective tests remain separate
-author evidence. Ryan retains promotion, live-use and acceptance decisions.
+**At the 2026-10-24 G2 handoff:** Ryan still had to decide whether to merge
+PR #416. Final independent Opus and safety PASSes cover `1a7676b`; Codex's
+corrective tests remain separate author evidence. G3/G4 were decided later,
+as recorded at the top of this packet.
 
 Use a separate review checkout at that exact commit. First compare
 `git rev-parse HEAD` with the SHA above and inspect `git status --short` for
@@ -452,10 +461,10 @@ author evidence. Ryan separately owns G3 PR/merge, G4 exact-SHA
 promotion without restart, G5 his one-event live acknowledgment, and G6
 acceptance. If the investigated boot has ended, G5 for that event is moot.
 
-**TL;DR:** [Arc Codex] Corrective content is pinned at
-`1a7676b75bb287d9ca1fc0eb53c7176e06c7b922`. PR #416 is open. Fresh shell-capable Opus
-implementation review and independent safety delta recheck both PASSed the
-final content, completing G2. Ryan owns G3–G6. Nothing is live.
+**TL;DR:** [Arc Codex] Independent G2 reviews PASSed content `1a7676b`;
+Ryan merged PR #416 as `4b4796b`, and Codex promoted that exact SHA without
+restarting the watcher. Ryan accepted G6 for the observed doctor exit 0;
+live acknowledgment remains unproven and needs a separate future grant.
 
 <!-- ref: ../plans/ARCHITECTURE-doctor-fault-acknowledgment.md, ../plans/EXECUTION-doctor-fault-acknowledgment.md, ../plans/STATUS-codex-jsonl-production-integration.md, ./LATEST.md — binding design, evidence and reviewer routing -->
 <!-- src: ./CODEX-2026-10-22-doctor-ack-next-model-handoff.md, ../../cpu_tripwire.py, ../../tests/test_cpu_tripwire_ack.py — event evidence and implemented contract -->
