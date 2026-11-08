@@ -222,6 +222,31 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "Issues/Arc/Safe_Harbor/README.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "Issues/Arc/Safe_Harbor/SH-001-jsonl-append-boundaries.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "Issues/Arc/Safe_Harbor/SH-002-revision-export-retry.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "Issues/Arc/Safe_Harbor/SH-003-finding-revisions-narrow-evidence.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "Issues/Arc/Safe_Harbor/SH-004-new-guard-directory-durability.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "LICENSE",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
