@@ -392,6 +392,16 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "chroma_embed_attestation.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "chroma_embed_identity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "chroma_readonly.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6852,6 +6862,16 @@
       "reason": "combined-system maintenance file"
     },
     {
+      "path": "tests/test_chroma_embed_attestation.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_chroma_embed_identity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_chroma_flatten.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8616,7 +8636,7 @@
     },
     {
       "path": "config.example.toml",
-      "sha256": "dc059d4311fd871ec501ecfef45bb3a90ec956917890bab69ef430d5e03717f5",
+      "sha256": "a83cc6ad85303d33f851a28422b4892ec123db172ef78f3454c19ebc56043551",
       "content_class": "toml",
       "parser_mode": "toml_table_spans",
       "adapter_contract_version": "repository_knowledge_v1",
