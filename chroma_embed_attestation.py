@@ -20,14 +20,19 @@ needs a Chroma client, and the live directory must never be opened with one
 read only through SQLite ``mode=ro``. This module refuses a copy that is, or
 overlaps, the live directory.
 
-Run it from a checkout, after restoring the latest ``chroma`` snapshot to a
-scratch directory::
+Operator steps (nothing here writes to the live store):
 
-    python chroma_embed_attestation.py --restore-copy /scratch/restored/chroma
-    python chroma_embed_attestation.py --restore-copy /scratch/restored/chroma --write
-
-Without ``--write`` it performs every check and the embedding calls but writes
-nothing.
+1. Restore the latest chroma snapshot to a scratch directory, for example with
+   ``scripts/chroma_restore_drill.py --keep-run-dir`` (it restores a snapshot into a
+   disposable run directory). ``--restore-copy`` is the restored directory that
+   contains ``chroma.sqlite3``.
+2. Dry run: ``python chroma_embed_attestation.py --restore-copy <dir>``. It performs
+   every check and the embedding calls (the embedding service must be up) and
+   writes nothing.
+3. If the report looks right: the same command with ``--write``.
+4. ``convmem doctor`` now reports ``attested legacy``. Once both collections pass,
+   ``[index] require_embed_identity = true`` makes doctor FAIL on any collection that
+   nothing proves, which is the fail-closed state.
 """
 
 from __future__ import annotations
