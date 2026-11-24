@@ -15,6 +15,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # (path, function, operation) -> (expected occurrences, classification)
 EXPECTED = {
+    # Attestation spot check: opens a restic *restore copy* (never the live directory;
+    # attest_collections refuses an overlapping path) with create_collections=False.
+    ("chroma_embed_attestation.py", "spot_check", "ChromaStore"): (
+        1,
+        "excluded-administrative",
+    ),
     ("chroma_readonly.py", "_connect_readonly", "sqlite3.connect[chroma]"): (
         1,
         "core-storage",
