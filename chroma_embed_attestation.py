@@ -33,6 +33,7 @@ nothing.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import os
@@ -44,6 +45,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from chromadb.errors import NotFoundError
 
 from chroma_embed_identity import (
     ATTESTATION_SCHEMA,
@@ -58,7 +61,13 @@ from chroma_readonly import (
     collection_ids,
     collection_uuid,
 )
-from chroma_store import EMBED_MODEL_KEY, SUMMARIES, UNITS, ChromaStore, normalize_embed_model
+from chroma_store import (
+    EMBED_MODEL_KEY,
+    SUMMARIES,
+    UNITS,
+    normalize_embed_model,
+    open_chroma_for_verify,
+)
 
 DEFAULT_SAMPLE_SIZE = 50
 MIN_SAMPLE_SIZE = 10
@@ -120,8 +129,8 @@ def spot_check(  # pylint: disable=too-many-arguments
 ) -> SpotCheck:
     """Re-embed a reproducible sample of stored documents and compare to storage.
 
-    Opens ``copy_dir`` with a Chroma client, so ``copy_dir`` must be a restore
-    copy. Missing collections are never created.
+    Opens ``copy_dir`` with a Chroma client (``open_chroma_for_verify``), so
+    ``copy_dir`` must be a restore copy. Missing collections are never created.
     """
     ids = collection_ids(copy_dir, name)
     if not ids:
@@ -132,10 +141,14 @@ def spot_check(  # pylint: disable=too-many-arguments
             f"{min(MIN_SAMPLE_SIZE, len(ids))}"
         )
     sample = _sample_ids(ids, sample_size, seed)
-    with ChromaStore(str(copy_dir), create_collections=False) as store:
-        got = store._collection(name).get(  # pylint: disable=protected-access
-            ids=sample, include=["embeddings", "documents"]
-        )
+    # The restore-drill opener: get_collection only, so nothing is ever created.
+    try:
+        with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
+            got = store._collection(name).get(  # pylint: disable=protected-access
+                ids=sample, include=["embeddings", "documents"]
+            )
+    except NotFoundError as exc:
+        raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
     stored_ids = list(got["ids"])
     if sorted(stored_ids) != sample:
         raise AttestationError(f"{name}: could not read every sampled vector from the copy")

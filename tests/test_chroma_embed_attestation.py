@@ -151,6 +151,16 @@ def test_spot_check_never_creates_a_missing_collection(tmp_path: Path) -> None:
     assert collection_uuid(copy, SUMMARIES) is None
 
 
+def test_a_restore_copy_missing_knowledge_units_is_reported_as_incomplete(tmp_path: Path) -> None:
+    copy = tmp_path / "chroma"
+    build(copy, SUMMARIES)  # the verify opener insists on knowledge_units existing
+
+    with pytest.raises(AttestationError, match="restore copy is incomplete"):
+        spot_check(copy, SUMMARIES, embedder(MODEL))
+
+    assert collection_uuid(copy, UNITS) is None  # and it was not created to satisfy the opener
+
+
 # --------------------------------------------------------------------------------------
 # Attesting
 # --------------------------------------------------------------------------------------
@@ -232,7 +242,9 @@ def test_a_restore_copy_that_overlaps_the_live_directory_is_refused(
         "contains-live": live.parent,
     }[where]
 
-    with mock.patch.object(attestation_mod, "ChromaStore", side_effect=AssertionError("client")):
+    with mock.patch.object(
+        attestation_mod, "open_chroma_for_verify", side_effect=AssertionError("client")
+    ):
         with pytest.raises(AttestationError, match="separate directory"):
             attest_collections(live, target, model=MODEL, embed=embedder(MODEL), write=True)
 
