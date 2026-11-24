@@ -24,6 +24,11 @@ from chroma_write_guard import (
 
 SUMMARIES = "conversation_summaries"
 UNITS = "knowledge_units"
+# Collection-level metadata key naming the embedding model that produced a
+# collection's vectors. Same key the evaluation shadow builder writes
+# (eval_corpus.shadow_build.collection_metadata_from_manifest) and the doctor
+# check reads; a test pins the three together.
+EMBED_MODEL_KEY = "convmem:embed_model"
 _METADATA_PAGE_SIZE = 500
 
 _log = logging.getLogger("convmem.chroma_store")
@@ -128,6 +133,17 @@ def is_superseded(meta: dict) -> bool:
     return meta.get("superseded") is True
 
 
+def normalize_embed_model(value: object) -> str | None:
+    """Return the model name to record, or None when there is nothing honest to record.
+
+    Only a non-blank string counts. Anything else (missing, blank, a number from
+    a malformed config) records no identity rather than a guessed one.
+    """
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
 class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     def __init__(
         self,
@@ -138,6 +154,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         on_close: Any | None = None,
         require_writer_boundary: bool = False,
         write_guard: Any | None = None,
+        embed_model: str | None = None,
     ):
         # Chroma's process cache keys the exact string given to PersistentClient.
         # Resolve aliases here so that cache, this store, and the guard load
@@ -157,6 +174,10 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         # Production factories attach a ChromaWriteGuard so a crash inside a native
         # write cannot leave the shared HNSW torn (see chroma_write_guard).
         self._write_guard = write_guard
+        # Recorded in a collection's metadata when this store creates it. Like the
+        # sink, it is handed in: this class never loads config. None records
+        # nothing, so direct and test stores behave exactly as before.
+        self.embed_model = normalize_embed_model(embed_model)
         self.client = self._new_client()
 
     def _new_client(self):
@@ -299,9 +320,12 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         if self.client is None:
             raise RuntimeError("ChromaStore is closed")
         if self.create_collections:
-            return self.client.get_or_create_collection(
-                name=name, metadata={"hnsw:space": "cosine"}
-            )
+            metadata: dict[str, Any] = {"hnsw:space": "cosine"}
+            if self.embed_model is not None:
+                metadata[EMBED_MODEL_KEY] = self.embed_model
+            # Chroma applies this metadata only when it creates the collection;
+            # an existing collection keeps whatever it already has.
+            return self.client.get_or_create_collection(name=name, metadata=metadata)
         # Verification / restore-drill path: never create missing collections.
         return self.client.get_collection(name=name)
 
