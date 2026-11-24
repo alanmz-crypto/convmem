@@ -26,6 +26,10 @@ processed_log = "~/.local/share/convmem/processed.json"
 units_export  = "~/.local/share/convmem/knowledge_units.jsonl"
 chunk_size    = 60
 chunk_overlap = 10
+# Off by default. Once every collection records or is attested for its embedding
+# model (see chroma_embed_attestation.py), set true so `convmem doctor` FAILS
+# instead of WARNs on a collection whose model nothing proves.
+# require_embed_identity = false
 
 [index.incremental_jsonl]
 enabled = false

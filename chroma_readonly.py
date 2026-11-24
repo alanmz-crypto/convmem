@@ -417,3 +417,28 @@ def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     if not row or row[0] is None:
         return None
     return str(row[0])
+
+
+def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | None:
+    """Return the vector dimension Chroma itself recorded for a collection (mode=ro).
+
+    Chroma sets ``collections.dimension`` when the first vector arrives, so an
+    empty collection, a missing collection and a missing DB all return None.
+    This is the store's own measurement, never a configured or guessed value.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT dimension FROM collections WHERE name = ? LIMIT 1",
+            (collection_name,),
+        )
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row or row[0] is None:
+        return None
+    return int(row[0])
