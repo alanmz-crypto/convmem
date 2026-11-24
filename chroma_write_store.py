@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Literal, Mapping
 
-from chroma_store import ChromaStore
+from chroma_store import ChromaStore, normalize_embed_model
 from chroma_write_guard import GUARD_DIR_SUFFIX, ChromaWriteGuard, write_guard_enabled
 import config as config_mod
 from shadow_ledger import (
@@ -629,6 +629,18 @@ def decide_production_sink_injection(
     )
 
 
+def configured_embed_model(cfg: Mapping[str, Any] | None) -> str | None:
+    """The embedding model ``[models] embed_model`` names, or None when it names none.
+
+    A missing config, section, key, or blank value yields None so a store records
+    no identity instead of a guessed one.
+    """
+    models = cfg.get("models") if isinstance(cfg, Mapping) else None
+    if not isinstance(models, Mapping):
+        return None
+    return normalize_embed_model(models.get("embed_model"))
+
+
 def open_chroma_for_write(
     cfg: Mapping[str, Any] | None,
     chroma_dir: str | Path,
@@ -689,6 +701,8 @@ def open_chroma_for_write(
         on_close=on_close,
         require_writer_boundary=purpose == "production",
         write_guard=write_guard,
+        # Collections this store creates record the configured embedding model.
+        embed_model=configured_embed_model(cfg),
     )
     return store, decision
 
