@@ -1,5 +1,7 @@
 # Implementation Handoff: `cpu_tripwire` — FAIL only on unambiguous hardware signals, demote userspace faults to WARN
 
+> **SUPERSEDED (2026-10-23):** The failing CPU was replaced and the CPU tripwire was removed. This document is historical only; nothing here applies to current runtime.
+
 **Date:** 2026-10-17
 **Author:** Kiro (design/review — not implemented; Kiro is review-required)
 **For:** Cursor (implementation) → Ryan review / PR

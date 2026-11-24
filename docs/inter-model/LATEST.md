@@ -9,62 +9,17 @@ cross-arc snapshot and the linked arc brief below.
 
 ## Current routing
 
-- **[Arc Codex #286] Priority #1: Codex design review FAILED; revision next
-  (reviewed 2026-10-22; updated 2026-10-23, Codex at `3d24c75`):** The original request prioritized
-  acknowledging the specific Timeshift crash while continuing to flag new
-  faults. Ryan now expects a reboot; it has not yet occurred. After reboot,
-  recheck whether the event remains in the current-boot view; if it is absent,
-  G5 for acknowledging this incident is moot. The design merged through PR #415.
-  At Ryan's direction, Codex reviewed exact `origin/main` commit
-  `3d24c753a4b46132d349c34a2cd37b0fbba464c2` in place of Kiro and found three
-  required changes:
-  - Intended behavior is a boot-bound acknowledgment shown as WARN, never
-    PASS; the reviewed four-field key is not yet proven entry-unique.
-  - The revised design must preserve FAIL for detected new faults, machine
-    checks and known-bad CPUs coming back online, including JSON edge cases.
-  Required revisions: include entry-unique identity across journal vacuum;
-  define oversized/null JSON `MESSAGE` and malformed-line handling that
-  preserves already detected FAILs; define and test `ack` after revocation.
-  **Next lane: design author** revises the architecture, plan and tests; Codex
-  re-reviews the exact revision. G0 is not passed, and implementation remains
-  `NOT_STARTED`.
-  Execute, promotion, live acknowledgment and acceptance are separate Ryan
-  gates (G1–G6), and doctor acceptance remains unmet. The review questions
-  are in the
-  [design review packet](KIRO-2026-10-22-doctor-fault-ack-design-review-handoff.md).
-  The input
-  [handoff](CODEX-2026-10-22-doctor-ack-next-model-handoff.md) merged through
-  #414 as `5c0a01b`. The fence is already live at runtime `1a68675`, with the
-  watcher active since `13:52:35 CDT`, PID `904311`, no automatic restarts.
-  Ryan squash-merged docs PRs #413 (`75d8e2a`) and #414 (`5c0a01b`); no runtime
-  promotion follows from those docs merges. Deployment and stale-mount cleanup
-  grants are consumed. No live exception occurred. The reboot is pending.
-  Stage 1/Stage 2 outcomes and residual burn remain **Ryan to confirm**. See
-  the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md).
-
-- **CPU-tripwire policy merged and deployed (2026-10-22 snapshot, Codex):**
-  Ryan merged the userspace-advisory correction through PR #398 as `633f1d1`
-  on 2026-10-17. It is included in runtime `1a68675` on `main`; no temporary
-  branch switch, pull, or repeat deployment is needed. Unattributed userspace
-  faults are WARN; CPU-attributed faults outside the configured known-bad set,
-  machine checks, and known-bad CPUs returning online remain FAIL. The current
-  Timeshift failure follows that retained policy; CPU damage is not established
-  by the classification. Ryan confirmed he unplugged the external USB drives
-  for testing. That explains the backup-volume disconnect four seconds before
-  Timeshift's I/O errors and crash; the exact software failure remains unproven.
-  Backup review found the failed `13:00:00` snapshot absent and replacement
-  `13:03:52` saved successfully at `13:07:24 CDT`, with hourly/daily metadata.
-  Stale-mount cleanup is complete: Ryan's root active-user check showed only
-  the kernel mount entry, then his normal unmount succeeded. Codex verified
-  `/run/timeshift/835726/backup` absent at `14:48:28 CDT`; the reconnected
-  backup volume remains mounted read-write and the watcher remains active.
-  Retention still records its previous failed run; no retry/reset occurred.
-  **Next lane: Ryan** for any separate retention-maintenance decision and
-  doctor-acceptance disposition;
-  see the current [Arc Codex brief](../plans/STATUS-codex-jsonl-production-integration.md#5-your-role).
-  Kiro's [dated design handoff](KIRO-2026-10-17-cpu-tripwire-advisory-userspace-handoff.md)
-  is historical context, not current runtime instructions. Ad-hoc host work;
-  no tripwire-policy or hardware change is authorized by this pointer.
+- **CPU fixed; `cpu_tripwire` retired (2026-10-23, Kiro, at Ryan's direction):**
+  Ryan replaced the failing CPU (the i7-13700K Vmin-shift "Poison Pill"
+  part). CPUs 4, 5, 8 and 9 are back online and no cores are held offline.
+  The per-CPU crash tripwire is no longer needed and was removed:
+  `cpu_tripwire.py`, `tests/test_cpu_tripwire.py`, the `_check_cpu_tripwire`
+  doctor check, and the `[hardware] known_bad_cpus` config block.
+  `convmem doctor` no longer fails on kernel/userspace native faults. The
+  doctor-fault acknowledgment design (PR #415, Timeshift event, G0-G6) is
+  moot and will not be implemented. The older tripwire handoffs and issue
+  notes are historical only. Do not reintroduce CPU-based gating or
+  known-bad-CPU config. Not yet committed or deployed to runtime.
 
 - **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).

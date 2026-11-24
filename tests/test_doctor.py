@@ -100,7 +100,6 @@ class DoctorTests(unittest.TestCase):
                 patch("doctor._check_arc_staleness", return_value=ok),
                 patch("doctor._check_logical_projection", return_value=ok),
                 patch("doctor._check_source_reconciliation_freshness", return_value=ok),
-                patch("doctor._check_cpu_tripwire", return_value=ok),  # this boot's kernel log
                 patch("doctor._check_chroma_audit", return_value=ok),
                 patch(
                     "observe.repair_empty_ledger_documents",

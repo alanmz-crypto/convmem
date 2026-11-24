@@ -897,14 +897,6 @@ def _check_chroma_audit(cfg: dict) -> DoctorCheck:
     return DoctorCheck(name, True, f"{summary} ({age_hours:.0f}h ago)")
 
 
-def _check_cpu_tripwire(cfg: dict) -> DoctorCheck:
-    """Native faults this boot, attributed to CPUs (cpu_tripwire); kernel log and sysfs only."""
-    from cpu_tripwire import check
-
-    verdict = check(cfg)
-    return DoctorCheck("cpu_tripwire", verdict.status != "fail", verdict.detail, status=verdict.status)
-
-
 def _standing_register_path() -> Path:
     return Path(__file__).resolve().parent / "docs" / "standing-checks-register.json"
 
@@ -1800,7 +1792,6 @@ def run_doctor(
         _check_wedged_incremental_transactions(cfg),
         _check_chroma_write_guard(cfg),
         _check_chroma_audit(cfg),
-        _check_cpu_tripwire(cfg),
         _check_standing_register(cfg),
         _check_arc_staleness(),
         _check_planning_guide_contract(),

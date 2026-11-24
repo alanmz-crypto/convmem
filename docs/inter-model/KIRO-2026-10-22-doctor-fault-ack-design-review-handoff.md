@@ -1,5 +1,7 @@
 # [Arc Codex] Codex substitute review: scoped CPU-tripwire fault acknowledgment
 
+> **SUPERSEDED (2026-10-23):** The failing CPU was replaced and the CPU tripwire was removed. This document is historical only; nothing here applies to current runtime.
+
 **Date:** 2026-10-22
 **Author:** Claude (Opus 5.5), fresh design model for priority #1
 **For:** Codex, review only, at Ryan's direction in place of Kiro for priority

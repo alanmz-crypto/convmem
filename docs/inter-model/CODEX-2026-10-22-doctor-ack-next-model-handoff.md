@@ -1,5 +1,7 @@
 # [Arc Codex] New-model handoff: reviewed acknowledgment of one boot-scoped crash
 
+> **SUPERSEDED (2026-10-23):** The failing CPU was replaced and the CPU tripwire was removed. This document is historical only; nothing here applies to current runtime.
+
 **Date:** 2026-10-22
 
 **Author:** Codex, deployment/verification/docs lane

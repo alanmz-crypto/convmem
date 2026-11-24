@@ -662,11 +662,6 @@
       "reason": "combined-system maintenance file"
     },
     {
-      "path": "cpu_tripwire.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
       "path": "cross_project_digest.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6853,11 +6848,6 @@
     },
     {
       "path": "tests/test_copilot_session_jsonl.py",
-      "class": "unrelated",
-      "reason": "outside the W0 maintenance inventory"
-    },
-    {
-      "path": "tests/test_cpu_tripwire.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
