@@ -6857,12 +6857,22 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_chroma_production_embed_identity.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_chroma_readonly.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
     {
       "path": "tests/test_chroma_restore_drill.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
+      "path": "tests/test_chroma_store_embed_identity.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
     },
@@ -8538,7 +8548,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "97bbdbbcaead8e2bd9f780d9147ddd347cecbdf16a684077757ba73be0f270ff",
+      "sha256": "8a388cf2d65349ad87f9cd6f1c8373a2fc5b1e1c18da6752353157b614946053",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -8555,7 +8565,7 @@
     },
     {
       "path": "chroma_write_store.py",
-      "sha256": "b10199cb0e9f7ea7861718afc2fb61cd5b45c16d03d6b0e3dc6dd726918908d5",
+      "sha256": "e72aeac1a4dc92e260dbde88e473ab3c124fc51d74bda6323eef944afd37a828",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -9694,7 +9704,7 @@
     },
     {
       "path": "tests/test_shadow_writer_gate_c3.py",
-      "sha256": "bfa90a157cc03ea094816d4935327b385097d7ef97b274f92b4a549aea467f66",
+      "sha256": "c60e8adf54161c05b392e7600fab69db9891c510620f5c1b0db33796fbfae3c5",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
