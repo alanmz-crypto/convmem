@@ -245,3 +245,126 @@ Hard rules: read-only on the branch (no commit, push, force-push, PR or merge; t
 
 Return the report in your reply (not in the repo) in the five-part format at the end of the Round 2 brief. If you find nothing in an area, say what you tried so I can judge how hard you looked.
 ```
+
+---
+
+## Review round 2 outcome (appended after the second Codex review; text above is the record of what was reviewed at 6910a49)
+
+Codex recommended **rework** again. It independently attested R2B (`MATCH`, digest `22254ee8…`; diff against `origin/main` only the C17 fields; `ingest.py` blob identical to `main`), and confirmed C12, C15 and C17. It disagreed with C9, C10, C11, C13, C14 and C16. Disposition of every finding (fixes are in `777596e` and `ae5971c`):
+
+| Codex finding | Disposition |
+|---|---|
+| High: a check can succeed before any vector is stored (a no-op `update_unit`, or a first write that fails, populated the cache, so a later foreign `add_unit` passed) | **Fixed.** Nothing is remembered from a check. `ChromaStore` remembers a collection only after an `add`/`upsert` of vectors succeeded; a delete or a client reload forgets it. |
+| High: some routes skip the check on an already-stamped empty collection | **Fixed for `ChromaStore`:** the check judges every store, including `create_collections=False` and model-less ones. **Not changed, by design:** `restore_source_rows` restores rows read from the same collection (no new model enters). **Not fixed:** `FileGenerationStore.stage_rows` writes raw rows with no check; it is reached only from CG2 rehearsal, rollback-baseline and cutover code, which the repo documents as not production-wired. It belongs to CG2 activation. |
+| High: a full census fails on 34,000 rows (`too many SQL variables`) | **Fixed.** Reads are batched (500) with completeness checked across batches. Verified on a real 34,000-row scratch collection (full census completes; the unbatched `get` fails exactly as reported). |
+| High: doctor can PASS the wrong physical collection (same name in another Chroma database) | **Fixed.** The five identity read helpers are bound to the default tenant and database. A schema with no `databases` table is read as before (my first version broke six `watch_oom` tests that use hand-made SQLite fixtures; the consumer-suite run caught it before it was pushed). |
+| High: sidecar numeric overflow escapes the checker and becomes a WARN | **Fixed** in three layers (`_score`, the `read_attestations` wrapper, the checker's safety net) and by a test that mutates every sidecar field to hostile values. Removing one layer alone is invisible by design; all three removed is caught. |
+| Medium: doctor advises dropping a collection that has data | **Fixed.** The advice appears only after the rows are counted and found to be zero. |
+| Medium: the attester can write a sidecar its own reader rejects (cosine underflow to 1.17; a year-900 timestamp) | **Fixed.** Cosine normalises with `hypot` and refuses anything outside [-1, 1]; the final payload is validated with the reader before it replaces the file. |
+| Medium: an alias-only config change (`name` versus `name:latest`) refuses a legitimate first write | **Fixed.** A bare name means `:latest`; any other tag stays distinct. Doctor compares the same way. **Residual:** a mutable tag that keeps its spelling after its artifact changes is still accepted (names are not digests). |
+| Medium (inferred): the isolation scan misses live-side links, and the directory can change between the last check and the client opening | **Mitigated.** The live side follows links (with a cycle guard) and the copy is re-checked immediately before the client opens. **Residual:** a swap after the last check cannot be excluded; no write through shared storage was observed. |
+
+Suspicion items: **1** the attested detail now says what the census was (restore copy at attestation time, rows sampled, minimum cosine, threshold); a current live row count is not compared. **3** the cache semantics are fixed as above. **4** a test now holds two writers inside the read-merge-replace (the earlier nested-call test could not), and the lock open refuses a symlink; with the lock disabled, that test fails. **8** removing the lock had left every test green; that is closed, and every round-2 guard was mutation-checked (20 more guards, each disabled in turn and caught by a test aimed at it).
+
+Claim verdicts after the fixes: C9, C13 and C14 now hold for the cases Codex reproduced. **C10** holds for the alias case; I found no ordinary per-source model override. **C11 stands as disclosed:** the tag is lost on the `ingest.py` summary path (pinned by a strict xfail), `incremental_jsonl.py` persistence, `shadow_replay.py:234` and `eval_corpus/embed_adapters.py:52` (administrative or evaluation tools, not changed). **C16 is not absolute:** the residual above.
+
+What strict PASS means, stated narrowly (Codex's recommendation, which I accept): *a full re-embedding of a restore copy, at the time and threshold shown, reproduced the stored vectors of that copy.* It does not certify present live-vector identity; rows added or replaced after the census are unverified.
+
+**Still open for Ryan:** (1) re-pin and fix the `ingest.py` summary-vector copy (decision 4 above); (2) whether to refuse writes of a differently tagged vector into a collection that already holds vectors; (3) the serving-read and `refine` creators; (4) the CG2 `stage_rows` route at CG2 activation.
+
+Full suite at `ae5971c`, from a scratch clone of the pushed commit: 213 failed / 3572 passed / 69 skipped / 1 xfailed / 52 errors, the **same 265 failing ids as the baseline on `origin/main`, none new**.
+
+---
+
+## Round 3 review brief (written after round 2 was addressed)
+
+You may be a fresh reviewer. Everything above is context; this section is your task. Two rounds each found real defects, and in both rounds some were defects in my own fixes from the round before (round 2 found that my round-1 stamp guard still missed real writers and that a "fixed" cache was set before anything was stored). So do not assume the round-2 fixes are right: they are the least-reviewed code on this branch.
+
+### Resume state (round 3)
+
+| Field | Value |
+|-------|--------|
+| **State** | `IN_PROGRESS`: round-2 findings addressed, independent re-review outstanding |
+| **Branch** | `fix/2026-11-24-chroma-collection-embed-identity` (pushed) |
+| **Base** | `origin/main` = `f10d67d` (unchanged). In a clone `origin/main` can be stale: fetch it from the source worktree's remote-tracking ref and check it reads `f10d67d`. |
+| **Code under review** | `ae5971c`; later commits are docs only (this section) |
+| **Delta since round 2** | `6910a49..ae5971c`: `777596e` closes the round-2 findings, `ae5971c` restricts the serving-database filter to schemas that have databases |
+| **Expected counts** | `tests/test_chroma_store_embed_identity.py`, `test_chroma_production_embed_identity.py`, `test_chroma_embed_identity.py`, `test_chroma_embed_attestation.py`: **228 passed, 1 xfailed** (the xfail is deliberate); the nine governed-inventory files (`test_r2b_v2_corrective_viii`, `test_r2b_v2_implementation_revision`, `test_r2b_v2_coverage`, `test_repository_knowledge_committed_manifest`, `test_repository_knowledge_scope`, `test_shadow_writer_coverage_scan`, `test_shadow_writer_gate_c3`, `test_file_generation_read_path_inventory`, `test_t3_residual_closure`): **84 passed** on a clean tree |
+| **Full suite** | at `ae5971c`, from a scratch clone: 213 failed / 3572 passed / 69 skipped / 1 xfailed / 52 errors, the **same 265 failing ids as the baseline on `origin/main`, none new** |
+| **PR** | not opened; Ryan gates it. Nothing here authorizes a merge. |
+
+### What changed since round 2 (read these first)
+
+- **New `chroma_embed_first_write.py`** (called from `ChromaStore._require_vectors_match_first_write`): `require_first_vector_matches(store, name, embeddings)`. Looks the collection up; if absent, compares tagged vectors with what the store would stamp; if it exists and `count() == 0`, compares with the collection's recorded stamp; if it holds vectors, returns (not a first write). Judges every store, including `create_collections=False` and model-less ones.
+- **`chroma_store.py`**: `store.published_collections` is filled by `_note_write` only after a native `add`/`upsert` with vectors succeeded, emptied for a collection on a native `delete`, and cleared on `_reload_client`. New `same_embed_model(a, b)`: names equal after stripping a trailing `:latest`. The first-write method now delegates to the new module (the file was over the 1000-line pylint cap).
+- **`chroma_readonly.py`**: `collection_config_metadata`, `collection_ids`, `collection_count`, `collection_uuid`, `collection_dimension` restrict to the default tenant and database through `_serving_database(conn)`, which returns no restriction when the schema has no `databases` table or no `collections.database_id`. **Sibling helpers in the same file still select by name only** (see suspicion R3-3).
+- **`chroma_embed_identity.py`**: doctor compares models with `same_embed_model`; `row_count` verified before the "can be dropped" advice; overflow handled in `_score`, in a `read_attestations` wrapper that raises only `AttestationError`, and by a broad net in `check_embed_identity`; the attested detail names the restore copy, rows sampled, min cosine and threshold.
+- **`chroma_embed_attestation.py`**: reads in batches of 500 (`READ_BATCH`) with completeness checked per batch; cosine normalises with `hypot`; the live side of the isolation scan follows links with a cycle guard; `before_open` re-checks right before the client opens; the lock opens with `O_NOFOLLOW`; the merged payload is parsed by the reader before `os.replace`.
+- Bookkeeping: manifest hashes refreshed for four files (`chroma_store.py`, `chroma_write_store.py`, `config.example.toml`, `tests/test_shadow_writer_gate_c3.py`) and eight new `unrelated` classifications (the seven earlier ones plus `chroma_embed_first_write.py`); **R2B regenerated again**; `ingest.py` is byte-identical to `origin/main`.
+
+### Decisions already taken (do not re-argue unless you find a defect that undermines them)
+
+1. The sidecar stays the strict authority; strict needs a full-census attestation; strict PASS means *a full re-embedding of a restore copy, at the time and threshold shown, reproduced that copy's vectors*. It does not certify present live vectors.
+2. Only a collection's **first** vector is judged. Refusing a mismatched write into a collection that already holds vectors is an open policy call.
+3. Left for follow-up PRs: `open_chroma_for_read` and `refine.py:628` creating unmarked collections on a brand-new store; the `ingest.py` summary-vector tag loss (editing `ingest.py` breaks three pinned baseline hashes, so a reviewed re-pin is Ryan's call; a strict xfail records the gap); `FileGenerationStore.stage_rows` (raw rows, no check; reached only from CG2 rehearsal, rollback-baseline and cutover code, which the repo documents as not production-wired).
+
+### Claims to falsify
+
+- **C18.** Nothing short of a vector actually being stored waives the first-vector check, through every `ChromaStore` method. Try failures after the native write but before `_note_write`, the write-guard path versus the unguarded path, `update` that changes an existing row, `restore_source_rows`, direct `_native` calls, and the production wrapper `_IndexWriteGuardedChromaStore`.
+- **C19.** No legitimate production write is newly refused. The `:latest` equivalence is the only name normalisation; look for real spellings it does not cover (namespaced names, case) and for any flow where the embedding model legitimately differs from the stamp.
+- **C20.** The five bound helpers return the serving collection's facts and nothing else, and no consumer is harmed. The test files that import them (23, including the identity ones) have 71 failures, all in the pre-change baseline and none new; I ran them after the change. Check every production caller of each helper.
+- **C21.** `check_embed_identity` never raises and never returns PASS while any collection has a definite FAIL, for any collection metadata, sidecar bytes, database layout or exception from a helper. Fuzz it beyond my list (`None`, `True`, strings, containers, `10**400`, `-10**400`, `2**63`, `0`, `-1`, `1.5`).
+- **C22.** Every sidecar the tool publishes passes the reader, and nothing the reader would reject is ever published.
+- **C23.** A full census is correct and practical at 34,000 rows. I verified correctness and speed of the read side on a real 34,000-row scratch collection (about 0.3 s, embedding excluded). I did not measure a real embedding provider.
+- **C24.** Copy isolation: hardlinks, symlinks (both sides), link cycles, directory swaps, and the interval between the last check and the client open. Residual I accept: a swap after the last check.
+- **C25.** The lock serialises writers across threads and processes, refuses a symlink at the lock path, and leaves the sidecar and lock owner-only.
+- **C26.** Bookkeeping is mechanical. R2B against `origin/main`: `code_revision` (top level and 39 routes), `inventory_digest`, and `route_id`/`entrypoint`/`shadow_inventory_ref` for the one moved site. Manifest: the four hashes and eight classifications above. SHADOW inventory: coordinates only. `ingest.py` identical to `main`.
+
+### Where I suspect weakness (attack here first, then beyond)
+
+1. **R3-1: the published-collections state machine.** It is per store instance and updated after the write. What about a second session or process that fills the collection between the check and the write, a store reused across a config reload, or a write that publishes but raises before `_note_write` (I believe that fails safe)? Does the guard path (`write_guard.native_write`) ever reload the client such that stale state matters?
+2. **R3-2: name equivalence.** Only a trailing `:latest` is stripped. What do real Ollama names look like in this repo's configs and in the live sidecar, and which direction can it go wrong?
+3. **R3-3: sibling helpers.** I bound five helpers to the serving database. `iter_collection_metadata_rows`, `unit_document_text`, `collection_inventory_snapshot`, `count_for_source_path`, `ids_for_source_path` and others in `chroma_readonly.py` still select by name alone. Do any of them feed a verdict, and should the binding be applied everywhere? Is the `1 = 1` fallback for schemas without `databases` a hole?
+4. **R3-4: the prescribed operation may not be practical.** `--sample-size all` calls the embedder once per row with no progress output, no retry and no resume. I have not measured the live store's size or a real embedding provider's speed; on a collection of tens of thousands of rows (Codex's census repro used 34,000) one transient failure late in a long run loses it. I did not add any of that. Judge whether strict mode is reachable in practice, and what minimum would make it so.
+5. **R3-5: "verified empty".** The drop advice needs `collection_count == 0` from the read-only SQLite. Evidence I gathered: the count equals the client's while a store is open, and after deleting every row it is 0 while the recorded dimension stays set (so such a collection never gets the advice). Is there a state where the count is 0 but vectors exist (unflushed log, other segment)?
+6. **R3-6: overstatement.** Read the doctor detail strings and the docstrings as an operator would. Does anything still imply the live vectors are certified?
+7. **R3-7: tests that pass for the wrong reason.** Each round found a guard no test noticed (round 1: the sampled-id completeness guard; round 2: the exclusive lock). I mutation-checked 20 further guards this round, each caught by a test aimed at it, and three redundant layers (sidecar overflow) only together. Find a guard whose removal nothing notices, including the cache clears on `delete` and `_reload_client` (the reload clear is untested).
+8. **R3-8: broad exception handling.** `check_embed_identity` catches `Exception` per collection and around the sidecar read. Does it hide a programming error as a WARN where it should fail loudly?
+
+### Evidence I gathered myself (so you can check it, not trust it)
+
+Probes, not committed: the 34,000-row census (unbatched `get` fails with `too many SQL variables`, batched completes); the two-database repro (before the filter the strict verdict was PASS for the wrong database, after it FAIL); the count/dimension behaviour above; pickle and deepcopy keep the model tag while slicing and `list()` drop it. Full suite results and the pre-existing flaky tests are listed under "Known flaky tests" above (the watch coverage test fails about half the time on pure `origin/main`).
+
+### Disclosed gaps (do not spend time rediscovering these)
+
+- The attestation tool has never run against a real restic restore or a real Ollama; nothing here may open the live store. A model name is a string, not a digest. A sample cannot rule out a minority of foreign rows (the full check is the mitigation). A ratified CG2 D0 chain exists on the machine (2026-08-29, historical model UNKNOWN) and was never compared with today's live store.
+- Tag losses: `ingest.py` summary path, `incremental_jsonl.py` persistence, `shadow_replay.py:234`, `eval_corpus/embed_adapters.py:52`.
+- Intermediate commits are not individually green on the governed-inventory suites; judge the tip. Python 3.11 locally against 3.12 in CI. `doctor.py` is concurrently edited, uncommitted, by another agent in the shared checkout and was not changed in rounds 2 or 3.
+
+### Rules, commands, report format
+
+Same rules as "Rules for the reviewer" above. Commands as in "How to run things", with the code at `ae5971c`. The identity and governed suites are the files named in the round 2 brief plus `tests/test_chroma_embed_identity.py` etc. as in "How to run things".
+
+Return, as plain text in your reply: (1) findings ranked Critical / High / Medium / Low, each with `file:line`, a reproduction and observed-or-inferred; (2) the **R2B attestation**, regenerated independently into a scratch path, stating `MATCH` or `DIFFERS`, whether the diff against `origin/main` is only the C26 fields, and the digest you computed; (3) `AGREE / DISAGREE / CANNOT VERIFY` for C18 to C26 with one line of evidence each; (4) direct answers to R3-1, R3-3, R3-4 and R3-7 even if the answer is "no problem found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether a fourth round is worth the cost.
+
+### Prompt Ryan can paste into Codex (round 3)
+
+```text
+You are a reviewer for an unmerged change in the convmem repo. This is round 3. Two earlier reviews found real defects, and some were in my own fixes from the previous round, so the round-2 fixes are the least-reviewed code here: assume more remain, be adversarial toward my work, and trust nothing I say until the code shows it.
+
+Get the code without touching anyone's checkout (never work in or modify ~/Projects/convmem):
+  scratch=$(mktemp -d)
+  git clone /home/lauer/.local/share/convmem/worktrees/fix-2026-11-24-chroma-collection-embed-identity "$scratch/repo" && cd "$scratch/repo"
+  git fetch /home/lauer/.local/share/convmem/worktrees/fix-2026-11-24-chroma-collection-embed-identity refs/remotes/origin/main:refs/remotes/origin/main
+  git rev-parse origin/main        # must read f10d67d...
+  git log --oneline origin/main..HEAD   # the code under review is ae5971c; the tip is a docs-only commit after it
+(If that path is unreadable, clone the GitHub remote with GIT_SSH_COMMAND='ssh -F /dev/null' and switch to origin/fix/2026-11-24-chroma-collection-embed-identity.)
+
+Read, in your clone, docs/inter-model/CLAUDE-2026-11-24-chroma-embed-identity-codex-adversarial-review-handoff.md. The "Round 3 review brief" section (the last one) is your task: what changed since round 2, claims C18 to C26, eight suspicion items, decisions already taken, disclosed gaps, expected test counts and the exact report format. The sections above it are history, including what rounds 1 and 2 found. The original issue is at /home/lauer/Projects/convmem/Issues/chroma-collections-missing-embedding-identity.md if you need it (read-only).
+
+Then: read the delta first (git diff 6910a49..HEAD), then the whole diff against origin/main, the three new modules in full (chroma_embed_identity.py, chroma_embed_attestation.py, chroma_embed_first_write.py), and the edits to chroma_store.py, chroma_readonly.py, llm.py and chroma_write_store.py (ingest.py is deliberately unchanged). Run the tests with the hermetic command in the handoff. Try to break each claim with real experiments on throwaway Chroma stores in temp dirs; a failing test or a short reproduction beats prose. Use the call graph to check every production caller of the helpers I changed. Independently regenerate the R2B inventory and say MATCH or DIFFERS, with the digest you computed.
+
+Hard rules: read-only on the branch (no commit, push, force-push, PR or merge; try fixes only in your scratch clone). Never open the live Chroma directory (~/.local/share/convmem/chroma) with any client or write anywhere under ~/.local/share/convmem; use temp-dir stores only. Never read or print ~/.claude.json, ~/.codex/config.toml, ~/.kiro/settings/mcp.json, ~/.claude/settings.json or any env file holding API keys. Do not call the convmem ask tool. Do not edit LATEST.md or any STATUS file.
+
+Return the report in your reply (not in the repo) in the five-part format at the end of the Round 3 brief. If you find nothing in an area, say what you tried so I can judge how hard you looked.
+```
