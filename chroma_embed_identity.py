@@ -31,8 +31,8 @@ from typing import Any
 
 from chroma_readonly import (
     collection_config_metadata,
-    collection_count,
     collection_dimension,
+    collection_row_evidence,
     collection_uuid,
 )
 from chroma_store import (
@@ -147,9 +147,11 @@ def _parse_evidence(name: str, evidence: object) -> tuple[str, int, int, float, 
         if not 0.0 < threshold <= 1.0 + _SCORE_SLACK:
             raise AttestationError("evidence threshold must be in (0, 1]")
         lowest = _score(evidence.get("min_cosine"), "min_cosine")
-        _score(evidence.get("mean_cosine"), "mean_cosine")
+        mean = _score(evidence.get("mean_cosine"), "mean_cosine")
         if lowest + _SCORE_SLACK < threshold:
             raise AttestationError("evidence min_cosine is below its own threshold")
+        if mean + _SCORE_SLACK < lowest or (sample == 1 and abs(mean - lowest) > 2 * _SCORE_SLACK):
+            raise AttestationError("evidence mean_cosine contradicts its min_cosine")
     except AttestationError as exc:
         raise AttestationError(f"{name}: {exc}") from exc
     return stamp, sample, population, threshold, lowest
@@ -337,7 +339,8 @@ def judge_collection(  # pylint: disable=too-many-arguments
 
     Pure: no I/O. States, in order:
 
-    * no metadata and no vectors: nothing to judge yet, WARN.
+    * no metadata, no dimension and no trace of any row: nothing to judge yet, WARN.
+      (A collection that holds rows but lost its metadata is unproven, like any other.)
     * records a model: PASS if it matches the configuration and any recorded
       dimension matches Chroma's own; FAIL otherwise.
     * records no model (including empty metadata on a collection that holds
@@ -348,7 +351,7 @@ def judge_collection(  # pylint: disable=too-many-arguments
     * records no model and nothing applicable attests it: WARN, or FAIL when
       ``strict`` (the switch to flip once the live collections are attested).
     """
-    if not meta and chroma_dimension is None:
+    if not meta and chroma_dimension is None and not row_count:
         return IdentityVerdict(
             WARN,
             "WARN: collection missing, or empty with no collection_metadata "
@@ -406,8 +409,9 @@ def _judge_named(  # pylint: disable=too-many-arguments
         meta=collection_config_metadata(chroma_dir, name),
         uuid=uuid or "",
         chroma_dimension=dimension,
-        # A missing dimension is not proof of emptiness (damaged metadata); count the rows.
-        row_count=collection_count(chroma_dir, name) if dimension is None and uuid else None,
+        # A missing dimension is not proof of emptiness (damaged metadata): count every trace
+        # of a row in any segment or the log, not just the one view that may be damaged.
+        row_count=collection_row_evidence(chroma_dir, name) if dimension is None and uuid else None,
         attestation=attestations.get(name),
         attestation_error=attestation_error,
         configured_model=configured_model,
@@ -448,7 +452,8 @@ def check_embed_identity(
         except Exception as exc:  # pylint: disable=broad-exception-caught
             # Whatever went wrong with one collection must not hide the other's verdict.
             verdict = IdentityVerdict(
-                FAIL if strict else WARN, f"WARN: cannot read collection metadata: {exc}"
+                FAIL if strict else WARN,
+                f"WARN: cannot read collection metadata ({type(exc).__name__}): {exc}",
             )
         if verdict is None:
             continue

@@ -6877,6 +6877,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_chroma_embed_attestation_census.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_chroma_embed_identity.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8578,7 +8583,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "51d903724a0f88fa37acbcb91b3142fe373d2a9c9156472ac96553c09d2205db",
+      "sha256": "2f877dc24a951740308d9c1f100b442239b8f373d6cf3d3f36674aaf5a279554",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

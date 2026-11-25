@@ -52,6 +52,7 @@ import random
 import secrets
 import sys
 import tempfile
+import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -75,6 +76,7 @@ from chroma_readonly import (
     collection_dimension,
     collection_ids,
     collection_uuid,
+    journal_mode_is_wal,
 )
 from chroma_store import (
     EMBED_MODEL_KEY,
@@ -89,9 +91,15 @@ MIN_SAMPLE_SIZE = 10
 DEFAULT_THRESHOLD = 0.99
 # Chroma's get() binds one SQL variable per id; SQLite caps those (32766 on current builds).
 READ_BATCH = 500
+# A failed embedding is retried this many times (backoff doubling from EMBED_BACKOFF seconds)
+# before the run is refused, naming the collection and row. A census can be tens of thousands
+# of calls; one transient error must not discard it, and a permanent one must say where.
+EMBED_RETRIES = 2
+EMBED_BACKOFF = 0.5
 METHOD = ATTESTATION_METHOD
 
 EmbedFn = Callable[[str], Sequence[float]]
+ProgressFn = Callable[[str, int, int], None]
 
 
 @dataclass(frozen=True)
@@ -147,10 +155,14 @@ def cosine(left: Sequence[float], right: Sequence[float]) -> float:
 
 def _unit(vector: Sequence[float], what: str) -> list[float]:
     _require_usable(vector, what)
-    length = math.hypot(*vector)
+    # Divide by the largest component first: hypot of subnormal components rounds the length
+    # to one of them, which would turn [5e-324, 5e-324] into [1, 1] instead of a unit vector.
+    peak = max(abs(x) for x in vector)
+    scaled = [x / peak for x in vector]
+    length = math.hypot(*scaled)
     if not math.isfinite(length) or length == 0.0:
         raise AttestationError(f"{what} has no usable length")
-    return [x / length for x in vector]
+    return [x / length for x in scaled]
 
 
 def _sample_ids(ids: Sequence[str], sample_size: int | None, seed: int) -> list[str]:
@@ -158,6 +170,20 @@ def _sample_ids(ids: Sequence[str], sample_size: int | None, seed: int) -> list[
     if sample_size is None or len(ordered) <= sample_size:
         return ordered
     return sorted(random.Random(seed).sample(ordered, sample_size))
+
+
+def _embed_row(embed: EmbedFn, name: str, doc_id: str, document: str) -> list[float]:
+    """Embed one stored document; refuse with the collection and row if the provider keeps failing."""
+    for attempt in range(EMBED_RETRIES + 1):
+        try:
+            return [float(x) for x in embed(document)]
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            if attempt == EMBED_RETRIES:
+                raise AttestationError(
+                    f"{name}: embedding row {doc_id!r} failed after {attempt + 1} attempts: {exc!r}"
+                ) from exc
+            time.sleep(EMBED_BACKOFF * 2**attempt)
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
@@ -168,6 +194,7 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     sample_size: int | None = DEFAULT_SAMPLE_SIZE,
     seed: int = 0,
     before_open: Callable[[], None] | None = None,
+    progress: ProgressFn | None = None,
 ) -> SpotCheck:
     """Re-embed a reproducible sample of stored documents and compare to storage.
 
@@ -175,6 +202,8 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     (``open_chroma_for_verify``), so ``copy_dir`` must be a restore copy. Missing
     collections are never created. ``before_open`` runs immediately before the client
     opens, so a guard there leaves the least room for the directory to change after it.
+    Rows are read, embedded and scored one batch at a time, so memory does not grow with
+    the collection; ``progress(name, done, total)`` is called after each batch.
     """
     ids = collection_ids(copy_dir, name)
     if not ids:
@@ -187,7 +216,8 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     sample = _sample_ids(ids, sample_size, seed)
     if before_open is not None:
         before_open()
-    stored: list[tuple[str, Any, Any]] = []
+    scores: list[float] = []
+    dimension = 0
     # The restore-drill opener: get_collection only, so nothing is ever created.
     try:
         with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
@@ -197,17 +227,16 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
                 got = collection.get(ids=batch, include=["embeddings", "documents"])
                 if sorted(got["ids"]) != batch:
                     raise AttestationError(f"{name}: could not read every sampled vector from the copy")
-                stored.extend(zip(got["ids"], got["documents"], got["embeddings"]))
+                for doc_id, document, vector in zip(got["ids"], got["documents"], got["embeddings"]):
+                    if not isinstance(document, str) or not document.strip():
+                        raise AttestationError(f"{name}: sampled item {doc_id!r} has no document to embed")
+                    values = [float(x) for x in vector]
+                    dimension = len(values)
+                    scores.append(cosine(values, _embed_row(embed, name, doc_id, document)))
+                if progress is not None:
+                    progress(name, len(scores), len(sample))
     except NotFoundError as exc:
         raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
-    scores: list[float] = []
-    dimension = 0
-    for doc_id, document, vector in stored:
-        if not isinstance(document, str) or not document.strip():
-            raise AttestationError(f"{name}: sampled item {doc_id!r} has no document to embed")
-        values = [float(x) for x in vector]
-        dimension = len(values)
-        scores.append(cosine(values, [float(x) for x in embed(document)]))
     return SpotCheck(
         collection=name,
         population=len(ids),
@@ -254,6 +283,7 @@ def _file_identities(root: Path, *, forbid_symlinks: bool) -> set[tuple[int, int
                 subdirectories[:] = []  # a link cycle: already walked
                 continue
             visited.add((here.st_dev, here.st_ino))
+            found.add((here.st_dev, here.st_ino))  # an empty shared directory is shared storage
             for entry in (*subdirectories, *names):
                 path = Path(directory, entry)
                 if forbid_symlinks and path.is_symlink():
@@ -305,6 +335,7 @@ def _sidecar_lock(path: Path):
         fd = os.open(
             path.with_name(path.name + ".lock"), os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
         )
+        os.fchmod(fd, 0o600)  # the mode argument above only applies when the file is created
     except OSError as exc:  # includes ELOOP: a symlink planted at the lock path
         raise AttestationError(f"cannot take the sidecar lock: {exc}") from exc
     try:
@@ -350,6 +381,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
     note: str = "",
     write: bool = False,
     now: datetime | None = None,
+    progress: ProgressFn | None = None,
 ) -> AttestationReport:
     """Verify, and with ``write=True`` record, the model behind unmarked collections.
 
@@ -367,6 +399,13 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
     explicit = names is not None
     requested = tuple(dict.fromkeys(names if names is not None else (UNITS, SUMMARIES)))
     live, copy = Path(live_dir).expanduser(), Path(copy_dir).expanduser()
+    if journal_mode_is_wal(live):
+        # SQLite may create -wal/-shm beside a WAL database even for a read-only open; the live
+        # directory must stay untouched, so refuse instead of reading it.
+        raise AttestationError(
+            "the live database is in WAL mode: a read-only open could create -wal/-shm files "
+            "in the live directory, so it is not read"
+        )
     _require_separate_copy(live, copy)
 
     read_attestations(live)  # refuse early, before any embedding, to build on a corrupt sidecar
@@ -400,6 +439,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             seed=used_seed,
             # checked again right before a client opens the copy
             before_open=lambda: _require_separate_copy(live, copy),
+            progress=progress,
         )
         if check.dimension != live_dim:
             raise AttestationError(
@@ -521,6 +561,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     models = cfg.get("models") or {}
     model = args.model or models.get("embed_model") or ""
     host = models.get("ollama_host") or ""
+    def show(name: str, done: int, total: int) -> None:
+        if done == total or done % 2000 == 0:
+            print(f"  {name}: {done}/{total} rows checked", file=sys.stderr, flush=True)
+
     try:
         report = attest_collections(
             live_dir,
@@ -532,6 +576,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             seed=args.seed,
             note=args.note,
             write=args.write,
+            progress=show,
         )
     except AttestationError as exc:
         print(f"attestation refused: {exc}", file=sys.stderr)

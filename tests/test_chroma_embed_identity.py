@@ -681,6 +681,191 @@ def test_a_schema_without_databases_is_read_as_before(tmp_path: Path) -> None:
     assert collection_config_metadata(db, UNITS)[EMBED_MODEL_KEY] == "m"
 
 
+def _two_databases(chroma: Path, first_stamp: str, other_stamp: str, *, tenant: str | None = None):
+    """The serving collection stamped ``first_stamp``; a same-named one elsewhere stamped ``other_stamp``."""
+    from chromadb import AdminClient
+    from chromadb.config import Settings
+
+    serving = chromadb.PersistentClient(path=str(chroma))
+    wrong = serving.get_or_create_collection(UNITS, metadata={**COSINE, EMBED_MODEL_KEY: first_stamp})
+    wrong.upsert(ids=["a"], embeddings=[[1.0, 0.0]], documents=["x"])
+    admin = AdminClient(Settings(is_persistent=True, persist_directory=str(chroma)))
+    if tenant is None:
+        admin.create_database("other")
+        client = chromadb.PersistentClient(path=str(chroma), database="other")
+    else:
+        admin.create_tenant(tenant)
+        admin.create_database("default_database", tenant=tenant)
+        client = chromadb.PersistentClient(path=str(chroma), tenant=tenant, database="default_database")
+    client.get_or_create_collection(UNITS, metadata={**COSINE, EMBED_MODEL_KEY: other_stamp}).upsert(
+        ids=["b"], embeddings=[[0.0, 1.0]], documents=["y"]
+    )
+    return wrong
+
+
+def test_a_same_named_collection_in_another_tenant_cannot_pass_for_the_serving_one(
+    tmp_path: Path,
+) -> None:
+    """The other tenant has its own 'default_database': only the tenant tells them apart."""
+    chroma = tmp_path / "chroma"
+    _two_databases(chroma, "wrong-model", "wanted-model", tenant="other_tenant")
+
+    verdict = check_embed_identity(chroma, "wanted-model", strict=True)
+
+    assert verdict.status == FAIL and "wrong-model" in verdict.detail
+
+
+@pytest.mark.parametrize("damage", ["databases-table-renamed", "database-id-column-dropped"])
+def test_an_inconsistent_catalog_is_refused_not_read_as_a_single_database(
+    tmp_path: Path, damage: str
+) -> None:
+    chroma = tmp_path / "chroma"
+    _two_databases(chroma, "wrong-model", "wanted-model")
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:  # a scratch store: simulate damage
+        if damage == "databases-table-renamed":
+            con.execute("ALTER TABLE databases RENAME TO databases_gone")
+        else:
+            con.execute("ALTER TABLE collections RENAME COLUMN database_id TO database_gone")
+
+    default = check_embed_identity(chroma, "wanted-model")
+    strict = check_embed_identity(chroma, "wanted-model", strict=True)
+
+    assert default.status == WARN and strict.status == FAIL  # never PASS for the wrong database
+    assert "inconsistent Chroma catalog" in strict.detail and "DatabaseError" in strict.detail
+
+
+def test_sibling_read_helpers_do_not_mix_in_another_databases_rows(tmp_path: Path) -> None:
+    from chromadb import AdminClient
+    from chromadb.config import Settings
+
+    from chroma_readonly import collection_inventory_snapshot, count_for_source_path, ids_for_source_path
+
+    chroma = tmp_path / "chroma"
+    serving = chromadb.PersistentClient(path=str(chroma))
+    serving.get_or_create_collection(UNITS).upsert(
+        ids=["u1"], embeddings=[[1.0, 0.0]], documents=["x"], metadatas=[{"source_path": "a.md"}]
+    )
+    AdminClient(Settings(is_persistent=True, persist_directory=str(chroma))).create_database("other")
+    chromadb.PersistentClient(path=str(chroma), database="other").get_or_create_collection(UNITS).upsert(
+        ids=["u1", "u2"],
+        embeddings=[[0.0, 1.0]] * 2,
+        documents=["y", "z"],
+        metadatas=[{"source_path": "a.md", "superseded": True}, {"source_path": "only-other.md"}],
+    )
+
+    snapshot = collection_inventory_snapshot(chroma, UNITS)
+    assert snapshot["active_unit_count"] == 1 and snapshot["historical_unit_count"] == 0
+    assert ids_for_source_path(chroma, UNITS, "a.md") == ["u1"]
+    assert ids_for_source_path(chroma, UNITS, "only-other.md") == []
+    assert count_for_source_path(chroma, UNITS, "only-other.md") == 0
+
+
+def _serving_and_other_database(chroma: Path) -> None:
+    """u1 in both databases (the other's superseded); u2 and a document only in the other."""
+    from chromadb import AdminClient
+    from chromadb.config import Settings
+
+    serving = chromadb.PersistentClient(path=str(chroma))
+    serving.get_or_create_collection(UNITS).upsert(
+        ids=["u1"], embeddings=[[1.0, 0.0]], documents=["serving document"],
+        metadatas=[{"source_path": "a.md"}],
+    )
+    AdminClient(Settings(is_persistent=True, persist_directory=str(chroma))).create_database("other")
+    chromadb.PersistentClient(path=str(chroma), database="other").get_or_create_collection(UNITS).upsert(
+        ids=["u1", "u2", "u3"],
+        embeddings=[[0.0, 1.0]] * 3,
+        documents=["other document", "only other", "also only other"],
+        metadatas=[{"source_path": "a.md"}, {"source_path": "b.md"}, {"source_path": "c.md"}],
+    )
+
+
+def test_every_read_variant_returns_only_the_serving_databases_rows(tmp_path: Path) -> None:
+    from chroma_readonly import collection_count, iter_collection_metadata_rows, unit_document_text
+
+    chroma = tmp_path / "chroma"
+    _serving_and_other_database(chroma)
+
+    ids_only = list(iter_collection_metadata_rows(chroma, UNITS, metadata_keys={"id"}, include_document=False))
+    projected = list(iter_collection_metadata_rows(chroma, UNITS, metadata_keys={"source_path"}))
+    everything = list(iter_collection_metadata_rows(chroma, UNITS))
+
+    assert sorted(r["id"] for r in ids_only) == ["u1"]
+    assert sorted(r["id"] for r in projected) == ["u1"]
+    assert sorted(r["id"] for r in everything) == ["u1"]
+    assert unit_document_text(chroma, "u1") == "serving document"
+    assert unit_document_text(chroma, "u2") is None  # exists only in the other database
+    assert collection_count(chroma, UNITS) == 1
+
+
+def test_stored_rows_in_a_relabelled_segment_withhold_the_drop_advice_even_with_no_log(
+    tmp_path: Path,
+) -> None:
+    """The log is a second trace; the stored rows must stand on their own as evidence."""
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        con.execute("DELETE FROM embeddings_queue")  # as after compaction: no log left
+        con.execute("UPDATE collections SET dimension = NULL")
+        con.execute("UPDATE segments SET scope = 'BROKEN'")
+
+    from chroma_readonly import collection_row_evidence
+
+    assert collection_row_evidence(chroma, UNITS) > 0
+    assert "can be dropped" not in check_embed_identity(chroma, MODEL).detail
+
+
+def test_populated_storage_is_never_called_empty_when_its_labels_are_damaged(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:  # scratch: damage the labels, keep the row
+        con.execute("UPDATE collections SET dimension = NULL")
+        con.execute("UPDATE segments SET scope = 'BROKEN'")
+
+    default = check_embed_identity(chroma, MODEL)
+    strict = check_embed_identity(chroma, MODEL, strict=True)
+
+    assert "can be dropped" not in default.detail and "can be dropped" not in strict.detail
+    assert default.status == WARN and strict.status == FAIL
+
+
+def test_a_trace_in_the_log_alone_is_enough_to_withhold_the_drop_advice(tmp_path: Path) -> None:
+    from chroma_readonly import collection_row_evidence
+
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:  # scratch: no stored row, a log row remains
+        con.execute("DELETE FROM embeddings")
+        con.execute("UPDATE collections SET dimension = NULL")
+
+    assert collection_row_evidence(chroma, UNITS) > 0  # only the pending log still shows it
+    assert "can be dropped" not in check_embed_identity(chroma, MODEL).detail
+
+
+def test_rows_without_any_metadata_are_unproven_under_strict_not_waved_through(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        con.execute("DELETE FROM collection_metadata")
+        con.execute("UPDATE collections SET dimension = NULL")
+
+    assert check_embed_identity(chroma, MODEL).status == WARN
+    assert check_embed_identity(chroma, MODEL, strict=True).status == FAIL
+
+
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {"sample_size": 1, "population": 1, "min_cosine": 1.0, "mean_cosine": 0.0},  # one row: they must agree
+        {"sample_size": 1, "population": 1, "min_cosine": 0.995, "mean_cosine": 1.0},
+        {"sample_size": 5, "population": 5, "min_cosine": 1.0, "mean_cosine": 0.5},  # mean below the minimum
+    ],
+    ids=["one-row-mean-zero", "one-row-mean-above-min", "mean-below-min"],
+)
+def test_contradictory_census_numbers_are_not_an_attestation(evidence: dict) -> None:
+    with pytest.raises(AttestationError, match="mean_cosine"):
+        parse_attestations(_doc(evidence=_evidence(**evidence)))
+
+
 _HOSTILE = [None, True, "x", [], {}, 10**400, -(10**400), 2**63, -1, 0, 1.5, "NaN"]
 
 

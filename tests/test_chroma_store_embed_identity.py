@@ -466,6 +466,12 @@ def test_emptying_a_collection_in_a_session_restores_the_first_vector_check(tmp_
         ("nomic-embed-text", "nomic-embed-text:latest", True),
         ("nomic-embed-text:latest", "nomic-embed-text", True),
         (" nomic-embed-text ", "nomic-embed-text:latest", True),
+        ("library/nomic-embed-text", "nomic-embed-text:latest", True),
+        ("registry.ollama.ai/library/nomic-embed-text:latest", "nomic-embed-text", True),
+        ("NOMIC-EMBED-TEXT", "nomic-embed-text:latest", True),
+        ("nomic-embed-text:V1.5", "nomic-embed-text:v1.5", True),
+        ("someone/nomic-embed-text", "nomic-embed-text", False),
+        ("localhost:11434/nomic-embed-text", "nomic-embed-text", False),
         ("nomic-embed-text", "nomic-embed-text:v1.5", False),
         ("nomic-embed-text:v1", "nomic-embed-text:v2", False),
         ("nomic-embed-text", "other-model", False),
@@ -483,3 +489,65 @@ def test_an_alias_only_config_change_does_not_refuse_the_first_write(tmp_path: P
     with ChromaStore(str(chroma), embed_model="nomic-embed-text:latest") as store:
         store.add_unit("u1", "a document", _vector("nomic-embed-text"), {"source_path": "unit.md"})
         assert store.count_units() == 1
+
+
+def test_another_session_emptying_the_collection_cannot_leave_a_stale_waiver(tmp_path: Path) -> None:
+    """Reviewed: store A published, store B removed the last row, A then accepted a foreign first vector."""
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as first, ChromaStore(
+        str(chroma), embed_model="model-y"
+    ) as second:
+        first.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        second._native(UNITS, "delete", ids=["u1"])
+        assert first.count_units() == 0
+
+        with pytest.raises(EmbedIdentityError):
+            first.add_unit("u2", "a document", _vector("model-x"), {"source_path": "unit.md"})
+
+
+def test_a_write_that_reports_failure_after_committing_cannot_waive_the_check(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        real = store._native
+
+        def commit_then_fail(collection, operation, **kwargs):
+            real(collection, operation, **kwargs)
+            if operation == "delete":
+                raise RuntimeError("bookkeeping failed after the row was gone")
+
+        with mock.patch.object(store, "_native", commit_then_fail):
+            with pytest.raises(RuntimeError):
+                store._native(UNITS, "delete", ids=["u1"])
+        assert store.count_units() == 0
+
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u2", "a document", _vector("model-x"), {"source_path": "unit.md"})
+
+
+def test_a_direct_native_write_with_an_array_succeeds_and_reports_success(tmp_path: Path) -> None:
+    import numpy as np
+
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store._native(
+            UNITS,
+            "upsert",
+            ids=["n1"],
+            documents=["a document"],
+            embeddings=np.array([[1.0, 0.0]], dtype=np.float32),
+            metadatas=[{"source_path": "unit.md"}],
+        )
+        assert store.count_units() == 1  # and it did not raise after committing
+
+
+def test_a_reloaded_client_forgets_the_recorded_models(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        store.add_unit("u2", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        assert store.recorded_stamps == {UNITS: "model-y"}
+
+        store._reload_client()
+
+        assert not store.recorded_stamps

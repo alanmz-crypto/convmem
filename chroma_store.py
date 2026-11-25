@@ -144,13 +144,24 @@ def normalize_embed_model(value: object) -> str | None:
     return None
 
 
+def _canonical_embed_model(value: object) -> str | None:
+    """A model name as Ollama identifies it: lower case, the default registry and ``library/``
+    namespace dropped, the tag defaulting to ``latest``."""
+    name = normalize_embed_model(value)
+    if name is None:
+        return None
+    head, _, last = name.lower().rpartition("/")
+    last_name, _, tag = last.partition(":")  # a ':' before the last '/' is a registry port
+    base = f"{head}/{last_name}" if head else last_name
+    for prefix in ("registry.ollama.ai/", "library/"):
+        base = base.removeprefix(prefix)
+    return f"{base}:{tag or 'latest'}"
+
+
 def same_embed_model(first: object, second: object) -> bool:
-    """True when two model names denote one Ollama model: a bare name means ``:latest``."""
-    names = [normalize_embed_model(v) for v in (first, second)]
-    if None in names:
-        return False
-    first_name, second_name = (n.removesuffix(":latest") for n in names)  # type: ignore[union-attr]
-    return first_name == second_name
+    """True when two names denote one Ollama model (``x``, ``x:latest``, ``library/x``, ``X``)."""
+    names = [_canonical_embed_model(v) for v in (first, second)]
+    return None not in names and names[0] == names[1]
 
 
 class EmbedIdentityError(ValueError):
@@ -191,8 +202,9 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         # sink, it is handed in: this class never loads config. None records
         # nothing, so direct and test stores behave exactly as before.
         self.embed_model = normalize_embed_model(embed_model)
-        # Collections this session has stored a vector in (see chroma_embed_first_write).
-        self.published_collections: set[str] = set()
+        # Each existing collection's recorded model, read once (see chroma_embed_first_write).
+        # A recorded model never changes, unlike what the collection currently holds.
+        self.recorded_stamps: dict[str, str | None] = {}
         self.client = self._new_client()
 
     def _new_client(self):
@@ -204,7 +216,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
     def _reload_client(self) -> None:
         """Drop this process's Chroma system so the next access loads the on-disk save."""
         self._release_client()
-        self.published_collections.clear()
+        self.recorded_stamps.clear()
         stale_elsewhere = chroma_system_cached(self.chroma_dir)
         self.client = self._new_client()
         if stale_elsewhere:
@@ -218,13 +230,6 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         from chroma_embed_first_write import require_first_vector_matches
 
         require_first_vector_matches(self, name, embeddings)
-
-    def _note_write(self, collection: str, operation: str, kwargs: dict) -> None:
-        """Remember a collection only once a vector really reached it; forget it on delete."""
-        if operation in ("add", "upsert") and len(kwargs.get("embeddings") or ()):
-            self.published_collections.add(collection)
-        elif operation == "delete":
-            self.published_collections.discard(collection)
 
     def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
         """Run one native Chroma mutation, under the write guard when one is attached."""
@@ -251,7 +256,6 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                     )
                 raise
             note_unguarded_write(self.chroma_dir, before)
-            self._note_write(collection, operation, kwargs)
             if session is not None:
                 session.on_native_after(
                     collection=collection,
@@ -272,7 +276,6 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                         guard_finalized=False,
                     )
                 raise
-        self._note_write(collection, operation, kwargs)
         if session is not None:
             session.on_native_after(
                 collection=collection,
