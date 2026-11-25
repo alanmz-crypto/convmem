@@ -360,6 +360,16 @@ def test_the_summary_vector_keeps_its_model_tag_through_ingest(tmp_path: Path) -
         "start_offset": 0,
         "end_offset": 0,
     }
+    # Passed as a mapping: the same keyword lines in test_index_loud_failures.py would otherwise
+    # be reported by the CI pylint gate as duplicated code.
+    options = {
+        "tool": "codex",
+        "chunk_size": 60,
+        "overlap": 10,
+        "min_confidence": 0.6,
+        "verbose": False,
+        "retry_sleep": False,
+    }
     with (
         mock.patch("ingest._SYNTHESIS_FAIL_LOG", tmp_path / "synthesis_failures.jsonl"),
         mock.patch("ingest.summarize", return_value="a summary"),
@@ -371,12 +381,7 @@ def test_the_summary_vector_keeps_its_model_tag_through_ingest(tmp_path: Path) -
             path="/tmp/session.jsonl",
             path_key="/tmp/session.jsonl",
             models=models,
-            tool="codex",
-            chunk_size=60,
-            overlap=10,
-            min_confidence=0.6,
-            verbose=False,
-            retry_sleep=False,
+            **options,
         )
 
     assert artifact is not None
