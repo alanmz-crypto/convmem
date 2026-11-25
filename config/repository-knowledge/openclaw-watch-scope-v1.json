@@ -8573,7 +8573,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "0fcb51ad0d0538fcfcac01d5e12d9bc37d3f965ff1bedcf6146dae9483b66384",
+      "sha256": "542c47cbc5f2f594d6d4bc68f337c4900f47385e553aa1a2f7f2e53ece03cf09",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
@@ -9168,7 +9168,7 @@
     },
     {
       "path": "ingest.py",
-      "sha256": "5d1d7dfac184c617c3d8de09cab3226fa311455c321adbf7c33c10526de9c92e",
+      "sha256": "82bc27276681e3bbde6298eb30bd75218f3bd73e4bb9c337d4a3996398559ce2",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

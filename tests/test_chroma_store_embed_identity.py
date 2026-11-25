@@ -223,12 +223,85 @@ def test_an_untagged_vector_is_not_judged(tmp_path: Path) -> None:
     assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-b"
 
 
-def test_only_creation_is_policed_an_existing_collection_is_left_to_doctor(tmp_path: Path) -> None:
+READS_BEFORE_A_WRITE = {
+    "get_unit": lambda store: store.get_unit("u1"),
+    "query_units": lambda store: store.query_units([1.0, 0.0, 0.0], 3),
+    "count_units": lambda store: store.count_units(),
+}
+
+
+@pytest.mark.parametrize("read", sorted(READS_BEFORE_A_WRITE))
+def test_a_read_that_creates_the_collection_first_does_not_let_a_foreign_vector_through(
+    tmp_path: Path, read: str
+) -> None:
+    """Writers dedupe and replay-check before they write; those reads create the collection."""
     chroma = tmp_path / "chroma"
-    _create(chroma, UNITS, embed_model="model-b")  # already exists, stamped model-b
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        READS_BEFORE_A_WRITE[read](store)
+        assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-b"
+
+        with pytest.raises(EmbedIdentityError, match="model-a"):
+            store.add_unit("u1", "a document", _vector("model-a"), {"source_path": "unit.md"})
+
+        assert store.count_units() == 0  # nothing was stored under the wrong stamp
+        # The right model is still accepted into the same collection afterwards.
+        store.add_unit("u1", "a document", _vector("model-b"), {"source_path": "unit.md"})
+        assert store.count_units() == 1
+
+
+def test_the_first_vector_must_come_from_the_model_an_empty_collection_records(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS, embed_model="model-b")  # exists, stamped, holds no vectors
+
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", _vector("model-a"), {"source_path": "unit.md"})
+
+
+def test_the_first_vector_is_compared_with_the_collection_not_just_the_store(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS, embed_model="model-b")  # recorded b, but this session is configured c
+
+    with ChromaStore(str(chroma), embed_model="model-c") as store:
+        with pytest.raises(EmbedIdentityError, match="records 'model-b'"):
+            store.add_unit("u1", "a document", _vector("model-c"), {"source_path": "unit.md"})
+
+
+def test_the_collection_is_looked_up_once_per_session_not_on_every_write(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        with mock.patch.object(
+            store.client, "get_collection", wraps=store.client.get_collection
+        ) as lookup:
+            for index in range(3):
+                store.add_unit(
+                    f"u{index}", "a document", _vector("model-b"), {"source_path": "unit.md"}
+                )
+
+    assert lookup.call_count == 1
+
+
+def test_an_empty_collection_that_records_nothing_is_not_judged(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS)  # a legacy-style collection: cosine only, no model
 
     with ChromaStore(str(chroma), embed_model="model-b") as store:
         store.add_unit("u1", "a document", _vector("model-a"), {"source_path": "unit.md"})
+
+    assert EMBED_MODEL_KEY not in collection_config_metadata(chroma, UNITS)
+
+
+def test_once_a_collection_holds_vectors_a_mismatch_is_left_to_doctor(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        store.add_unit("u1", "a document", _vector("model-b"), {"source_path": "unit.md"})
+
+    with ChromaStore(str(chroma), embed_model="model-b") as store:  # a later session
+        store.add_unit("u2", "another", _vector("model-a"), {"source_path": "unit.md"})
 
     assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-b"
 
@@ -253,7 +326,50 @@ def test_a_config_change_between_embedding_and_opening_the_writer_is_refused(
     try:
         with pytest.raises(EmbedIdentityError):
             store.add_unit("u1", "a document", embedded_under_a, {"source_path": "unit.md"})
+        assert collection_uuid(chroma, UNITS) is None  # refused before anything was created
+
+        store.get_unit("u1")  # the dedupe and replay reads a real writer does first
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", embedded_under_a, {"source_path": "unit.md"})
+        assert store.count_units() == 0
     finally:
         store.close()
 
-    assert collection_uuid(chroma, UNITS) is None
+
+def test_the_summary_vector_keeps_its_model_tag_through_ingest(tmp_path: Path) -> None:
+    """A copy such as list(vector) drops the tag, and an untagged vector is never judged."""
+    import ingest
+
+    tagged = _vector("nomic-embed-text:latest")
+    models = {
+        "summarize_model": "m",
+        "distill_model": "m",
+        "embed_model": "nomic-embed-text:latest",
+        "ollama_host": "http://localhost:11434",
+    }
+    chunk = {
+        "messages": [{"role": "user", "content": "hello", "timestamp": None}],
+        "start_offset": 0,
+        "end_offset": 0,
+    }
+    with (
+        mock.patch("ingest._SYNTHESIS_FAIL_LOG", tmp_path / "synthesis_failures.jsonl"),
+        mock.patch("ingest.summarize", return_value="a summary"),
+        mock.patch("ingest.ollama_embed", return_value=tagged),
+        mock.patch("ingest._distill_with_provenance", return_value=([], "")),
+    ):
+        artifact = ingest.build_chunk_artifact(
+            chunk=chunk,
+            path="/tmp/session.jsonl",
+            path_key="/tmp/session.jsonl",
+            models=models,
+            tool="codex",
+            chunk_size=60,
+            overlap=10,
+            min_confidence=0.6,
+            verbose=False,
+            retry_sleep=False,
+        )
+
+    assert artifact is not None
+    assert getattr(artifact.summary_embedding, "embed_model", None) == "nomic-embed-text:latest"
