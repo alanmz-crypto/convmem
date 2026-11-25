@@ -576,3 +576,59 @@ The sidecar stays the strict authority; a strict PASS means "a full re-embedding
 ### Return, as plain text
 
 (1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R5-2 to R5-6 (if not already sent) and to R6-1, R6-2 and R6-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether a seventh round is worth the cost.
+
+---
+
+## Review round 6 outcome (appended after the sixth Codex review; text above is the record of what was reviewed at 7a2b7c0)
+
+Codex recommended **rework the shared SQLite reader before shipping** and said strict-with-sidecar was not yet an acceptable fail-closed gate. It answered R5-2 to R5-6 (resent), attested R2B (`MATCH`, digest `893cffc5…`; only the usual fields differ; manifest = four hashes and eleven classifications; `ingest.py` identical), and confirmed all seven round-5 counterexamples as fixed for the cases originally reproduced. Its first acceptance test, which I adopted: every ordinary reader must preserve another connection's OS lock. Disposition (fixes in `cf147db`):
+
+| Codex finding | Disposition |
+|---|---|
+| **Critical (mine, introduced in round 5):** the WAL header probe I put in the shared connector used an ordinary `open()` and `close()` on `chroma.sqlite3`. On POSIX, closing any descriptor for a file cancels every lock the process holds on it, so a doctor read could drop another transaction's lock (reproduced: a connection still reporting `in_transaction` let a second process take the exclusive lock) | **Fixed.** The connector no longer touches the file except through SQLite. The pre-flight `may_create_wal_files` reads the header in a child process and is used only by the attestation command (as before round 5). Reproduced first, then a test for each of 13 readers run in a fresh process: with the raw open put back, 12 of them fail. |
+| High: doctor's PASS could describe no committed state (units and summaries read in separate transactions; a commit swapped their stamps in between) | **Fixed.** `collection_identity_facts_many` reads both through one connection in one transaction; a failure reading one collection is returned for that collection and cannot hide the other's. |
+| High: a stable UUID, count and id set did not make a stable census (a second writer repaired a row not yet read and broke one already scored; 501/501 was published) | **Fixed.** The census fingerprints the copy (row count, sequence numbers, log sequence) after listing and again after scoring, repeats the id listing, and refuses with "changed while it was being checked". The fingerprint and the listing each have a test that fails without it. **Condition:** the restore copy must be private; the message says so. |
+| Medium: the connector broke healthy WAL readers (the keyword fallback raised) and still left the no-creation promise incomplete | **Fixed by removing the connector refusal.** Readers read a WAL store again (as before this branch). The promise is made only by the attestation command: a pre-flight, then one read of the live catalog in one transaction (it no longer reopens it per fact). **Residual:** a switch to WAL between the pre-flight and that single read can still create `-wal`/`-shm`. |
+| Medium: malformed inputs still escaped as tracebacks (`models = ["k"]`; a catalog dimension `'unknown'`) | **Fixed.** A configuration whose `models` is not a table, and a malformed dimension, are refusals. |
+| R5-3: the ambiguity count and its query could race in the single-collection helpers | **Fixed.** The connector opens a read transaction for every reader, so they share a snapshot (a test shows a writer cannot commit between them). |
+| R5-4 / R6-5: a hot rollback journal passes the header check; a provider `SystemExit(0)` returned success; a Rust panic would escape | A hot journal: SQLite refuses recovery on the read-only connection and the CLI returns 2 (Codex observed this; nothing to change). **Fixed:** a provider `SystemExit` is a failed row; a native `PanicException` is a refusal. **Not changed, by design:** other `BaseException` subclasses from a provider still escape, so `KeyboardInterrupt` still interrupts. |
+| R5-6 / R6-6: guards whose removal nothing noticed (final scored-id coverage, `READ_BATCH` set to 1,000,000, the segment-count check, a descriptor leak on `flock` failure) | **Fixed.** Each now has a test: coverage by a patched sampler, the batch limit by a real 34,000-row store, the segment count by an *empty* collection missing its vector segment (the old fixture let a stored row stand in), the leak by a failing `flock`. |
+
+Mutation sweep for round 6: 14 guards, 3 first undetected (the id re-listing, redundant with the fingerprint; the configuration check, redundant with an exception handler; and the segment-count test), each now caught by its own test.
+
+**What is not fixed, and why.** (1) A process that has Chroma open on a database and also reads it through Python's `sqlite3` can still disturb Chroma's locks when that connection closes: they are different SQLite library instances that do not coordinate their POSIX locks. This predates the branch (`chroma_readonly` has always opened and closed its own connection); it is the reason the lock tests run in a fresh process. A safer reader design (for example never reading a store a live client holds open) is a decision for Ryan. (2) The WAL residual above. (3) A failed census still yields the first failing row, not a complete score distribution.
+
+**Real-store checks with this code (read-only, nothing created beside the live store).** Doctor's read of the live store is unchanged (both collections 768-dim, unmarked, no sidecar; WARN by default, FAIL under strict) in 0.01 s. The full-census dry run reproduces all 122,843 rows of today's restore: none failed, none below 0.9999, minimum cosine 0.999991 and 0.999998, exit 0, 663 s, with the new fingerprint check on and no false refusal. Full suite at `cf147db`: 214 failed / 3696 passed / 69 skipped / 1 xfailed / 52 errors, which is the 265 baseline ids plus one failure of the known-flaky `test_real_watch_subprocess_and_public_query_reproduce_across_data_roots` (it passed 4 of 5 reruns on this commit; the failing run took 37 s, the same signature as on pure `origin/main`).
+
+---
+
+## Round 7 review brief (focused; written after round 6 was addressed)
+
+The code under review is `cf147db`; later commits are docs only. Base `origin/main` = `f10d67d` (fetch it from the source worktree's remote-tracking ref). `git diff 7a2b7c0..cf147db` is the delta (6 files outside `docs/`, about 565 added lines). **Trail (the code graph) is available: use it for callers and blast radius.**
+
+**Expected results:** the six identity files (`tests/test_chroma_store_embed_identity.py`, `test_chroma_production_embed_identity.py`, `test_chroma_embed_identity.py`, `test_chroma_readonly_scope.py`, `test_chroma_embed_attestation.py`, `test_chroma_embed_attestation_census.py`): **353 passed, 1 xfailed**. The nine governed-inventory files: **84 passed** on a clean tree. Manifest: four refreshed hashes and **eleven** new `unrelated` classifications (unchanged this round).
+
+### Part 1: rerun your round-6 counterexamples (FIXED / STILL REPRODUCES / FIXED DIFFERENTLY, with a command or test)
+
+1. Your first acceptance test: hold a read transaction in one connection and ask another process for an exclusive lock after each ordinary reader runs (`may_create_wal_files`, every `collection_*` helper, `iter_collection_metadata_rows`, `unit_document_text`, `check_embed_identity`). Run it in a process that has never loaded Chroma.
+2. The atomic two-collection stamp swap: does strict doctor still pass across the commit?
+3. The same-UUID, two-batch census: a second writer repairs a row not yet read and breaks one already scored.
+4. A WAL stand-in: stationary, and switched after the pre-flight; readers (the keyword fallback) on a WAL store.
+5. `models = ["k"]`, a catalog dimension `'unknown'`, a provider raising `SystemExit(0)`.
+
+### Part 2: attack the new code
+
+- **R7-1 `collection_change_fingerprint`.** It claims any change to a collection changes (rows, newest sequence, sum of sequences, newest log sequence). Is that true of Chroma 1.5.9? Try an `update` of an existing vector, a delete and re-add of the same id, a metadata-only change, a write whose effect reaches the HNSW index but not SQLite's `embeddings.seq_id`, and a second writer in another process. Any change it misses is a false PASS.
+- **R7-2 `may_create_wal_files` in a child process.** It runs `sys.executable -I -S -c`. What happens under a sandbox that forbids subprocesses, a frozen interpreter, a very slow filesystem or the 30 s timeout? It returns "unsafe" on any failure, so is the attestation command unusable somewhere it should work?
+- **R7-3 transaction scope.** Every reader now `BEGIN`s on connect. `iter_collection_metadata_rows` is a generator that holds its read lock while a consumer iterates. List consumers that pause mid-iteration or hold a reader open across slow work, and say what that does to writers.
+- **R7-4 the pre-existing lock hazard** (Python's `sqlite3` closing a connection in a process where Chroma's embedded SQLite also has the file open). Use Trail to list readers that can run in a process holding a Chroma client on the live store (the MCP server, the watcher, `query`). Is there a safe design, and is the hazard worse than before this branch?
+- **R7-5 provider `BaseException`s.** Only `SystemExit` is converted. Is anything else a provider can raise that ends a run with success or an unhelpful traceback?
+- **R7-6 tests that pass for the wrong reason.** Every round found at least one. Remove guards I did NOT mutate (the `'missing'` branch of the header probe, the queue component of the fingerprint, the `FileNotFoundError` branch of `_judge_facts`, the `row_evidence` is-None path, the `sorted(...)` in the fingerprint comparison) and tell me whether a test notices.
+
+### Decisions already taken (unchanged), known flaky tests, hard rules
+
+The sidecar stays the strict authority; a strict PASS means "a full re-embedding of a *private* restore copy, at the time and threshold shown, reproduced that copy's vectors"; only a first vector is judged; deferred to follow-up PRs: `open_chroma_for_read` and `refine.py:628`, the `ingest.py` summary-vector tag loss, refusing a mismatched write into a collection that holds vectors, `FileGenerationStore.stage_rows` and `restore_source_rows`, the other name-only collection queries and unescaped URIs in other modules. Known flaky tests are under "Known flaky tests". Rules as before: read-only on the branch, never the live Chroma directory, never `~/.config/convmem/restic.env` or any client config, no `ask`, no `LATEST.md` or `STATUS`.
+
+### Return, as plain text
+
+(1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R7-1, R7-2, R7-4 and R7-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether an eighth round is worth the cost.
