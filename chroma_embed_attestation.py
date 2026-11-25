@@ -183,11 +183,25 @@ def _overlaps(first: Path, second: Path) -> bool:
     return first == second or first in second.parents or second in first.parents
 
 
+def _shares_storage(live: Path, copy: Path) -> bool:
+    """True when the copy's SQLite file is the live one under another name.
+
+    A hardlinked or bind-mounted "copy" (``cp -al``) has a different path but the
+    same inode, and opening it with a client would write through to the live files.
+    """
+    try:
+        return os.path.samestat(
+            (live / "chroma.sqlite3").stat(), (copy / "chroma.sqlite3").stat()
+        )
+    except OSError:
+        return False
+
+
 def _require_separate_copy(live_dir: Path, copy_dir: Path) -> None:
     live, copy = live_dir.expanduser().resolve(), copy_dir.expanduser().resolve()
-    if _overlaps(live, copy):
+    if _overlaps(live, copy) or _shares_storage(live, copy):
         raise AttestationError(
-            "the restore copy must be a separate directory; "
+            "the restore copy must be a separate directory with its own files; "
             "refusing to open the live Chroma directory with a client"
         )
 

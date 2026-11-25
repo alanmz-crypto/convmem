@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path
 from unittest import mock
@@ -247,6 +248,30 @@ def test_a_restore_copy_that_overlaps_the_live_directory_is_refused(
     ):
         with pytest.raises(AttestationError, match="separate directory"):
             attest_collections(live, target, model=MODEL, embed=embedder(MODEL), write=True)
+
+    assert fingerprint(live) == before
+    assert not sidecar_path(live).exists()
+
+
+@pytest.mark.parametrize("link", [os.link, os.symlink], ids=["hardlinks", "symlinks"])
+def test_a_copy_that_shares_files_with_the_live_store_is_refused(
+    stores: tuple[Path, Path], tmp_path: Path, link
+) -> None:
+    live, _ = stores
+    before = fingerprint(live)
+    clone = tmp_path / "linked" / "chroma"
+    clone.mkdir(parents=True)
+    for entry in live.iterdir():
+        if entry.is_file():
+            link(entry, clone / entry.name)  # same inode (hardlink) or a path alias (symlink)
+        else:
+            shutil.copytree(entry, clone / entry.name)
+
+    with mock.patch.object(
+        attestation_mod, "open_chroma_for_verify", side_effect=AssertionError("client")
+    ):
+        with pytest.raises(AttestationError, match="own files"):
+            attest_collections(live, clone, model=MODEL, embed=embedder(MODEL), write=True)
 
     assert fingerprint(live) == before
     assert not sidecar_path(live).exists()
