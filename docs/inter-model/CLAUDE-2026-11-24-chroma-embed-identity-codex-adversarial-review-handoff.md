@@ -447,3 +447,16 @@ The sidecar stays the strict authority; a strict PASS means "a full re-embedding
 | `conversation_summaries` | 2,000 | 6,180 | 1.0 | 1.0 |
 
 It took 31 seconds for the 4,000 embeddings (about 8 ms per row including overhead), so a full census of about 122,800 rows should take roughly 16 minutes. The live store has since gained rows (116,661 and 6,182), which a restore-copy census does not cover; the doctor detail says so ("restore copy at attestation time"). **Not yet known:** whether every row reproduces. A 2,000-row sample cannot rule out a minority of rows whose stored document is not the exact text that was embedded, and one such row fails a full census. The next step is a full-census dry run (still no `--write`); `--write` and flipping `require_embed_identity` are separate operator decisions.
+
+---
+
+## Full-census dry run on the real restore (appended; docs only, read-only, no `--write`)
+
+Run through the real CLI path (`chroma_embed_attestation.py --restore-copy <restored chroma> --sample-size all`, real Ollama `nomic-embed-text:latest`) against the restored snapshot `c078eb68…` (2026-11-24). To get per-row evidence in a single pass I wrapped the tool's own `_embed_row` and `cosine` with recorders that delegate to the real functions and note each row's id, document length and score (a failing row would have been recorded and skipped; none failed). The CLI returned exit code 0.
+
+| collection | rows checked (all) | failed | min cosine | rows below 0.9999 | median |
+|---|---|---|---|---|---|
+| `knowledge_units` | 116,622 | 0 | 0.999991 | 0 | 1.000000 |
+| `conversation_summaries` | 6,180 | 0 | 0.999997 | 0 | 1.000000 |
+
+Elapsed 670 s for 122,802 rows (about 180 rows per second), so a full census is about 11 minutes. The lowest-scoring rows are ordinary short documents scoring 0.99999, i.e. float rounding, not mismatches. Nothing was created beside the live store (no sidecar, no lock). **Consequence:** the worry that one unreproducible row would make strict mode unreachable did not materialise on this corpus at snapshot time. The live store has since gained rows (116,661 and 6,182 against the 116,622 and 6,180 checked); the doctor detail says the census covers a restore copy "at attestation time". The remaining steps are operator decisions, none taken: re-run with `--write` (it re-embeds, about 11 minutes, and writes `chroma.embed-attestation.json` and a `.lock` beside the live Chroma directory), confirm `convmem doctor` reports `attested legacy`, then set `[index] require_embed_identity = true`. A fresher snapshot would narrow the gap between census and live store.
