@@ -659,6 +659,28 @@ def test_a_same_named_collection_in_another_database_cannot_pass_for_the_serving
     assert verdict.status == FAIL and "wrong-model" in verdict.detail
 
 
+def test_a_schema_without_databases_is_read_as_before(tmp_path: Path) -> None:
+    """Hand-made or very old SQLite files have no databases table: nothing to restrict."""
+    from chroma_readonly import collection_config_metadata, collection_dimension, collection_uuid
+
+    db = tmp_path / "chroma"
+    db.mkdir()
+    with sqlite3.connect(db / "chroma.sqlite3") as con:
+        con.executescript(
+            """
+            CREATE TABLE collections (id TEXT, name TEXT, dimension INTEGER);
+            CREATE TABLE collection_metadata (collection_id TEXT, key TEXT, str_value TEXT,
+                int_value INTEGER, float_value REAL, bool_value INTEGER);
+            INSERT INTO collections VALUES ('uuid-1', 'knowledge_units', 8);
+            INSERT INTO collection_metadata VALUES ('uuid-1', 'convmem:embed_model', 'm', NULL, NULL, NULL);
+            """
+        )
+
+    assert collection_uuid(db, UNITS) == "uuid-1"
+    assert collection_dimension(db, UNITS) == 8
+    assert collection_config_metadata(db, UNITS)[EMBED_MODEL_KEY] == "m"
+
+
 _HOSTILE = [None, True, "x", [], {}, 10**400, -(10**400), 2**63, -1, 0, 1.5, "NaN"]
 
 

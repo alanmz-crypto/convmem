@@ -16,6 +16,19 @@ _SERVING_DATABASE = (
 )
 
 
+def _serving_database(conn: sqlite3.Connection) -> str:
+    """SQL restricting alias ``c`` to the serving database.
+
+    A schema with no ``databases`` table (or no ``collections.database_id``) cannot hold
+    more than one database, so there is nothing to restrict.
+    """
+    has_databases = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'databases'"
+    ).fetchone()
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(collections)")}
+    return _SERVING_DATABASE if has_databases and "database_id" in columns else "1 = 1"
+
+
 def _db_path(chroma_dir: str | Path) -> Path:
     return Path(chroma_dir).expanduser() / "chroma.sqlite3"
 
@@ -209,7 +222,7 @@ def collection_config_metadata(
             SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
             FROM collection_metadata cm
             JOIN collections c ON c.id = cm.collection_id
-            WHERE c.name = ? AND {_SERVING_DATABASE}
+            WHERE c.name = ? AND {_serving_database(conn)}
             """,
             (collection_name,),
         )
@@ -236,7 +249,7 @@ def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA' AND {_SERVING_DATABASE}
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
             """,
             (collection_name,),
         )
@@ -258,7 +271,7 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA' AND {_SERVING_DATABASE}
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
             """,
             (collection_name,),
         )
@@ -417,7 +430,7 @@ def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT c.id FROM collections c WHERE c.name = ? AND {_SERVING_DATABASE} LIMIT 1",
+            f"SELECT c.id FROM collections c WHERE c.name = ? AND {_serving_database(conn)} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()
@@ -442,7 +455,7 @@ def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | 
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT c.dimension FROM collections c WHERE c.name = ? AND {_SERVING_DATABASE} LIMIT 1",
+            f"SELECT c.dimension FROM collections c WHERE c.name = ? AND {_serving_database(conn)} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()
