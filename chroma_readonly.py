@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
+import subprocess
+import sys
 from dataclasses import dataclass
-from collections.abc import Collection, Iterator
+from collections.abc import Collection, Iterator, Sequence
 from pathlib import Path
 
 
@@ -54,27 +56,45 @@ def _serving_database(conn: sqlite3.Connection, name: str) -> str:
     )
 
 
-def _header_may_create_wal_files(db: Path) -> bool:
-    """True unless ``db`` is verifiably a plain rollback-journal SQLite file.
-
-    Read from the file header without opening SQLite. Bytes 18 and 19 are the write and read
-    format versions: 1 is the rollback journal, 2 is WAL, and SQLite opens a file as WAL when
-    *either* byte says so, so only ``01 01`` is safe. A missing file is not a risk (nothing is
-    opened); an unreadable, short or non-SQLite header is, because it cannot be vouched for.
-    """
-    try:
-        with open(db, "rb") as handle:
-            header = handle.read(20)
-    except FileNotFoundError:
-        return False
-    except OSError:
-        return True
-    return header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01"
+_HEADER_PROBE = (
+    "import sys\n"
+    "try:\n"
+    "    handle = open(sys.argv[1], 'rb')\n"
+    "except FileNotFoundError:\n"
+    "    print('missing'); raise SystemExit(0)\n"
+    "print(handle.read(20).hex())\n"
+)
 
 
 def may_create_wal_files(chroma_dir: str | Path) -> bool:
-    """:func:`_header_may_create_wal_files` for the ``chroma.sqlite3`` in ``chroma_dir``."""
-    return _header_may_create_wal_files(_db_path(chroma_dir))
+    """True unless ``chroma.sqlite3`` is verifiably a plain rollback-journal SQLite file.
+
+    A pre-flight for a command that promises to leave a directory untouched: SQLite may create
+    ``-wal``/``-shm`` beside a WAL database even for a read-only open. Bytes 18 and 19 of the
+    header are the write and read format versions: 1 is the rollback journal, 2 is WAL, and SQLite
+    opens a file as WAL when *either* byte says so, so only ``01 01`` is safe. A missing file is not
+    a risk (nothing is opened); an unreadable, short or non-SQLite header is, because it cannot be
+    vouched for.
+
+    The header is read by a child process. Reading it here would ``close()`` a descriptor on the
+    database, and on POSIX that cancels every lock this process holds on the file through SQLite
+    (see :func:`_connect_readonly`), so it is safe to call from a process that has the file open.
+    """
+    db = _db_path(chroma_dir)
+    try:
+        done = subprocess.run(
+            [sys.executable, "-I", "-S", "-c", _HEADER_PROBE, str(db)],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return True
+    out = done.stdout.strip()
+    if done.returncode != 0 or not out:
+        return True
+    if out == "missing":
+        return False
+    header = bytes.fromhex(out)
+    return header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01"
 
 
 def _db_path(chroma_dir: str | Path) -> Path:
@@ -84,23 +104,21 @@ def _db_path(chroma_dir: str | Path) -> Path:
 def _connect_readonly(db: Path) -> sqlite3.Connection:
     """Open chroma.sqlite3 with URI mode=ro: never creates or writes the DB itself.
 
-    SQLite may create ``-wal``/``-shm`` beside a WAL database even when read-only, so a file
-    that is not verifiably a rollback-journal database is refused (Chroma writes a rollback
-    journal; only a store switched to WAL is affected).
+    Opens a read transaction before returning, so every query a reader makes on this connection,
+    including the ambiguity check that guards it, sees one snapshot; closing the connection ends it.
+
+    Nothing here opens the file with an ordinary ``open()``. On POSIX, closing *any* descriptor for a
+    file cancels every lock the process holds on it, including those of SQLite connections in the
+    same process (Chroma's own, in a process that serves queries), so a header probe on a path this
+    process also has open through SQLite silently releases another transaction's lock.
     """
     if not db.is_file():
         raise FileNotFoundError(str(db))
-    if _header_may_create_wal_files(db):
-        # Even read-only, SQLite may create -wal/-shm beside a WAL database, so this refuses to
-        # open one instead. The check is at the connection itself: every reader passes through it.
-        raise sqlite3.DatabaseError(
-            f"{db.name} is not verifiably a rollback-journal SQLite file (WAL mode, an "
-            "inconsistent or an unreadable header); not opened, so that nothing is created beside it"
-        )
     # as_uri() percent-encodes the path: a '#' or '?' in a directory name would otherwise end
     # the path early, drop "mode=ro" and open (and create) a different, writable file.
-    uri = db.resolve().as_uri() + "?mode=ro"
-    return sqlite3.connect(uri, uri=True)
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True)
+    conn.execute("BEGIN")
+    return conn
 
 
 def _coerce_value(string_value, int_value, float_value, bool_value):
@@ -384,27 +402,71 @@ class CollectionFacts:
     row_evidence: int | None  # only read when no dimension is recorded
 
 
-def collection_identity_facts(chroma_dir: str | Path, collection_name: str) -> CollectionFacts:
-    """UUID, dimension, metadata and (when needed) row evidence from a single read transaction.
+def collection_identity_facts_many(
+    chroma_dir: str | Path, collection_names: Sequence[str]
+) -> dict[str, CollectionFacts | Exception]:
+    """Facts for several collections from one connection and one read transaction.
 
-    Read through separate connections, a collection replaced between two reads yields the
-    UUID of one collection with the metadata of another, and a verdict about neither. One
-    transaction holds a read lock, so every fact describes the same moment (and a writer
-    cannot commit a replacement in between).
+    A verdict about several collections must describe one moment: read one collection at a time and
+    a catalog that swaps their stamps in between yields a combined PASS that no committed state
+    deserves. A failure reading one collection (an ambiguous or inconsistent catalog, a malformed
+    value) is returned for that collection so it cannot hide another's; an unreadable *database*
+    raises. The read lock is held for as long as it takes to read these facts and no longer.
     """
     conn = _connect_readonly(_db_path(chroma_dir))  # a missing database is unreadable, not "empty"
     try:
-        conn.execute("BEGIN")
+        out: dict[str, CollectionFacts | Exception] = {}
+        for name in collection_names:
+            try:
+                uuid = _uuid_in(conn, name)
+                if uuid is None:
+                    out[name] = CollectionFacts(None, None, {}, None)
+                    continue
+                dimension = _dimension_in(conn, name)
+                out[name] = CollectionFacts(
+                    uuid,
+                    dimension,
+                    _metadata_in(conn, name),
+                    _evidence_in(conn, name) if dimension is None else None,
+                )
+            except (sqlite3.Error, ValueError, TypeError) as exc:
+                out[name] = exc
+        return out
+    finally:
+        conn.close()
+
+
+def collection_identity_facts(chroma_dir: str | Path, collection_name: str) -> CollectionFacts:
+    """:func:`collection_identity_facts_many` for one collection; its failure is raised."""
+    fact = collection_identity_facts_many(chroma_dir, (collection_name,))[collection_name]
+    if isinstance(fact, Exception):
+        raise fact
+    return fact
+
+
+def collection_change_fingerprint(chroma_dir: str | Path, collection_name: str) -> tuple[int, int, int, int]:
+    """(rows, newest sequence, sum of sequences, newest log sequence) of a collection's stored rows.
+
+    Every write Chroma accepts gives a row a new sequence number, so any change to a collection,
+    including an in-place repair of one vector, changes this fingerprint. Comparing it before and
+    after a long read says whether the collection stayed the same while it was being read.
+    """
+    conn = _connect_readonly(_db_path(chroma_dir))
+    try:
         uuid = _uuid_in(conn, collection_name)
-        if uuid is None:
-            return CollectionFacts(None, None, {}, None)
-        dimension = _dimension_in(conn, collection_name)
-        return CollectionFacts(
-            uuid,
-            dimension,
-            _metadata_in(conn, collection_name),
-            _evidence_in(conn, collection_name) if dimension is None else None,
-        )
+        rows, newest, total = conn.execute(
+            """
+            SELECT COUNT(*), COALESCE(MAX(e.seq_id), 0), COALESCE(SUM(e.seq_id), 0)
+            FROM embeddings e JOIN segments s ON e.segment_id = s.id WHERE s.collection = ?
+            """,
+            (uuid,),
+        ).fetchone()
+        logged = 0
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'embeddings_queue'").fetchone():
+            logged = conn.execute(
+                "SELECT COALESCE(MAX(seq_id), 0) FROM embeddings_queue WHERE topic LIKE ?", (f"%/{uuid}",)
+            ).fetchone()[0]
+        return int(rows), int(newest), int(total), int(logged)
     finally:
         conn.close()
 
@@ -598,7 +660,12 @@ def _dimension_in(conn: sqlite3.Connection, collection_name: str) -> int | None:
         f"WHERE c.name = ? AND {_serving_database(conn, collection_name)} LIMIT 1",
         (collection_name,),
     ).fetchone()
-    return None if not row or row[0] is None else int(row[0])
+    if not row or row[0] is None:
+        return None
+    try:
+        return int(row[0])
+    except (TypeError, ValueError) as exc:
+        raise sqlite3.DatabaseError(f"collection {collection_name!r} records the dimension {row[0]!r}") from exc
 
 
 def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | None:

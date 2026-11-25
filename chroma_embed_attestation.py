@@ -73,8 +73,9 @@ from chroma_embed_identity import (
     sidecar_path,
 )
 from chroma_readonly import (
-    collection_config_metadata,
+    collection_change_fingerprint,
     collection_dimension,
+    collection_identity_facts_many,
     collection_uuid,
     may_create_wal_files,
 )
@@ -177,7 +178,7 @@ def _embed_row(embed: EmbedFn, name: str, doc_id: str, document: str) -> list[fl
     for attempt in range(EMBED_RETRIES + 1):
         try:
             return [float(x) for x in embed(document)]
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except (Exception, SystemExit) as exc:  # pylint: disable=broad-exception-caught
             if attempt == EMBED_RETRIES:
                 raise AttestationError(
                     f"{name}: embedding row {doc_id!r} failed after {attempt + 1} attempts: {exc!r}"
@@ -243,6 +244,7 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
                     f"{min(MIN_SAMPLE_SIZE, len(ids))}"
                 )
             sample = _sample_ids(ids, sample_size, seed)
+            before = collection_change_fingerprint(copy_dir, name)
             for start in range(0, len(sample), READ_BATCH):
                 batch = sample[start : start + READ_BATCH]
                 got = collection.get(ids=batch, include=["embeddings", "documents"])
@@ -270,12 +272,29 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
                     progress(name, len(scores), len(sample))
             if sample_size is None and sorted(scored_ids) != ids:
                 raise AttestationError(f"{name}: the census did not cover every row the copy holds")
+            # Batches are read one after another, so a second writer on this copy could repair a row
+            # not yet read and break one already scored while the UUID and the ids stay the same.
+            # A restore copy must be private; if it changed, what was scored is not one state.
+            if (
+                sorted(collection.get(include=[])["ids"]) != ids
+                or collection_change_fingerprint(copy_dir, name) != before
+            ):
+                raise AttestationError(
+                    f"{name}: the restore copy changed while it was being checked; nothing was attested. "
+                    "Check a private copy that no other process writes to."
+                )
     except NotFoundError as exc:
         raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
     except ChromaError as exc:  # a copy Chroma itself cannot read (e.g. damaged collection config)
         raise AttestationError(
             f"{name}: the restore copy cannot be read by Chroma: {type(exc).__name__}: {exc}"
         ) from exc
+    except BaseException as exc:  # pylint: disable=broad-exception-caught
+        if type(exc).__name__ == "PanicException":  # pyo3 maps a Rust panic to a BaseException
+            raise AttestationError(
+                f"{name}: Chroma's native layer failed on the restore copy: {type(exc).__name__}: {exc}"
+            ) from exc
+        raise
     return SpotCheck(
         collection=name,
         population=population,
@@ -458,19 +477,27 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
     evidence: dict[str, dict[str, Any]] = {}
     skipped: dict[str, str] = {}
 
+    # The live catalog is read once, in one read transaction, and never again: one moment for every
+    # collection, and one short opening of a directory this command promises to leave untouched.
+    live_facts = collection_identity_facts_many(live, requested)
     for name in requested:
-        live_uuid = collection_uuid(live, name)
+        facts = live_facts[name]
+        if isinstance(facts, Exception):
+            raise AttestationError(
+                f"{name}: cannot read the live catalog: {type(facts).__name__}: {facts}"
+            ) from facts
+        live_uuid = facts.uuid
         if live_uuid is None:
             if explicit or name == UNITS:
                 raise AttestationError(f"{name}: the live store has no such collection")
             skipped[name] = "collection does not exist"
             continue
-        if collection_config_metadata(live, name).get(EMBED_MODEL_KEY):
+        if facts.metadata.get(EMBED_MODEL_KEY):
             skipped[name] = f"already records {EMBED_MODEL_KEY}; nothing to attest"
             continue
         if collection_uuid(copy, name) != live_uuid:
             raise AttestationError(f"{name}: the restore copy is not a copy of this collection")
-        live_dim = collection_dimension(live, name)
+        live_dim = facts.dimension
         if live_dim is None or collection_dimension(copy, name) != live_dim:
             raise AttestationError(
                 f"{name}: live and copy must record the same non-empty vector dimension"
@@ -606,9 +633,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         cfg = load_config(args.config)
         live_dir = args.live_chroma_dir or Path(cfg["index"]["chroma_dir"])
         models = cfg.get("models") or {}
+        if not isinstance(models, dict):
+            raise ValueError("[models] must be a table")
         model = args.model or models.get("embed_model") or ""
         host = models.get("ollama_host") or ""
-    except (OSError, ValueError, KeyError, TypeError) as exc:  # missing or malformed config
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:  # missing or malformed config
         print(f"attestation refused: cannot use the configuration: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
 

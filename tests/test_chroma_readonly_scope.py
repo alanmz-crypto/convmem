@@ -8,7 +8,9 @@ store lives in ``tmp_path``; the helpers under test only ever read, through SQLi
 
 from __future__ import annotations
 
+import subprocess
 import sqlite3
+import sys
 from pathlib import Path
 
 import chromadb
@@ -16,7 +18,7 @@ import pytest
 
 import chroma_readonly
 from chroma_embed_identity import FAIL, WARN, check_embed_identity
-from chroma_store import EMBED_MODEL_KEY, UNITS, ChromaStore
+from chroma_store import EMBED_MODEL_KEY, SUMMARIES, UNITS, ChromaStore
 from tests.test_chroma_embed_identity import COSINE, MODEL, _store
 
 def test_a_same_named_collection_in_another_database_cannot_pass_for_the_serving_one(
@@ -356,21 +358,20 @@ def test_the_facts_for_a_verdict_come_from_one_read_transaction(
     assert facts.uuid is not None and facts.dimension is not None and facts.metadata
 
 
-def test_a_wal_mode_database_is_refused_by_every_reader_and_nothing_is_created(tmp_path: Path) -> None:
+def test_readers_still_read_a_wal_mode_store(tmp_path: Path) -> None:
+    """Reviewed: a connector that refused WAL broke healthy readers (the keyword fallback).
+
+    Refusing a WAL file is a promise only the attestation command makes, as a pre-flight in a
+    process that holds no SQLite connection to it. Every other reader keeps reading such a store
+    (and, as before this branch, SQLite may create -wal/-shm beside it)."""
     chroma = tmp_path / "chroma"
     _store(chroma, UNITS, embed_model=MODEL)
     with sqlite3.connect(chroma / "chroma.sqlite3") as con:
         con.execute("PRAGMA journal_mode=WAL")
-    before = sorted(p.name for p in chroma.iterdir())
 
-    with pytest.raises(sqlite3.DatabaseError, match="rollback-journal"):
-        chroma_readonly.collection_uuid(chroma, UNITS)
-    default = check_embed_identity(chroma, MODEL)
-    strict = check_embed_identity(chroma, MODEL, strict=True)
-
-    assert default.status == WARN and strict.status == FAIL  # unreadable is never a PASS
-    assert "rollback-journal" in strict.detail
-    assert sorted(p.name for p in chroma.iterdir()) == before  # no -wal/-shm beside it
+    assert chroma_readonly.collection_uuid(chroma, UNITS) is not None
+    assert chroma_readonly.may_create_wal_files(chroma) is True  # the pre-flight still says so
+    assert check_embed_identity(chroma, MODEL).status == "pass"
 
 
 def test_a_stored_row_that_belongs_to_no_segment_withholds_the_drop_advice(tmp_path: Path) -> None:
@@ -385,3 +386,181 @@ def test_a_stored_row_that_belongs_to_no_segment_withholds_the_drop_advice(tmp_p
     default = check_embed_identity(chroma, MODEL)
     assert "can be dropped" not in default.detail and default.status == WARN
     assert check_embed_identity(chroma, MODEL, strict=True).status == FAIL
+
+
+# --------------------------------------------------------------------------------------
+# A reader must never disturb another connection's lock (POSIX: closing a descriptor drops them all)
+# --------------------------------------------------------------------------------------
+
+
+# Run in a fresh process that has never loaded Chroma. Chroma's embedded SQLite and Python's sqlite3 are
+# different libraries in one process and do not coordinate their POSIX locks, so any earlier Chroma
+# activity in the test process can drop the holder's lock on its own and make this test meaningless.
+_LOCK_CHILD = r"""
+import sqlite3, subprocess, sys
+root, chroma, reader = sys.argv[1:4]
+sys.path.insert(0, root)
+import chroma_readonly as R
+from chroma_embed_identity import check_embed_identity
+PROBE = (
+    "import sqlite3, sys\n"
+    "conn = sqlite3.connect(sys.argv[1], timeout=0)\n"
+    "try:\n    conn.execute('BEGIN EXCLUSIVE'); print('GOT')\n"
+    "except sqlite3.OperationalError:\n    print('BLOCKED')\n"
+)
+db = chroma + "/chroma.sqlite3"
+def lock_is_free():
+    done = subprocess.run([sys.executable, "-c", PROBE, db], capture_output=True, text=True, check=True)
+    return "GOT" in done.stdout
+READERS = {
+    "may_create_wal_files": lambda c: R.may_create_wal_files(c),
+    "collection_uuid": lambda c: R.collection_uuid(c, "knowledge_units"),
+    "collection_dimension": lambda c: R.collection_dimension(c, "knowledge_units"),
+    "collection_config_metadata": lambda c: R.collection_config_metadata(c, "knowledge_units"),
+    "collection_ids": lambda c: R.collection_ids(c, "knowledge_units"),
+    "collection_count": lambda c: R.collection_count(c, "knowledge_units"),
+    "collection_row_evidence": lambda c: R.collection_row_evidence(c, "knowledge_units"),
+    "collection_identity_facts": lambda c: R.collection_identity_facts(c, "knowledge_units"),
+    "collection_identity_facts_many": lambda c: R.collection_identity_facts_many(c, ("knowledge_units",)),
+    "collection_change_fingerprint": lambda c: R.collection_change_fingerprint(c, "knowledge_units"),
+    "iter_collection_metadata_rows": lambda c: list(R.iter_collection_metadata_rows(c, "knowledge_units")),
+    "unit_document_text": lambda c: R.unit_document_text(c, "knowledge_units-1"),
+    "check_embed_identity": lambda c: check_embed_identity(c, "nomic-embed-text:latest"),
+}
+holder = sqlite3.connect(db)
+holder.execute("BEGIN")
+holder.execute("SELECT count(*) FROM collections").fetchall()
+assert not lock_is_free(), "baseline: the holder must hold a read lock"
+READERS[reader](chroma)
+print("IN_TRANSACTION", holder.in_transaction, "LOCK_FREE_AFTER", lock_is_free())
+"""
+
+_READER_NAMES = [
+    "may_create_wal_files", "collection_uuid", "collection_dimension", "collection_config_metadata",
+    "collection_ids", "collection_count", "collection_row_evidence", "collection_identity_facts",
+    "collection_identity_facts_many", "collection_change_fingerprint", "iter_collection_metadata_rows",
+    "unit_document_text", "check_embed_identity",
+]
+
+
+@pytest.mark.parametrize("reader", _READER_NAMES)
+def test_no_reader_releases_a_lock_another_connection_holds(tmp_path: Path, reader: str) -> None:
+    """Reviewed: an ordinary read helper (through a raw header probe) let another process take the
+    exclusive lock while this process's own connection still believed it held a read lock."""
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model=MODEL)
+    root = Path(chroma_readonly.__file__).resolve().parent
+
+    done = subprocess.run(
+        [sys.executable, "-c", _LOCK_CHILD, str(root), str(chroma), reader],
+        capture_output=True, text=True, check=False, timeout=120,
+    )
+
+    assert done.returncode == 0, done.stderr[-600:]
+    assert done.stdout.strip().endswith("IN_TRANSACTION True LOCK_FREE_AFTER False"), done.stdout
+
+
+@pytest.mark.parametrize("reader", ["collection_uuid", "collection_config_metadata", "collection_dimension"])
+def test_a_single_collection_reader_holds_one_snapshot_for_its_check_and_its_query(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reader: str
+) -> None:
+    """The ambiguity count and the query it guards used to be separate statements outside a
+    transaction, so a duplicate inserted between them was read by one and refused by the next."""
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, embed_model=MODEL)
+    outcomes: list[str] = []
+    real_connect = chroma_readonly._connect_readonly
+
+    def connect(db: Path) -> sqlite3.Connection:
+        conn = real_connect(db)
+        seen: list[str] = []
+
+        def trace(statement: str) -> None:
+            seen.append(statement)
+            if len(seen) == 3 and not outcomes:
+                writer = sqlite3.connect(db, timeout=0)
+                try:
+                    writer.execute("UPDATE collections SET dimension = 999")  # any commit
+                    writer.commit()
+                    outcomes.append("committed")
+                except sqlite3.OperationalError as exc:
+                    outcomes.append(str(exc))
+                finally:
+                    writer.close()
+
+        conn.set_trace_callback(trace)
+        return conn
+
+    monkeypatch.setattr(chroma_readonly, "_connect_readonly", connect)
+
+    getattr(chroma_readonly, reader)(chroma, UNITS)
+
+    assert outcomes == ["database is locked"]
+
+
+def test_both_collections_are_judged_from_one_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Reviewed: units were read, a transaction swapped the two stamps, summaries were read, and
+    strict doctor passed a pair no committed state ever had."""
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model=MODEL)
+    opened: list[Path] = []
+    outcomes: list[str] = []
+    real_connect = chroma_readonly._connect_readonly
+
+    def connect(db: Path) -> sqlite3.Connection:
+        opened.append(db)
+        conn = real_connect(db)
+        seen: list[str] = []
+
+        def trace(statement: str) -> None:
+            seen.append(statement)
+            if len(seen) == 3 and not outcomes:  # after the first query: the swap tries to commit
+                writer = sqlite3.connect(db, timeout=0)
+                try:
+                    writer.execute(
+                        "UPDATE collection_metadata SET str_value = 'swapped' WHERE key = 'convmem:embed_model'"
+                    )
+                    writer.commit()
+                    outcomes.append("swapped")
+                except sqlite3.OperationalError as exc:
+                    outcomes.append(str(exc))
+                finally:
+                    writer.close()
+
+        conn.set_trace_callback(trace)
+        return conn
+
+    monkeypatch.setattr(chroma_readonly, "_connect_readonly", connect)
+
+    verdict = check_embed_identity(chroma, MODEL, strict=True)
+
+    assert len(opened) == 1  # one connection, hence one snapshot, for both collections
+    assert outcomes == ["database is locked"]
+    assert verdict.status == "pass"  # the state that was read: both stamps matched
+
+
+def test_a_collection_missing_its_vector_segment_is_not_called_empty(tmp_path: Path) -> None:
+    """With no row stored, nothing else can account for a missing segment: only the count of the
+    collection's segments stands between "empty" and "safe to drop"."""
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma)) as store:
+        store._collection(UNITS)  # created empty, with both of its segments
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        con.execute("DELETE FROM segments WHERE scope = 'VECTOR'")
+        assert con.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0] == 0
+        assert con.execute("SELECT COUNT(*) FROM segments s WHERE NOT EXISTS "
+                           "(SELECT 1 FROM collections c WHERE c.id = s.collection)").fetchone()[0] == 0
+
+    assert chroma_readonly.collection_row_evidence(chroma, UNITS) == 1  # the unaccounted segment, nothing else
+    assert "can be dropped" not in check_embed_identity(chroma, MODEL).detail
+
+
+def test_a_malformed_dimension_is_a_catalog_error(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        con.execute("UPDATE collections SET dimension = 'unknown'")
+
+    with pytest.raises(sqlite3.DatabaseError, match="records the dimension"):
+        chroma_readonly.collection_dimension(chroma, UNITS)
+    assert check_embed_identity(chroma, MODEL, strict=True).status == "fail"

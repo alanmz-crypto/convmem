@@ -29,7 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from chroma_readonly import collection_identity_facts
+from chroma_readonly import CollectionFacts, collection_identity_facts_many
 from chroma_store import (
     EMBED_MODEL_KEY,
     SUMMARIES,
@@ -386,25 +386,19 @@ def judge_collection(  # pylint: disable=too-many-arguments
     return _judge_attestation(attestation, chroma_dimension, configured_model, strict)
 
 
-def _judge_named(  # pylint: disable=too-many-arguments
-    chroma_dir: str | Path,
+def _judge_facts(  # pylint: disable=too-many-arguments
     name: str,
+    facts: CollectionFacts | Exception | None,
     *,
     attestations: Mapping[str, CollectionAttestation],
     attestation_error: str | None,
     configured_model: str,
     strict: bool,
 ) -> IdentityVerdict | None:
-    """Judge one collection, or None for an optional collection that does not exist."""
-    # One read transaction: the UUID, dimension and metadata used for a verdict must describe
-    # the same collection, even if another session replaces it while this runs.
-    try:
-        facts = collection_identity_facts(chroma_dir, name)
-    except FileNotFoundError:
-        if name != UNITS:
-            return None  # knowledge_units reports a missing database; summaries add nothing
-        raise
-    if facts.uuid is None and name != UNITS:
+    """Judge one collection from facts already read, or None for an optional one that is absent."""
+    if isinstance(facts, Exception):
+        raise facts
+    if facts is None or (facts.uuid is None and name != UNITS):
         return None
     return judge_collection(
         meta=facts.metadata,
@@ -438,13 +432,24 @@ def check_embed_identity(
     except Exception as exc:  # pylint: disable=broad-exception-caught
         attestations, attestation_error = {}, str(exc)  # an unusable sidecar fails, never raises
 
+    # One read transaction for both collections: a verdict about the pair must describe one moment,
+    # not units as they were and summaries as they became after a swap in between.
+    try:
+        all_facts: dict[str, CollectionFacts | Exception] = dict(
+            collection_identity_facts_many(chroma_dir, (UNITS, SUMMARIES))
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        # An unreadable database (missing, locked, damaged) is unreadable, never "empty";
+        # knowledge_units reports it and summaries add nothing.
+        all_facts = {UNITS: exc}
+
     parts: list[str] = []
     worst = PASS
     for name in (UNITS, SUMMARIES):
         try:
-            verdict = _judge_named(
-                chroma_dir,
+            verdict = _judge_facts(
                 name,
+                all_facts.get(name),
                 attestations=attestations,
                 attestation_error=attestation_error,
                 configured_model=configured,

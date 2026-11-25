@@ -22,7 +22,7 @@ import pytest
 import chroma_embed_attestation as attestation_mod
 from chroma_embed_attestation import AttestationError, attest_collections, cosine, main, spot_check
 from chroma_embed_identity import sidecar_path
-from chroma_store import SUMMARIES, UNITS
+from chroma_store import SUMMARIES, UNITS, ChromaStore
 # Helpers and the ``stores`` fixture only (importing the fixture registers it); no test_* names.
 from tests.test_chroma_embed_attestation import (  # pylint: disable=unused-import
     DIM,
@@ -453,3 +453,196 @@ def test_the_command_refuses_a_chroma_error_raised_outside_the_census(
         code = main(["--config", str(cfg), "--restore-copy", str(copy)])
 
     assert code == 2 and "attestation refused: cannot read a store: InternalError" in capsys.readouterr().err
+
+
+def _ids_and_documents(n: int) -> tuple[list[str], dict[str, str]]:
+    ids = sorted(f"{UNITS}-{i}" for i in range(n))
+    return ids, {doc_id: f"{UNITS} document number {doc_id.rsplit('-', 1)[1]}" for doc_id in ids}
+
+
+def test_a_second_writer_changing_the_restore_during_the_census_is_refused(tmp_path: Path) -> None:
+    """Reviewed: the UUID, count and id set stayed the same while one writer repaired a row not yet
+    read and broke one already scored, and a 501/501 census with minimum 1.0 was published."""
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=501)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+    ids, docs = _ids_and_documents(501)
+    first, last = ids[0], ids[-1]
+    writer = ChromaStore(str(copy))  # another process in real life; here a second client on the copy
+
+    def vector(doc_id: str, *, broken: bool) -> list[float]:
+        good = fake_embed(MODEL, docs[doc_id])
+        return [-x for x in good] if broken else good
+
+    def put(doc_id: str, *, broken: bool) -> None:
+        writer._collection(UNITS).upsert(
+            ids=[doc_id], documents=[docs[doc_id]], embeddings=[vector(doc_id, broken=broken)]
+        )
+
+    put(last, broken=True)  # the last row starts out wrong, so an honest census would refuse it
+    calls: list[int] = []
+
+    def embed_and_interfere(text: str) -> list[float]:
+        calls.append(1)
+        if len(calls) == attestation_mod.READ_BATCH:  # the first batch is scored; the second not yet read
+            put(last, broken=False)  # repair the row that would have failed...
+            put(first, broken=True)  # ...and break one that was already scored
+        return fake_embed(MODEL, text)
+
+    try:
+        with pytest.raises(AttestationError, match="changed while it was being checked"):
+            attest_collections(
+                live, copy, model=MODEL, embed=embed_and_interfere, names=(UNITS,),
+                sample_size=None, write=True,
+            )
+    finally:
+        writer.close()
+
+    assert not sidecar_path(live).exists()
+
+
+def test_a_census_of_a_copy_nobody_else_writes_is_accepted(tmp_path: Path) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=501)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    report = attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+    assert report.evidence[UNITS]["sample_size"] == report.evidence[UNITS]["population"] == 501
+
+
+def test_the_default_batch_works_on_a_34000_row_collection(tmp_path: Path) -> None:
+    """SQLite caps the variables of one query; a batch that grows with the collection fails here."""
+    live = tmp_path / "live" / "chroma"
+
+    def vec(i: int) -> list[float]:
+        return [1.0, (i % 97 + 1) / 100.0]
+
+    with ChromaStore(str(live)) as store:
+        collection = store._collection(UNITS)
+        for start in range(0, 34_000, 2_000):  # 17 batches of 2,000: exactly 34,000 rows
+            span = range(start, start + 2_000)
+            collection.upsert(
+                ids=[f"u{i:06d}" for i in span], documents=[f"doc {i}" for i in span],
+                embeddings=[vec(i) for i in span],
+            )
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    check = spot_check(copy, UNITS, lambda text: vec(int(text.split()[1])), sample_size=None)
+
+    assert check.sample_size == check.population == 34_000
+    assert attestation_mod.READ_BATCH <= 1_000
+
+
+def test_a_census_that_scored_fewer_rows_than_the_copy_holds_is_refused(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    with mock.patch.object(attestation_mod, "_sample_ids", lambda ids, size, seed: sorted(ids)[:-1]):
+        with pytest.raises(AttestationError, match="did not cover every row"):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+
+def test_a_provider_that_exits_is_a_failed_row_not_a_successful_run(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    def exits(_text: str) -> list[float]:
+        raise SystemExit(0)
+
+    with mock.patch.object(attestation_mod.time, "sleep"):
+        with pytest.raises(AttestationError, match="embedding row"):
+            attest_collections(live, copy, model=MODEL, embed=exits, names=(UNITS,))
+
+
+def test_a_native_panic_from_chroma_is_a_refusal(tmp_path: Path) -> None:
+    panic = type("PanicException", (BaseException,), {})
+
+    class _Collection:
+        id = "whatever"
+
+        def count(self) -> int:
+            raise panic("a Rust panic")
+
+        def get(self, ids=None, include=None):  # pylint: disable=unused-argument
+            raise panic("a Rust panic")
+
+    class _Store:
+        def _collection(self, _name):
+            return _Collection()
+
+        def close(self) -> None:
+            pass
+
+    with mock.patch.object(attestation_mod, "open_chroma_for_verify", return_value=_Store()):
+        with pytest.raises(AttestationError, match="native layer"):
+            spot_check(tmp_path, UNITS, embedder(MODEL), sample_size=None)
+
+
+def test_a_lock_that_cannot_be_taken_leaks_no_descriptor(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    with mock.patch.object(attestation_mod.fcntl, "flock", side_effect=OSError("no lock")):
+        with pytest.raises(OSError):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+    assert not _open_descriptors_for(".embed-attestation.json.lock")
+
+
+def test_the_command_refuses_a_configuration_whose_models_is_not_a_table(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    live, copy = stores
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(f'models = ["k"]\n[index]\nchroma_dir = "{live}"\n', encoding="utf-8")
+
+    assert main(["--config", str(cfg), "--restore-copy", str(copy)]) == 2
+    assert "[models] must be a table" in capsys.readouterr().err  # said by the check, not by a crash
+
+
+def test_the_command_refuses_a_restore_whose_catalog_has_a_malformed_dimension(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    live, copy = stores
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:
+        con.execute("UPDATE collections SET dimension = 'unknown'")
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch.object(attestation_mod, "_ollama_embedder", return_value=embedder(MODEL)):
+        code = main(["--config", str(cfg), "--restore-copy", str(copy)])
+
+    assert code == 2
+    assert "attestation refused" in capsys.readouterr().err
+
+
+def test_a_changed_id_listing_is_refused_even_if_the_fingerprint_did_not_move(
+    stores: tuple[Path, Path],
+) -> None:
+    """The listing and the fingerprint are separate evidence; each must be able to refuse alone."""
+    live, copy = stores
+    original = attestation_mod.open_chroma_for_verify
+
+    def listing_changes(path):
+        store = original(path)
+        collection = store._collection(UNITS)
+        real_get = collection.get
+        listings: list[int] = []
+
+        def get(ids=None, include=None):
+            result = real_get(ids=ids, include=include)
+            if ids is None:
+                listings.append(1)
+                if len(listings) == 2:  # the re-listing after the census
+                    return {"ids": [*result["ids"], "appeared-meanwhile"]}
+            return result
+
+        collection.get = get  # type: ignore[method-assign]
+        store._collection = lambda _name: collection  # type: ignore[method-assign]
+        return store
+
+    with mock.patch.object(attestation_mod, "open_chroma_for_verify", listing_changes), mock.patch.object(
+        attestation_mod, "collection_change_fingerprint", return_value=(1, 1, 1, 1)
+    ):
+        with pytest.raises(AttestationError, match="changed while it was being checked"):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
