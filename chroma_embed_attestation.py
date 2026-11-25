@@ -79,6 +79,7 @@ from chroma_readonly import (
     collection_uuid,
     may_create_wal_files,
 )
+from chroma_write_guard import ChromaStaleSystemError
 from chroma_store import (
     EMBED_MODEL_KEY,
     SUMMARIES,
@@ -104,7 +105,7 @@ ProgressFn = Callable[[str, int, int], None]
 
 
 @dataclass(frozen=True)
-class SpotCheck:
+class SpotCheck:  # pylint: disable=too-many-instance-attributes
     """What a re-embedding sample measured on one collection."""
 
     collection: str
@@ -114,6 +115,7 @@ class SpotCheck:
     min_cosine: float
     mean_cosine: float
     seed: int
+    fingerprint: tuple[int, int, int, int] | None = None  # of the copy when this collection was done
 
 
 @dataclass(frozen=True)
@@ -224,6 +226,17 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     # The restore-drill opener: get_collection only, so nothing is ever created.
     try:
         with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
+            # A system this process already holds for the path can serve an index older than the
+            # disk (another process may have updated a vector since). The repo's own protocol for
+            # "show me the disk": drop the system and load it again; if another client in this
+            # process still holds one, that view cannot be trusted and nothing is scored.
+            try:
+                store._reload_client()  # pylint: disable=protected-access
+            except ChromaStaleSystemError as exc:
+                raise AttestationError(
+                    f"{name}: this process already holds a Chroma client for the restore copy, whose cached "
+                    "index can differ from the disk; run the attestation in a fresh process"
+                ) from exc
             collection = store._collection(name)  # pylint: disable=protected-access
             if expected_uuid is not None and str(collection.id) != expected_uuid:
                 raise AttestationError(
@@ -275,10 +288,8 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
             # Batches are read one after another, so a second writer on this copy could repair a row
             # not yet read and break one already scored while the UUID and the ids stay the same.
             # A restore copy must be private; if it changed, what was scored is not one state.
-            if (
-                sorted(collection.get(include=[])["ids"]) != ids
-                or collection_change_fingerprint(copy_dir, name) != before
-            ):
+            after = collection_change_fingerprint(copy_dir, name)
+            if sorted(collection.get(include=[])["ids"]) != ids or after != before:
                 raise AttestationError(
                     f"{name}: the restore copy changed while it was being checked; nothing was attested. "
                     "Check a private copy that no other process writes to."
@@ -303,6 +314,7 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
         min_cosine=min(scores),
         mean_cosine=math.fsum(scores) / len(scores),
         seed=seed,
+        fingerprint=after,
     )
 
 
@@ -476,6 +488,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
     attested: dict[str, CollectionAttestation] = {}
     evidence: dict[str, dict[str, Any]] = {}
     skipped: dict[str, str] = {}
+    fingerprints: dict[str, tuple[int, int, int, int] | None] = {}
 
     # The live catalog is read once, in one read transaction, and never again: one moment for every
     # collection, and one short opening of a directory this command promises to leave untouched.
@@ -524,6 +537,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
                 f"(minimum cosine {check.min_cosine:.4f} < {threshold}); "
                 "the claimed model is not the model that made them"
             )
+        fingerprints[name] = check.fingerprint
         attested[name] = CollectionAttestation(
             name=name,
             collection_uuid=live_uuid,
@@ -544,6 +558,16 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             "mean_cosine": round(check.mean_cosine, 6),
             "note": note,
         }
+
+    # Each census only guards its own collection while it runs. Once every collection is done, look
+    # at each one again: a writer that changed an already-checked collection while a later one was
+    # being checked would otherwise leave a sidecar describing no single state of the copy.
+    for name, expected in fingerprints.items():
+        if collection_change_fingerprint(copy, name) != expected:
+            raise AttestationError(
+                f"{name}: the restore copy changed after it was checked, while another collection was "
+                "being checked; nothing was attested. Check a private copy that no other process writes to."
+            )
 
     if not attested:
         raise AttestationError(

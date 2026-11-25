@@ -66,6 +66,10 @@ _HEADER_PROBE = (
 )
 
 
+class HeaderProbeError(OSError):
+    """The database header could not be read, so nothing can be said about it (not "unsafe", not "safe")."""
+
+
 def may_create_wal_files(chroma_dir: str | Path) -> bool:
     """True unless ``chroma.sqlite3`` is verifiably a plain rollback-journal SQLite file.
 
@@ -79,6 +83,9 @@ def may_create_wal_files(chroma_dir: str | Path) -> bool:
     The header is read by a child process. Reading it here would ``close()`` a descriptor on the
     database, and on POSIX that cancels every lock this process holds on the file through SQLite
     (see :func:`_connect_readonly`), so it is safe to call from a process that has the file open.
+
+    Raises :class:`HeaderProbeError` when the probe itself fails (no child process allowed, a timeout,
+    an unexpected answer): that is not evidence the file is safe or unsafe, and the cause is kept.
     """
     db = _db_path(chroma_dir)
     try:
@@ -86,14 +93,22 @@ def may_create_wal_files(chroma_dir: str | Path) -> bool:
             [sys.executable, "-I", "-S", "-c", _HEADER_PROBE, str(db)],
             capture_output=True, text=True, timeout=30, check=False,
         )
-    except (OSError, subprocess.SubprocessError):
-        return True
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise HeaderProbeError(
+            f"could not run the header probe for {db.name}: {type(exc).__name__}: {exc}"
+        ) from exc
     out = done.stdout.strip()
     if done.returncode != 0 or not out:
-        return True
+        raise HeaderProbeError(
+            f"the header probe for {db.name} failed (exit {done.returncode}): "
+            f"{done.stderr.strip()[:200] or 'no output'}"
+        )
     if out == "missing":
         return False
-    header = bytes.fromhex(out)
+    try:
+        header = bytes.fromhex(out)
+    except ValueError as exc:  # anything but the hex of the first bytes, e.g. a wrapper's banner
+        raise HeaderProbeError(f"the header probe for {db.name} answered {out[:60]!r}, not a header") from exc
     return header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01"
 
 
@@ -444,6 +459,13 @@ def collection_identity_facts(chroma_dir: str | Path, collection_name: str) -> C
     return fact
 
 
+def _sequence(value: object) -> int:
+    """A sequence id as an integer, whether stored as one or as a historical big-endian blob."""
+    if isinstance(value, (bytes, bytearray)):
+        return int.from_bytes(value, "big")
+    return int(value or 0)  # type: ignore[call-overload]
+
+
 def collection_change_fingerprint(chroma_dir: str | Path, collection_name: str) -> tuple[int, int, int, int]:
     """(rows, newest sequence, sum of sequences, newest log sequence) of a collection's stored rows.
 
@@ -454,19 +476,25 @@ def collection_change_fingerprint(chroma_dir: str | Path, collection_name: str) 
     conn = _connect_readonly(_db_path(chroma_dir))
     try:
         uuid = _uuid_in(conn, collection_name)
-        rows, newest, total = conn.execute(
-            """
-            SELECT COUNT(*), COALESCE(MAX(e.seq_id), 0), COALESCE(SUM(e.seq_id), 0)
-            FROM embeddings e JOIN segments s ON e.segment_id = s.id WHERE s.collection = ?
-            """,
-            (uuid,),
-        ).fetchone()
+        # Sequence ids are read and decoded here, not aggregated in SQL: chromadb < 0.5 stored them
+        # as big-endian blobs, which SQL's MAX and SUM treat as text and zero respectively.
+        sequences = [
+            _sequence(row[0])
+            for row in conn.execute(
+                "SELECT e.seq_id FROM embeddings e JOIN segments s ON e.segment_id = s.id WHERE s.collection = ?",
+                (uuid,),
+            )
+        ]
         logged = 0
         if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'embeddings_queue'").fetchone():
-            logged = conn.execute(
-                "SELECT COALESCE(MAX(seq_id), 0) FROM embeddings_queue WHERE topic LIKE ?", (f"%/{uuid}",)
-            ).fetchone()[0]
-        return int(rows), int(newest), int(total), int(logged)
+            logged = max(
+                (
+                    _sequence(row[0])
+                    for row in conn.execute("SELECT seq_id FROM embeddings_queue WHERE topic LIKE ?", (f"%/{uuid}",))
+                ),
+                default=0,
+            )
+        return len(sequences), max(sequences, default=0), sum(sequences), logged
     finally:
         conn.close()
 

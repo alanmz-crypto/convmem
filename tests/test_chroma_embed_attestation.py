@@ -444,6 +444,9 @@ def test_a_short_read_of_the_sampled_vectors_is_refused(stores: tuple[Path, Path
             }
 
     class _Store:
+        def _reload_client(self) -> None:
+            pass
+
         def _collection(self, _name):
             return _Short()
 
@@ -543,13 +546,15 @@ def test_two_attestations_finishing_out_of_order_keep_both_entries(
     stores: tuple[Path, Path],
 ) -> None:
     live, copy = stores
+    other_copy = copy.parent.parent / "restored-two" / "chroma"  # one private copy per attestation:
+    shutil.copytree(live, other_copy)  # a second census on the SAME copy is refused (see the census tests)
     nested: list[bool] = []
 
     def embed_then_let_another_run_finish(text: str) -> list[float]:
         if not nested:
             nested.append(True)
             attest_collections(
-                live, copy, model=MODEL, embed=embedder(MODEL), names=(SUMMARIES,), write=True
+                live, other_copy, model=MODEL, embed=embedder(MODEL), names=(SUMMARIES,), write=True
             )
         return fake_embed(MODEL, text)
 
@@ -669,6 +674,7 @@ def test_a_full_check_reads_in_batches_and_checks_completeness_across_them(tmp_p
 
         def counting_open(path):
             store = original(path)
+            store._reload_client = lambda: None  # keep the wrapped client: these tests pin batching
             collection = store._collection(UNITS)
             nonlocal real_get
             real_get = collection.get
@@ -711,6 +717,9 @@ def test_a_short_read_in_a_later_batch_is_still_refused(tmp_path: Path) -> None:
             }
 
     class _Store:
+        def _reload_client(self) -> None:
+            pass
+
         def _collection(self, _name):
             return _Collection()
 

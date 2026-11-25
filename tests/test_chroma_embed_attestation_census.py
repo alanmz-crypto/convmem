@@ -14,6 +14,8 @@ import os
 import shutil
 import sqlite3
 import struct
+import subprocess
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -97,6 +99,7 @@ def test_a_census_reads_embeds_and_scores_one_batch_before_reading_the_next(tmp_
 
     def tracing_open(path):
         store = original(path)
+        store._reload_client = lambda: None  # keep the wrapped client: these tests pin batching
         collection = store._collection(UNITS)
         real_get = collection.get
 
@@ -358,6 +361,9 @@ def test_a_copy_whose_listing_and_count_disagree_is_refused(tmp_path: Path) -> N
             return {"ids": [f"row-{i:02d}" for i in range(12)]}
 
     class _Store:
+        def _reload_client(self) -> None:
+            pass
+
         def _collection(self, _name):
             return _Inconsistent()
 
@@ -469,25 +475,28 @@ def test_a_second_writer_changing_the_restore_during_the_census_is_refused(tmp_p
     shutil.copytree(live, copy)
     ids, docs = _ids_and_documents(501)
     first, last = ids[0], ids[-1]
-    writer = ChromaStore(str(copy))  # another process in real life; here a second client on the copy
 
     def vector(doc_id: str, *, broken: bool) -> list[float]:
         good = fake_embed(MODEL, docs[doc_id])
         return [-x for x in good] if broken else good
 
-    def put(doc_id: str, *, broken: bool) -> None:
+    def put(writer: ChromaStore, doc_id: str, *, broken: bool) -> None:
         writer._collection(UNITS).upsert(
             ids=[doc_id], documents=[docs[doc_id]], embeddings=[vector(doc_id, broken=broken)]
         )
 
-    put(last, broken=True)  # the last row starts out wrong, so an honest census would refuse it
+    with ChromaStore(str(copy)) as setup:  # closed before the census: an open client would be refused
+        put(setup, last, broken=True)  # the last row starts out wrong, so an honest census refuses it
     calls: list[int] = []
+    writers: list[ChromaStore] = []
 
     def embed_and_interfere(text: str) -> list[float]:
         calls.append(1)
         if len(calls) == attestation_mod.READ_BATCH:  # the first batch is scored; the second not yet read
-            put(last, broken=False)  # repair the row that would have failed...
-            put(first, broken=True)  # ...and break one that was already scored
+            writer = ChromaStore(str(copy))  # another process in real life; here a second client
+            writers.append(writer)
+            put(writer, last, broken=False)  # repair the row that would have failed...
+            put(writer, first, broken=True)  # ...and break one that was already scored
         return fake_embed(MODEL, text)
 
     try:
@@ -497,7 +506,8 @@ def test_a_second_writer_changing_the_restore_during_the_census_is_refused(tmp_p
                 sample_size=None, write=True,
             )
     finally:
-        writer.close()
+        for writer in writers:
+            writer.close()
 
     assert not sidecar_path(live).exists()
 
@@ -569,6 +579,9 @@ def test_a_native_panic_from_chroma_is_a_refusal(tmp_path: Path) -> None:
             raise panic("a Rust panic")
 
     class _Store:
+        def _reload_client(self) -> None:
+            pass
+
         def _collection(self, _name):
             return _Collection()
 
@@ -625,6 +638,7 @@ def test_a_changed_id_listing_is_refused_even_if_the_fingerprint_did_not_move(
 
     def listing_changes(path):
         store = original(path)
+        store._reload_client = lambda: None  # keep the wrapped client: these tests pin batching
         collection = store._collection(UNITS)
         real_get = collection.get
         listings: list[int] = []
@@ -646,3 +660,182 @@ def test_a_changed_id_listing_is_refused_even_if_the_fingerprint_did_not_move(
     ):
         with pytest.raises(AttestationError, match="changed while it was being checked"):
             attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+
+_NEGATE_ONE_ROW = (
+    "import chromadb, sys\n"
+    "collection = chromadb.PersistentClient(path=sys.argv[1]).get_collection('knowledge_units')\n"
+    "row = collection.get(ids=[sys.argv[2]], include=['embeddings'])\n"
+    "collection.update(ids=[sys.argv[2]], embeddings=[[-x for x in row['embeddings'][0]]])\n"
+)
+
+
+def _another_process_negates(copy: Path, doc_id: str) -> None:
+    """A second process changes one stored vector on disk, then exits (a fresh Chroma system)."""
+    subprocess.run([sys.executable, "-c", _NEGATE_ONE_ROW, str(copy), doc_id], check=True, capture_output=True)
+
+
+def test_a_census_run_beside_a_client_holding_a_cached_index_is_refused(stores: tuple[Path, Path]) -> None:
+    """Reviewed: an already-open client had cached the row, another process then negated it on disk, and
+    the census, handed the cached index, scored 12/12 at 1.0 and published a sidecar. A fresh process
+    refused the same row at -1.0."""
+    live, copy = stores
+    warm = ChromaStore(str(copy))
+    try:
+        warm._collection(UNITS).get(ids=[f"{UNITS}-1"], include=["embeddings"])  # cached by this process
+        _another_process_negates(copy, f"{UNITS}-1")
+
+        with pytest.raises(AttestationError, match="already holds a Chroma client"):
+            attest_collections(
+                live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None, write=True
+            )
+    finally:
+        warm.close()
+
+    assert not sidecar_path(live).exists()
+
+
+def test_once_that_client_is_closed_the_census_sees_the_disk(stores: tuple[Path, Path]) -> None:
+    """The refusal is about a live competing client, not about the process ever having used the copy."""
+    live, copy = stores
+    warm = ChromaStore(str(copy))
+    warm._collection(UNITS).get(ids=[f"{UNITS}-1"], include=["embeddings"])
+    _another_process_negates(copy, f"{UNITS}-1")
+    warm.close()
+
+    with pytest.raises(AttestationError, match=rf"does not reproduce the stored vector of row '{UNITS}-1'"):
+        attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+
+def test_a_copy_that_was_used_and_closed_and_not_changed_is_accepted(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    warm = ChromaStore(str(copy))
+    warm._collection(UNITS).get(ids=[f"{UNITS}-1"], include=["embeddings"])
+    warm.close()
+
+    report = attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+    assert report.evidence[UNITS]["population"] == POPULATION
+
+
+def test_a_writer_that_changes_a_finished_collection_while_the_next_is_checked_is_refused(
+    stores: tuple[Path, Path],
+) -> None:
+    """Reviewed: units were done, one was broken, a summary was repaired: each census had passed on its
+    own, so both entries were published for a copy that was never in one state."""
+    live, copy = stores
+    writers: list[ChromaStore] = []
+    interfered: list[bool] = []
+
+    def embed_and_interfere(text: str) -> list[float]:
+        if text.startswith(SUMMARIES) and not interfered:  # the units census is over; summaries has begun
+            interfered.append(True)
+            writer = ChromaStore(str(copy))
+            writers.append(writer)
+            doc = f"{UNITS} document number 0"
+            writer._collection(UNITS).upsert(
+                ids=[f"{UNITS}-0"], documents=[doc], embeddings=[[-x for x in fake_embed(MODEL, doc)]]
+            )
+        return fake_embed(MODEL, text)
+
+    try:
+        with pytest.raises(AttestationError, match="changed after it was checked, while another collection"):
+            attest_collections(
+                live, copy, model=MODEL, embed=embed_and_interfere, sample_size=None, write=True
+            )
+    finally:
+        for writer in writers:
+            writer.close()
+
+    assert interfered and not sidecar_path(live).exists()
+
+
+def test_the_fingerprint_decodes_historical_binary_sequence_ids(tmp_path: Path) -> None:
+    """chromadb < 0.5 stored seq ids as big-endian blobs, which SQL's SUM reads as zero."""
+    from chroma_readonly import collection_change_fingerprint
+
+    copy = tmp_path / "chroma"
+    build(copy, UNITS, n=12)
+    plain = collection_change_fingerprint(copy, UNITS)
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:
+        for row_id, seq in con.execute("SELECT id, seq_id FROM embeddings").fetchall():
+            con.execute("UPDATE embeddings SET seq_id = ? WHERE id = ?", (int(seq).to_bytes(8, "big"), row_id))
+
+    assert collection_change_fingerprint(copy, UNITS) == plain  # same numbers, either way they are stored
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:  # a mix of old and new storage
+        first = con.execute("SELECT id, seq_id FROM embeddings ORDER BY id LIMIT 1").fetchone()
+        con.execute("UPDATE embeddings SET seq_id = ? WHERE id = ?", (int.from_bytes(first[1], "big"), first[0]))
+    assert collection_change_fingerprint(copy, UNITS) == plain
+
+
+def test_a_census_of_a_legacy_format_copy_works(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:
+        for row_id, seq in con.execute("SELECT id, seq_id FROM embeddings").fetchall():
+            con.execute("UPDATE embeddings SET seq_id = ? WHERE id = ?", (int(seq).to_bytes(8, "big"), row_id))
+
+    report = attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None)
+
+    assert report.evidence[UNITS]["population"] == POPULATION
+
+
+def test_a_log_record_alone_moves_the_fingerprint(stores: tuple[Path, Path]) -> None:
+    from chroma_readonly import collection_change_fingerprint
+
+    _, copy = stores
+    before = collection_change_fingerprint(copy, UNITS)
+
+    _append_pending_row(copy, UNITS, "pending-row", "pending document", fake_embed(MODEL, "pending document"))
+
+    after = collection_change_fingerprint(copy, UNITS)
+    assert after[:3] == before[:3] and after[3] > before[3]  # only the log component moved
+
+
+@pytest.mark.parametrize("failure", ["cannot-start", "timeout", "banner", "nonzero"])
+def test_a_header_probe_that_fails_says_so_and_is_not_read_as_unsafe_or_safe(
+    stores: tuple[Path, Path], failure: str
+) -> None:
+    from chroma_readonly import HeaderProbeError, may_create_wal_files
+
+    live, _ = stores
+    ok = subprocess.CompletedProcess([], 0, stdout="not a header\n", stderr="")
+    effects = {
+        "cannot-start": PermissionError("subprocesses are not allowed here"),
+        "timeout": subprocess.TimeoutExpired(cmd="probe", timeout=30),
+        "banner": None,
+        "nonzero": subprocess.CompletedProcess([], 3, stdout="", stderr="boom"),
+    }
+    effect = effects[failure]
+    patched = (
+        mock.patch("chroma_readonly.subprocess.run", side_effect=effect)
+        if isinstance(effect, BaseException)
+        else mock.patch("chroma_readonly.subprocess.run", return_value=effect or ok)
+    )
+
+    with patched:
+        with pytest.raises(HeaderProbeError, match="header probe"):
+            may_create_wal_files(live)
+
+
+def test_the_command_names_the_cause_when_the_header_probe_fails(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    live, copy = stores
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch("chroma_readonly.subprocess.run", side_effect=PermissionError("no children")):
+        code = main(["--config", str(cfg), "--restore-copy", str(copy)])
+
+    err = capsys.readouterr().err
+    assert code == 2 and "HeaderProbeError" in err and "no children" in err
+
+
+def test_row_evidence_is_measured_only_when_no_dimension_is_recorded(tmp_path: Path) -> None:
+    from chroma_readonly import collection_identity_facts
+
+    copy = tmp_path / "chroma"
+    build(copy, UNITS, n=3)
+    assert collection_identity_facts(copy, UNITS).row_evidence is None  # a dimension is recorded
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:
+        con.execute("UPDATE collections SET dimension = NULL")
+    assert collection_identity_facts(copy, UNITS).row_evidence >= 3  # now it counts every trace
