@@ -144,6 +144,10 @@ def normalize_embed_model(value: object) -> str | None:
     return None
 
 
+class EmbedIdentityError(ValueError):
+    """A new collection would record a model other than the one that made its vector."""
+
+
 class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-attributes
     def __init__(
         self,
@@ -197,8 +201,41 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                 f"the latest save of {self.chroma_dir}; close it before writing"
             )
 
+    def _require_vectors_match_new_collection(self, name: str, embeddings: Any) -> None:
+        """Refuse to create ``name`` stamped for one model with a vector another made.
+
+        ``llm.ollama_embed`` tags each vector with its model. The stamp comes from
+        the configuration read when the writer opened, which can be after the
+        embedding was made; if the configuration changed in between, creating the
+        collection now would record a model that did not produce its vectors. Only
+        creation is policed: an existing collection keeps whatever it has (``doctor``
+        reports a mismatch) and untagged vectors are not judged.
+        """
+        if not self.create_collections or self.embed_model is None:
+            return
+        if embeddings is None or len(embeddings) == 0:
+            return
+        made_by = {
+            tag
+            for tag in (normalize_embed_model(getattr(v, "embed_model", None)) for v in embeddings)
+            if tag is not None and tag != self.embed_model
+        }
+        if not made_by:
+            return
+        from chromadb.errors import NotFoundError
+
+        try:
+            self.client.get_collection(name=name)
+        except NotFoundError:
+            raise EmbedIdentityError(
+                f"refusing to create {name!r} for embed model {self.embed_model!r}: the vector "
+                f"to store was made by {sorted(made_by)}; the configured model changed after it "
+                "was embedded, so re-run the write"
+            ) from None
+
     def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
         """Run one native Chroma mutation, under the write guard when one is attached."""
+        self._require_vectors_match_new_collection(collection, kwargs.get("embeddings"))
         from incremental_mutation_proof import active_session
 
         session = active_session()
@@ -384,6 +421,8 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         metadata: dict,
     ) -> None:
         self._require_authorized_writer()
+        # Before any read below: get_unit() would create (and so stamp) the collection.
+        self._require_vectors_match_new_collection(UNITS, [embedding])
         from provenance_binding import (
             enforce_projection_metadata,
             require_projection_identity_continuity,
@@ -600,6 +639,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
     ) -> None:
         """Replace document, embedding, and metadata for an existing unit."""
         self._require_authorized_writer()
+        self._require_vectors_match_new_collection(UNITS, [embedding])
         from provenance_binding import (
             PROVENANCE_COMMITMENT_KEY,
             PROVENANCE_ENVELOPE_KEY,

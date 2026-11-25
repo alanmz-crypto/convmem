@@ -318,7 +318,14 @@ def judge_collection(  # pylint: disable=too-many-arguments
     if attestation_error is not None:
         return IdentityVerdict(FAIL, f"attestation unusable: {attestation_error}")
     if attestation is None:
-        return _judge_unattested(configured_model, "no attestation", strict)
+        reason = "no attestation"
+        if chroma_dimension is None:
+            # Created empty by a read or a refine job before any write could stamp it.
+            reason += (
+                "; it holds no vectors, so it can be dropped and the next write "
+                f"will recreate it recording {EMBED_MODEL_KEY}"
+            )
+        return _judge_unattested(configured_model, reason, strict)
     if attestation.collection_uuid != uuid:
         return _judge_unattested(
             configured_model,

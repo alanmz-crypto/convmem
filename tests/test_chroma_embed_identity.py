@@ -330,6 +330,13 @@ def test_a_collection_with_vectors_and_no_metadata_is_unproven_not_ignored() -> 
     assert _judge(meta={}, attestation=_attestation(), strict=True).status == PASS
 
 
+def test_an_empty_unmarked_collection_says_how_to_get_it_stamped() -> None:
+    for strict in (False, True):
+        verdict = _judge(chroma_dimension=None, strict=strict)
+        assert "can be dropped" in verdict.detail
+    assert "can be dropped" not in _judge().detail  # one that holds vectors must not be dropped
+
+
 def test_an_attestation_needs_a_known_collection_dimension_to_bind_to() -> None:
     unknown = _judge(attestation=_attestation(), chroma_dimension=None)
     assert unknown.status == WARN

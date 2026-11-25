@@ -12,19 +12,24 @@ health check will actually see on disk.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from chromadb.errors import NotFoundError
 
+import llm
 from chroma_readonly import collection_config_metadata, collection_uuid
 from chroma_store import (
     EMBED_MODEL_KEY,
     SUMMARIES,
     UNITS,
     ChromaStore,
+    EmbedIdentityError,
     normalize_embed_model,
 )
+from chroma_write_store import open_chroma_for_write
 
 MODEL = "nomic-embed-text:latest"
 COSINE_ONLY = {"hnsw:space": "cosine"}
@@ -141,3 +146,114 @@ def test_identity_key_matches_the_shadow_builder_contract() -> None:
     )
 
     assert shadow[EMBED_MODEL_KEY] == MODEL
+
+
+# --------------------------------------------------------------------------------------
+# A vector made by one model cannot create a collection stamped for another
+# --------------------------------------------------------------------------------------
+
+
+def _vector(model: str | None, values: tuple[float, ...] = (1.0, 0.0, 0.0)) -> llm.EmbeddingVector:
+    vector = llm.EmbeddingVector(values)
+    vector.embed_model = model
+    return vector
+
+
+def _write(store: ChromaStore, how: str, vector: list[float]) -> None:
+    meta = {"source_path": "unit.md"}
+    if how == "add_unit":
+        store.add_unit("u1", "a document", vector, meta)
+    elif how == "update_unit":
+        store.update_unit("u1", "a document", vector, meta)
+    else:
+        store.add_summary("s1", "a summary", vector, meta)
+
+
+WRITES = [("add_unit", UNITS), ("update_unit", UNITS), ("add_summary", SUMMARIES)]
+
+
+def test_ollama_embed_tags_the_vector_with_the_model_that_made_it() -> None:
+    response = mock.Mock()
+    response.json.return_value = {"embedding": [0.25, 0.5, 0.75]}
+    with (
+        mock.patch.object(llm.requests, "post", return_value=response),
+        mock.patch.object(llm, "_permit_provider_http_attempt"),
+        mock.patch.object(llm, "_report_provider_usage"),
+        mock.patch("purge_locks.reject_provider_under_write_scope"),
+    ):
+        vector = llm.ollama_embed("hello", "model-a", "http://localhost:11434")
+
+    assert vector == [0.25, 0.5, 0.75]
+    assert vector.embed_model == "model-a"
+    assert json.dumps(vector) == "[0.25, 0.5, 0.75]"  # still an ordinary list to everything else
+
+
+@pytest.mark.parametrize("how,collection", WRITES, ids=[w[0] for w in WRITES])
+def test_a_vector_from_another_model_cannot_create_a_collection_stamped_for_this_one(
+    tmp_path: Path, how: str, collection: str
+) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        with pytest.raises(EmbedIdentityError, match="model-a"):
+            _write(store, how, _vector("model-a"))
+
+    # Refused before anything was created, so nothing carries the wrong stamp.
+    assert collection_uuid(chroma, collection) is None
+
+
+@pytest.mark.parametrize("how,collection", WRITES, ids=[w[0] for w in WRITES])
+def test_a_vector_from_the_stamped_model_creates_the_collection(
+    tmp_path: Path, how: str, collection: str
+) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        if how == "update_unit":
+            _write(store, "add_unit", _vector("model-b"))
+        else:
+            _write(store, how, _vector("model-b"))
+
+    assert collection_config_metadata(chroma, collection)[EMBED_MODEL_KEY] == "model-b"
+
+
+def test_an_untagged_vector_is_not_judged(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        store.add_unit("u1", "a document", [1.0, 0.0, 0.0], {"source_path": "unit.md"})
+
+    assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-b"
+
+
+def test_only_creation_is_policed_an_existing_collection_is_left_to_doctor(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS, embed_model="model-b")  # already exists, stamped model-b
+
+    with ChromaStore(str(chroma), embed_model="model-b") as store:
+        store.add_unit("u1", "a document", _vector("model-a"), {"source_path": "unit.md"})
+
+    assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-b"
+
+
+def test_a_store_that_records_no_model_does_not_judge_vectors(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma)) as store:
+        store.add_unit("u1", "a document", _vector("model-a"), {"source_path": "unit.md"})
+
+    assert EMBED_MODEL_KEY not in collection_config_metadata(chroma, UNITS)
+
+
+def test_a_config_change_between_embedding_and_opening_the_writer_is_refused(
+    tmp_path: Path,
+) -> None:
+    """The reviewed scenario: embed under A, config becomes B, the writer then opens."""
+    chroma = tmp_path / "chroma"
+    embedded_under_a = _vector("model-a")
+    config_now = {"models": {"embed_model": "model-b"}}
+
+    store, _ = open_chroma_for_write(config_now, chroma, purpose="test")
+    try:
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", embedded_under_a, {"source_path": "unit.md"})
+    finally:
+        store.close()
+
+    assert collection_uuid(chroma, UNITS) is None
