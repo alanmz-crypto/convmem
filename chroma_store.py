@@ -144,26 +144,6 @@ def normalize_embed_model(value: object) -> str | None:
     return None
 
 
-def _canonical_embed_model(value: object) -> str | None:
-    """A model name as Ollama identifies it: lower case, the default registry and ``library/``
-    namespace dropped, the tag defaulting to ``latest``."""
-    name = normalize_embed_model(value)
-    if name is None:
-        return None
-    head, _, last = name.lower().rpartition("/")
-    last_name, _, tag = last.partition(":")  # a ':' before the last '/' is a registry port
-    base = f"{head}/{last_name}" if head else last_name
-    for prefix in ("registry.ollama.ai/", "library/"):
-        base = base.removeprefix(prefix)
-    return f"{base}:{tag or 'latest'}"
-
-
-def same_embed_model(first: object, second: object) -> bool:
-    """True when two names denote one Ollama model (``x``, ``x:latest``, ``library/x``, ``X``)."""
-    names = [_canonical_embed_model(v) for v in (first, second)]
-    return None not in names and names[0] == names[1]
-
-
 class EmbedIdentityError(ValueError):
     """A collection's first vector was made by a model other than the one it records."""
 
@@ -202,9 +182,6 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         # sink, it is handed in: this class never loads config. None records
         # nothing, so direct and test stores behave exactly as before.
         self.embed_model = normalize_embed_model(embed_model)
-        # Each existing collection's recorded model, read once (see chroma_embed_first_write).
-        # A recorded model never changes, unlike what the collection currently holds.
-        self.recorded_stamps: dict[str, str | None] = {}
         self.client = self._new_client()
 
     def _new_client(self):
@@ -216,7 +193,6 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
     def _reload_client(self) -> None:
         """Drop this process's Chroma system so the next access loads the on-disk save."""
         self._release_client()
-        self.recorded_stamps.clear()
         stale_elsewhere = chroma_system_cached(self.chroma_dir)
         self.client = self._new_client()
         if stale_elsewhere:
@@ -265,6 +241,8 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                 )
             return result
         with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
+            # Again, now that the guard may have reloaded the client: judge the handle in use.
+            self._require_vectors_match_first_write(collection, kwargs.get("embeddings"))
             try:
                 result = getattr(self._collection(collection), operation)(**kwargs)
             except Exception:

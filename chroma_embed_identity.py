@@ -40,8 +40,8 @@ from chroma_store import (
     SUMMARIES,
     UNITS,
     normalize_embed_model,
-    same_embed_model,
 )
+from chroma_embed_model_names import same_embed_model
 
 EMBED_DIMENSIONS_KEY = "convmem:embed_dimensions"
 ATTESTATION_SCHEMA = "convmem.chroma-embed-attestation.v1"

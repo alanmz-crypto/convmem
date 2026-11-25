@@ -10,8 +10,10 @@ deterministic fake embedder, and the live store is only ever read through SQLite
 from __future__ import annotations
 
 import math
+import os
 import shutil
 import sqlite3
+import struct
 from pathlib import Path
 from unittest import mock
 
@@ -23,6 +25,7 @@ from chroma_embed_identity import sidecar_path
 from chroma_store import SUMMARIES, UNITS
 # Helpers and the ``stores`` fixture only (importing the fixture registers it); no test_* names.
 from tests.test_chroma_embed_attestation import (  # pylint: disable=unused-import
+    DIM,
     MODEL,
     POPULATION,
     _config,
@@ -97,8 +100,9 @@ def test_a_census_reads_embeds_and_scores_one_batch_before_reading_the_next(tmp_
         collection = store._collection(UNITS)
         real_get = collection.get
 
-        def get(ids, include):
-            events.append("get")
+        def get(ids=None, include=None):
+            if ids is not None:  # reading a batch; the one-off listing of every id is not a batch
+                events.append("get")
             return real_get(ids=ids, include=include)
 
         collection.get = get  # type: ignore[method-assign]
@@ -170,3 +174,196 @@ def test_a_live_database_in_wal_mode_is_not_read_so_nothing_is_created_beside_it
         attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
 
     assert sorted(p.name for p in live.iterdir()) == before  # no -wal/-shm created by the refusal
+
+
+# --------------------------------------------------------------------------------------
+# Round 4: pending log records, scoring failures, error boundary, descriptor, header bytes
+# --------------------------------------------------------------------------------------
+
+
+def _append_pending_row(chroma: Path, name: str, doc_id: str, document: str, vector: list[float]) -> None:
+    """A genuine Chroma upsert log record that the client only replays when it opens the collection."""
+    from chroma_readonly import collection_uuid
+
+    uuid = collection_uuid(chroma, name)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        newest = con.execute("SELECT COALESCE(MAX(seq_id), 0) FROM embeddings_queue").fetchone()[0]
+        con.execute(
+            "INSERT INTO embeddings_queue (seq_id, operation, topic, id, vector, encoding, metadata) "
+            "VALUES (?, 2, ?, ?, ?, 'FLOAT32', ?)",
+            (
+                newest + 1,
+                f"persistent://default/default/{uuid}",
+                doc_id,
+                struct.pack(f"<{len(vector)}f", *vector),
+                '{"chroma:document":"%s"}' % document,
+            ),
+        )
+
+
+def test_a_row_pending_in_the_log_is_part_of_the_census_and_a_foreign_one_is_refused(
+    stores: tuple[Path, Path],
+) -> None:
+    """Reviewed: the ids were read from SQLite before the client replayed the log, so a thirteenth,
+    nonmatching row was never scored and a 12/12 census was published."""
+    live, copy = stores
+    foreign = [-x for x in fake_embed(MODEL, "pending document")]
+    _append_pending_row(copy, UNITS, "pending-row", "pending document", foreign)
+
+    with pytest.raises(AttestationError, match=r"does not reproduce the stored vector of row 'pending-row'"):
+        attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), write=True)
+
+    assert not sidecar_path(live).exists()
+
+
+def test_a_matching_pending_row_is_counted_in_the_population(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    _append_pending_row(copy, UNITS, "pending-row", "pending document", fake_embed(MODEL, "pending document"))
+
+    report = attest_collections(
+        live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None
+    )
+
+    assert report.evidence[UNITS]["population"] == POPULATION + 1
+    assert report.evidence[UNITS]["sample_size"] == POPULATION + 1
+
+
+def test_a_census_stops_at_the_first_failing_row_and_names_it(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    calls: list[str] = []
+
+    def orthogonal_on_the_third(text: str) -> list[float]:
+        calls.append(text)
+        vector = fake_embed(MODEL, text)
+        return [-x for x in vector] if len(calls) == 3 else vector
+
+    with pytest.raises(AttestationError, match=r"knowledge_units.*row 'knowledge_units-\d+'.*cosine"):
+        attest_collections(
+            live, copy, model=MODEL, embed=orthogonal_on_the_third, names=(UNITS,), sample_size=None
+        )
+
+    assert len(calls) == 3  # it did not score the rest and report only a minimum
+
+
+def test_a_wrong_sized_vector_names_the_row(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    with pytest.raises(AttestationError, match=r"knowledge_units: row 'knowledge_units-\d+'.*dimensions"):
+        attest_collections(
+            live, copy, model=MODEL, embed=embedder(MODEL, dim=DIM + 1), names=(UNITS,)
+        )
+
+
+def test_the_command_turns_a_damaged_store_into_a_refusal_not_a_traceback(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    live, copy = stores
+    (copy / "chroma.sqlite3").write_bytes(b"this is not a database" * 100)
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch.object(attestation_mod, "_ollama_embedder", return_value=embedder(MODEL)):
+        code = main(["--config", str(cfg), "--restore-copy", str(copy)])
+
+    assert code == 2
+    assert "attestation refused" in capsys.readouterr().err
+
+
+def _open_descriptors_for(name_suffix: str) -> list[str]:
+    """Descriptors of this process that point at a file whose name ends with ``name_suffix``."""
+    found = []
+    for entry in os.listdir("/proc/self/fd"):
+        try:
+            target = os.readlink(f"/proc/self/fd/{entry}")
+        except OSError:
+            continue  # closed between listing and reading
+        if target.endswith(name_suffix):
+            found.append(target)
+    return found
+
+
+def test_a_lock_that_cannot_be_narrowed_leaks_no_descriptor(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    with mock.patch.object(attestation_mod.os, "fchmod", side_effect=PermissionError("no")):
+        for _ in range(3):
+            with pytest.raises(AttestationError, match="lock"):
+                attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+    # Counting every descriptor is flaky (Chroma keeps threads that open and close files);
+    # what must not survive is a descriptor on the lock file itself.
+    assert not _open_descriptors_for(".embed-attestation.json.lock")
+
+
+def test_any_exception_from_the_provider_is_retried_and_the_delay_doubles(
+    stores: tuple[Path, Path],
+) -> None:
+    live, copy = stores
+    attempts: list[int] = []
+
+    def flaky(text: str) -> list[float]:
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise RuntimeError("not an OSError")  # retried like any other failure
+        return fake_embed(MODEL, text)
+
+    with mock.patch.object(attestation_mod.time, "sleep") as slept:
+        attest_collections(live, copy, model=MODEL, embed=flaky, names=(UNITS,))
+    assert slept.call_args_list == [mock.call(attestation_mod.EMBED_BACKOFF)]
+
+    def never(_text: str) -> list[float]:
+        raise ValueError("down")
+
+    with mock.patch.object(attestation_mod.time, "sleep") as slept:
+        with pytest.raises(AttestationError):
+            attest_collections(live, copy, model=MODEL, embed=never, names=(UNITS,))
+    assert [c.args[0] for c in slept.call_args_list] == [0.5, 1.0]
+
+
+@pytest.mark.parametrize(
+    "header,safe",
+    [(b"\x01\x01", True), (b"\x02\x02", False), (b"\x01\x02", False), (b"\x02\x01", False), (b"\x00\x00", False)],
+)
+def test_only_a_plain_rollback_journal_header_is_read(
+    stores: tuple[Path, Path], header: bytes, safe: bool
+) -> None:
+    from chroma_readonly import may_create_wal_files
+
+    live, _ = stores
+    data = bytearray((live / "chroma.sqlite3").read_bytes()[:100])
+    data[18:20] = header
+    with open(live / "chroma.sqlite3", "r+b") as handle:  # a scratch store: set the format bytes
+        handle.write(bytes(data))
+
+    assert may_create_wal_files(live) is (not safe)
+
+
+def test_a_header_that_is_not_sqlite_is_not_read(stores: tuple[Path, Path]) -> None:
+    from chroma_readonly import may_create_wal_files
+
+    live, _ = stores
+    (live / "chroma.sqlite3").write_bytes(b"not sqlite at all")
+    assert may_create_wal_files(live) is True
+    # long enough, with plausible version bytes, but not an SQLite header at all
+    (live / "chroma.sqlite3").write_bytes(b"X" * 18 + b"\x01\x01" + b"\x00" * 80)
+    assert may_create_wal_files(live) is True
+    assert may_create_wal_files(live.parent / "nowhere") is False  # nothing to open, nothing to create
+
+
+def test_a_copy_whose_listing_and_count_disagree_is_refused(tmp_path: Path) -> None:
+    class _Inconsistent:
+        def count(self) -> int:
+            return 13
+
+        def get(self, ids=None, include=None):  # pylint: disable=unused-argument
+            return {"ids": [f"row-{i:02d}" for i in range(12)]}
+
+    class _Store:
+        def _collection(self, _name):
+            return _Inconsistent()
+
+        def close(self) -> None:
+            pass
+
+    with mock.patch.object(attestation_mod, "open_chroma_for_verify", return_value=_Store()):
+        with pytest.raises(AttestationError, match="lists 12 rows but counts 13"):
+            spot_check(tmp_path, UNITS, embedder(MODEL), sample_size=None)

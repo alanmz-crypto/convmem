@@ -11,12 +11,12 @@ Only a collection's first vector is refused: once it holds vectors, a mismatch i
 Untagged vectors and collections that record nothing are not judged. This applies to every
 store, not only ones configured with a model.
 
-Nothing about what a collection *holds* is ever remembered. Whether it is empty is read at
-the moment a vector conflicts with the recorded model, so another session emptying the
-collection, or a write that failed after committing, cannot leave a stale answer behind. The
-only thing cached per store is a collection's recorded model, which never changes. A second
-process can still fill or empty the collection between this check and the write; production
-sessions hold the index write lock, which is what serialises writers.
+Nothing is remembered between calls: neither what a collection holds nor what it records.
+Another session can empty a collection, drop and recreate it with another model, or change
+its metadata in place, so both are read from the collection at the moment of the write (and
+again inside the write guard, after it may have reloaded the client). A second process can
+still change the collection between that read and the write; production sessions hold the
+index write lock, which is what serialises writers.
 """
 
 from __future__ import annotations
@@ -25,28 +25,11 @@ from typing import TYPE_CHECKING, Any
 
 from chromadb.errors import NotFoundError
 
-from chroma_store import (
-    EMBED_MODEL_KEY,
-    EmbedIdentityError,
-    normalize_embed_model,
-    same_embed_model,
-)
+from chroma_embed_model_names import same_embed_model
+from chroma_store import EMBED_MODEL_KEY, EmbedIdentityError, normalize_embed_model
 
 if TYPE_CHECKING:
     from chroma_store import ChromaStore
-
-
-def _recorded_model(store: "ChromaStore", name: str) -> tuple[str | None, bool]:
-    """(the model ``name`` records or would be stamped with, whether it exists)."""
-    if name in store.recorded_stamps:
-        return store.recorded_stamps[name], True
-    try:
-        collection = store.client.get_collection(name=name)
-    except NotFoundError:
-        return store.embed_model, False  # what the write about to happen would stamp
-    stamp = normalize_embed_model((collection.metadata or {}).get(EMBED_MODEL_KEY))
-    store.recorded_stamps[name] = stamp
-    return stamp, True
 
 
 def require_first_vector_matches(store: "ChromaStore", name: str, embeddings: Any) -> None:
@@ -56,10 +39,15 @@ def require_first_vector_matches(store: "ChromaStore", name: str, embeddings: An
     made_by = {normalize_embed_model(getattr(v, "embed_model", None)) for v in embeddings} - {None}
     if not made_by:
         return
-    stamped, exists = _recorded_model(store, name)
+    try:
+        collection = store.client.get_collection(name=name)
+    except NotFoundError:
+        collection, stamped = None, store.embed_model  # what the write about to happen would stamp
+    else:
+        stamped = normalize_embed_model((collection.metadata or {}).get(EMBED_MODEL_KEY))
     if stamped is None or all(same_embed_model(model, stamped) for model in made_by):
         return  # nothing recorded, or nothing conflicts: no need to look at what it holds
-    if exists and store.client.get_collection(name=name).count() > 0:
+    if collection is not None and collection.count() > 0:
         return  # not a first write
     raise EmbedIdentityError(
         f"refusing to store a vector made by {sorted(made_by)} as the first vector of "

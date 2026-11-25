@@ -50,6 +50,7 @@ import math
 import os
 import random
 import secrets
+import sqlite3
 import sys
 import tempfile
 import time
@@ -74,9 +75,8 @@ from chroma_embed_identity import (
 from chroma_readonly import (
     collection_config_metadata,
     collection_dimension,
-    collection_ids,
     collection_uuid,
-    journal_mode_is_wal,
+    may_create_wal_files,
 )
 from chroma_store import (
     EMBED_MODEL_KEY,
@@ -195,6 +195,7 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     seed: int = 0,
     before_open: Callable[[], None] | None = None,
     progress: ProgressFn | None = None,
+    fail_below: float | None = None,
 ) -> SpotCheck:
     """Re-embed a reproducible sample of stored documents and compare to storage.
 
@@ -202,26 +203,37 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     (``open_chroma_for_verify``), so ``copy_dir`` must be a restore copy. Missing
     collections are never created. ``before_open`` runs immediately before the client
     opens, so a guard there leaves the least room for the directory to change after it.
-    Rows are read, embedded and scored one batch at a time, so memory does not grow with
-    the collection; ``progress(name, done, total)`` is called after each batch.
+
+    The rows to check are listed by the opened collection, not read from SQLite beforehand:
+    a restore can hold log records Chroma only replays when it opens, and a census that
+    missed them would vouch for fewer rows than the collection holds. Rows are then read,
+    embedded and scored one batch at a time, so memory does not grow with the collection;
+    ``progress(name, done, total)`` is called after each batch. With ``fail_below`` the run
+    stops at the first row under that cosine and names it.
     """
-    ids = collection_ids(copy_dir, name)
-    if not ids:
-        raise AttestationError(f"{name}: collection has no vectors to check")
-    if sample_size is not None and sample_size < min(MIN_SAMPLE_SIZE, len(ids)):
-        raise AttestationError(
-            f"{name}: sample of {sample_size} is below the minimum "
-            f"{min(MIN_SAMPLE_SIZE, len(ids))}"
-        )
-    sample = _sample_ids(ids, sample_size, seed)
     if before_open is not None:
         before_open()
     scores: list[float] = []
+    scored_ids: list[str] = []
     dimension = 0
     # The restore-drill opener: get_collection only, so nothing is ever created.
     try:
         with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
             collection = store._collection(name)  # pylint: disable=protected-access
+            ids = sorted(collection.get(include=[])["ids"])
+            population = collection.count()
+            if len(ids) != population:
+                raise AttestationError(
+                    f"{name}: the copy lists {len(ids)} rows but counts {population}"
+                )
+            if not ids:
+                raise AttestationError(f"{name}: collection has no vectors to check")
+            if sample_size is not None and sample_size < min(MIN_SAMPLE_SIZE, len(ids)):
+                raise AttestationError(
+                    f"{name}: sample of {sample_size} is below the minimum "
+                    f"{min(MIN_SAMPLE_SIZE, len(ids))}"
+                )
+            sample = _sample_ids(ids, sample_size, seed)
             for start in range(0, len(sample), READ_BATCH):
                 batch = sample[start : start + READ_BATCH]
                 got = collection.get(ids=batch, include=["embeddings", "documents"])
@@ -232,14 +244,28 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
                         raise AttestationError(f"{name}: sampled item {doc_id!r} has no document to embed")
                     values = [float(x) for x in vector]
                     dimension = len(values)
-                    scores.append(cosine(values, _embed_row(embed, name, doc_id, document)))
+                    embedded = _embed_row(embed, name, doc_id, document)
+                    try:
+                        score = cosine(values, embedded)
+                    except AttestationError as exc:
+                        raise AttestationError(f"{name}: row {doc_id!r}: {exc}") from exc
+                    if fail_below is not None and score < fail_below:
+                        raise AttestationError(
+                            f"{name}: re-embedding with the claimed model does not reproduce the stored "
+                            f"vector of row {doc_id!r} (cosine {score:.4f} < {fail_below}); "
+                            "the claimed model is not the model that made it"
+                        )
+                    scores.append(score)
+                    scored_ids.append(doc_id)
                 if progress is not None:
                     progress(name, len(scores), len(sample))
+            if sample_size is None and sorted(scored_ids) != ids:
+                raise AttestationError(f"{name}: the census did not cover every row the copy holds")
     except NotFoundError as exc:
         raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
     return SpotCheck(
         collection=name,
-        population=len(ids),
+        population=population,
         sample_size=len(scores),
         dimension=dimension,
         min_cosine=min(scores),
@@ -335,10 +361,13 @@ def _sidecar_lock(path: Path):
         fd = os.open(
             path.with_name(path.name + ".lock"), os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
         )
-        os.fchmod(fd, 0o600)  # the mode argument above only applies when the file is created
     except OSError as exc:  # includes ELOOP: a symlink planted at the lock path
         raise AttestationError(f"cannot take the sidecar lock: {exc}") from exc
-    try:
+    try:  # from here the descriptor is always closed, whatever fails
+        try:
+            os.fchmod(fd, 0o600)  # the mode argument above only applies when the file is created
+        except OSError as exc:
+            raise AttestationError(f"cannot take the sidecar lock: {exc}") from exc
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
     finally:
@@ -399,11 +428,13 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
     explicit = names is not None
     requested = tuple(dict.fromkeys(names if names is not None else (UNITS, SUMMARIES)))
     live, copy = Path(live_dir).expanduser(), Path(copy_dir).expanduser()
-    if journal_mode_is_wal(live):
+    if may_create_wal_files(live):
         # SQLite may create -wal/-shm beside a WAL database even for a read-only open; the live
-        # directory must stay untouched, so refuse instead of reading it.
+        # directory must stay untouched, so refuse instead of reading it. Anything that is not
+        # verifiably a plain rollback-journal file (WAL, mixed or unreadable header) counts.
         raise AttestationError(
-            "the live database is in WAL mode: a read-only open could create -wal/-shm files "
+            "the live database is not verifiably a rollback-journal SQLite file (WAL mode, an "
+            "inconsistent or an unreadable header): a read-only open could create -wal/-shm files "
             "in the live directory, so it is not read"
         )
     _require_separate_copy(live, copy)
@@ -440,6 +471,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             # checked again right before a client opens the copy
             before_open=lambda: _require_separate_copy(live, copy),
             progress=progress,
+            fail_below=threshold,
         )
         if check.dimension != live_dim:
             raise AttestationError(
@@ -580,6 +612,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     except AttestationError as exc:
         print(f"attestation refused: {exc}", file=sys.stderr)
+        return 2
+    except (sqlite3.Error, OSError) as exc:  # an unreadable or damaged store or directory
+        print(f"attestation refused: cannot read a store: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
     for name, item in sorted(report.attested.items()):
         ev = report.evidence[name]

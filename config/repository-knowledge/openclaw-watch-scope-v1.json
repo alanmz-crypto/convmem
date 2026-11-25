@@ -407,6 +407,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "chroma_embed_model_names.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "chroma_readonly.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -6902,6 +6907,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "tests/test_chroma_readonly_scope.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "tests/test_chroma_restore_drill.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8583,7 +8593,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "2f877dc24a951740308d9c1f100b442239b8f373d6cf3d3f36674aaf5a279554",
+      "sha256": "c284b4044847982004e8beb18938444133107bb4890de18db25ac613b01c731f",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

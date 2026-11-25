@@ -16,23 +16,36 @@ _SERVING_DATABASE = (
 )
 
 
-def _serving_database(conn: sqlite3.Connection) -> str:
+def _serving_database(conn: sqlite3.Connection, name: str) -> str:
     """SQL restricting alias ``c`` to the serving database.
 
     Three layouts exist. A modern Chroma catalog has ``databases`` and
     ``collections.database_id``: restrict to the default database. A legacy or hand-made
     schema has neither, so it cannot hold more than one database and needs no restriction.
     One without the other is a damaged catalog in which a same-named collection of another
-    database cannot be told apart, so it is refused rather than guessed at.
+    database cannot be told apart, so it is refused rather than guessed at. ``name`` is the
+    collection about to be read: more than one match within the serving database is refused.
     """
     has_databases = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'databases'"
     ).fetchone() is not None
     has_column = "database_id" in {row[1] for row in conn.execute("PRAGMA table_info(collections)")}
     if has_databases and has_column:
-        return _SERVING_DATABASE
-    if not has_databases and not has_column:
-        return "1 = 1"
+        fragment = _SERVING_DATABASE
+    elif not has_databases and not has_column:
+        fragment = "1 = 1"
+    else:
+        fragment = None
+    if fragment is not None:
+        # A name that matches two collections cannot be read as one: uuid, dimension and
+        # metadata would each pick a different one. Real Chroma enforces UNIQUE(name,
+        # database_id); a hand-made or damaged schema may not.
+        matches = conn.execute(
+            f"SELECT COUNT(*) FROM collections c WHERE c.name = ? AND {fragment}", (name,)
+        ).fetchone()[0]
+        if matches > 1:
+            raise sqlite3.DatabaseError(f"ambiguous catalog: {matches} collections are named {name!r}")
+        return fragment
     raise sqlite3.DatabaseError(
         "inconsistent Chroma catalog: "
         f"{'databases table present' if has_databases else 'databases table missing'}, "
@@ -40,17 +53,22 @@ def _serving_database(conn: sqlite3.Connection) -> str:
     )
 
 
-def journal_mode_is_wal(chroma_dir: str | Path) -> bool:
-    """True when ``chroma.sqlite3`` is in WAL mode, read from the file header (no SQLite open).
+def may_create_wal_files(chroma_dir: str | Path) -> bool:
+    """True unless ``chroma.sqlite3`` is verifiably a plain rollback-journal database.
 
-    Bytes 18 and 19 of the header are the write and read format versions: 2 means WAL.
+    Read from the file header without opening SQLite. Bytes 18 and 19 are the write and read
+    format versions: 1 is the rollback journal, 2 is WAL, and SQLite opens a file as WAL when
+    *either* byte says so, so only ``01 01`` is safe. A missing file is not a risk (nothing is
+    opened); an unreadable, short or non-SQLite header is, because it cannot be vouched for.
     """
     try:
         with open(_db_path(chroma_dir), "rb") as handle:
-            handle.seek(18)
-            return handle.read(2) == b"\x02\x02"
-    except OSError:
+            header = handle.read(20)
+    except FileNotFoundError:
         return False
+    except OSError:
+        return True
+    return header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01"
 
 
 def _db_path(chroma_dir: str | Path) -> Path:
@@ -62,11 +80,13 @@ def _connect_readonly(db: Path) -> sqlite3.Connection:
 
     For a database in WAL mode SQLite may still create ``-wal``/``-shm`` beside it even
     when read-only; Chroma writes a rollback journal, so this applies only to a store that
-    was switched to WAL (see :func:`journal_mode_is_wal`).
+    was switched to WAL (see :func:`may_create_wal_files`).
     """
     if not db.is_file():
         raise FileNotFoundError(str(db))
-    uri = f"file:{db.resolve().as_posix()}?mode=ro"
+    # as_uri() percent-encodes the path: a '#' or '?' in a directory name would otherwise end
+    # the path early, drop "mode=ro" and open (and create) a different, writable file.
+    uri = db.resolve().as_uri() + "?mode=ro"
     return sqlite3.connect(uri, uri=True)
 
 
@@ -129,7 +149,7 @@ def iter_collection_metadata_rows(
                 FROM embeddings e
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
-                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                 ORDER BY e.embedding_id
                 """,
                 (collection_name,),
@@ -151,7 +171,7 @@ def iter_collection_metadata_rows(
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
                 JOIN embedding_metadata em ON em.id = e.id
-                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                 ORDER BY e.embedding_id, em.key
                 """,
                 (collection_name,),
@@ -171,7 +191,7 @@ def iter_collection_metadata_rows(
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
                 JOIN embedding_metadata em ON em.id = e.id
-                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                   AND em.key IN ({placeholders})
                 ORDER BY e.embedding_id, em.key
                 """,
@@ -215,7 +235,7 @@ def unit_document_text(chroma_dir: str | Path, chroma_id: str) -> str | None:
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
             JOIN embedding_metadata em ON em.id = e.id
-            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, UNITS)}
               AND e.embedding_id = ?
               AND em.key = 'chroma:document'
             LIMIT 1
@@ -251,7 +271,7 @@ def collection_config_metadata(
             SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
             FROM collection_metadata cm
             JOIN collections c ON c.id = cm.collection_id
-            WHERE c.name = ? AND {_serving_database(conn)}
+            WHERE c.name = ? AND {_serving_database(conn, collection_name)}
             """,
             (collection_name,),
         )
@@ -278,7 +298,7 @@ def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
             """,
             (collection_name,),
         )
@@ -295,13 +315,15 @@ def collection_row_evidence(chroma_dir: str | Path, collection_name: str) -> int
     segment that :func:`collection_count` reads) plus any rows in the pending log. Used to
     decide a collection is empty, which must never be concluded from a damaged or relabelled
     segment: zero here means nothing was ever stored, not merely that one view found nothing.
+    A collection whose two segments cannot both be found, or a segment that belongs to no
+    collection, counts as one unaccounted row.
     """
     db = _db_path(chroma_dir)
     if not db.is_file():
         return 0
     conn = _connect_readonly(db)
     try:
-        serving = _serving_database(conn)
+        serving = _serving_database(conn, collection_name)
         row = conn.execute(
             f"SELECT c.id FROM collections c WHERE c.name = ? AND {serving} LIMIT 1",
             (collection_name,),
@@ -316,6 +338,14 @@ def collection_row_evidence(chroma_dir: str | Path, collection_name: str) -> int
             """,
             (row[0],),
         ).fetchone()[0]
+        # A Chroma collection has exactly two segments (vector and metadata). If they cannot
+        # both be found, or any segment points at a collection that does not exist, rows may
+        # sit where this count cannot see them: that is evidence of rows, not of emptiness.
+        segments = conn.execute("SELECT COUNT(*) FROM segments WHERE collection = ?", (row[0],)).fetchone()[0]
+        orphans = conn.execute(
+            "SELECT COUNT(*) FROM segments s WHERE NOT EXISTS (SELECT 1 FROM collections c WHERE c.id = s.collection)"
+        ).fetchone()[0]
+        unaccounted = int(segments != 2) + int(orphans > 0)
         logged = 0
         if conn.execute(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'embeddings_queue'"
@@ -323,7 +353,7 @@ def collection_row_evidence(chroma_dir: str | Path, collection_name: str) -> int
             logged = conn.execute(
                 "SELECT COUNT(*) FROM embeddings_queue WHERE topic LIKE ?", (f"%/{row[0]}",)
             ).fetchone()[0]
-        return int(stored or 0) + int(logged or 0)
+        return int(stored or 0) + int(logged or 0) + unaccounted
     finally:
         conn.close()
 
@@ -340,7 +370,7 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn)}
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
             """,
             (collection_name,),
         )
@@ -499,7 +529,8 @@ def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT c.id FROM collections c WHERE c.name = ? AND {_serving_database(conn)} LIMIT 1",
+            f"SELECT c.id FROM collections c "
+            f"WHERE c.name = ? AND {_serving_database(conn, collection_name)} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()
@@ -524,7 +555,8 @@ def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | 
     try:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT c.dimension FROM collections c WHERE c.name = ? AND {_serving_database(conn)} LIMIT 1",
+            f"SELECT c.dimension FROM collections c "
+            f"WHERE c.name = ? AND {_serving_database(conn, collection_name)} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()

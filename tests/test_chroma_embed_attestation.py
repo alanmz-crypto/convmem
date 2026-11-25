@@ -428,7 +428,14 @@ def test_a_short_read_of_the_sampled_vectors_is_refused(stores: tuple[Path, Path
     _, copy = stores
 
     class _Short:
-        def get(self, ids, include):  # pylint: disable=unused-argument
+        everyone = [f"row-{i:02d}" for i in range(12)]
+
+        def count(self) -> int:
+            return len(self.everyone)
+
+        def get(self, ids=None, include=None):  # pylint: disable=unused-argument
+            if ids is None:  # the listing of every row the opened collection holds
+                return {"ids": list(self.everyone)}
             kept = list(ids)[:-1]
             return {
                 "ids": kept,
@@ -666,8 +673,9 @@ def test_a_full_check_reads_in_batches_and_checks_completeness_across_them(tmp_p
             nonlocal real_get
             real_get = collection.get
 
-            def get(ids, include):
-                seen.append(len(ids))
+            def get(ids=None, include=None):
+                if ids is not None:  # the listing of all ids is not a batch read
+                    seen.append(len(ids))
                 return real_get(ids=ids, include=include)
 
             collection.get = get  # type: ignore[method-assign]
@@ -686,7 +694,14 @@ def test_a_short_read_in_a_later_batch_is_still_refused(tmp_path: Path) -> None:
     calls: list[int] = []
 
     class _Collection:
-        def get(self, ids, include):  # pylint: disable=unused-argument
+        everyone = [f"row-{i:02d}" for i in range(20)]
+
+        def count(self) -> int:
+            return len(self.everyone)
+
+        def get(self, ids=None, include=None):  # pylint: disable=unused-argument
+            if ids is None:
+                return {"ids": list(self.everyone)}
             calls.append(len(ids))
             kept = list(ids) if len(calls) == 1 else list(ids)[:-1]
             return {

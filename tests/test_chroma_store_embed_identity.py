@@ -28,8 +28,8 @@ from chroma_store import (
     ChromaStore,
     EmbedIdentityError,
     normalize_embed_model,
-    same_embed_model,
 )
+from chroma_embed_model_names import same_embed_model
 from chroma_write_store import open_chroma_for_write
 
 MODEL = "nomic-embed-text:latest"
@@ -285,22 +285,6 @@ def test_the_first_vector_is_compared_with_the_collection_not_just_the_store(
             store.add_unit("u1", "a document", _vector("model-c"), {"source_path": "unit.md"})
 
 
-def test_the_collection_is_looked_up_once_per_session_not_on_every_write(tmp_path: Path) -> None:
-    chroma = tmp_path / "chroma"
-    with ChromaStore(str(chroma), embed_model="model-b") as store:
-        with mock.patch.object(
-            store.client, "get_collection", wraps=store.client.get_collection
-        ) as lookup:
-            store.add_unit("u0", "a document", _vector("model-b"), {"source_path": "unit.md"})
-            after_the_first_write = lookup.call_count
-            for index in (1, 2):
-                store.add_unit(
-                    f"u{index}", "a document", _vector("model-b"), {"source_path": "unit.md"}
-                )
-
-    assert lookup.call_count == after_the_first_write  # later writes look nothing up
-
-
 def test_an_empty_collection_that_records_nothing_is_not_judged(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     _create(chroma, UNITS)  # a legacy-style collection: cosine only, no model
@@ -472,6 +456,19 @@ def test_emptying_a_collection_in_a_session_restores_the_first_vector_check(tmp_
         ("nomic-embed-text:V1.5", "nomic-embed-text:v1.5", True),
         ("someone/nomic-embed-text", "nomic-embed-text", False),
         ("localhost:11434/nomic-embed-text", "nomic-embed-text", False),
+        # the leading "library/" is a namespace only when it is the host's namespace slot:
+        ("library/acme/model", "acme/model", False),  # host "library", not the default host
+        ("library/acme/model", "library/acme/model:latest", True),
+        ("acme/model", "registry.ollama.ai/acme/model:latest", True),
+        ("a.b:5000/ns/m", "a.b:5001/ns/m", False),
+        ("a.b:5000/ns/m", "A.B:5000/NS/M:latest", True),
+        # malformed names equal only themselves, never a well-formed model
+        ("x:", "x", False),
+        ("/x", "x", False),
+        ("x:", "x:", True),
+        ("a/b/c/d", "b/c/d", False),
+        ("a/b/c/d", "d", False),  # four parts must not collapse to the bare model "d"
+        ("a/b/c/d", "a/b/c/d", True),
         ("nomic-embed-text", "nomic-embed-text:v1.5", False),
         ("nomic-embed-text:v1", "nomic-embed-text:v2", False),
         ("nomic-embed-text", "other-model", False),
@@ -541,13 +538,74 @@ def test_a_direct_native_write_with_an_array_succeeds_and_reports_success(tmp_pa
         assert store.count_units() == 1  # and it did not raise after committing
 
 
-def test_a_reloaded_client_forgets_the_recorded_models(tmp_path: Path) -> None:
+def _recreate_collection(chroma: Path, model: str) -> None:
+    """Another session drops the collection and creates it again, stamped for ``model``."""
+    with ChromaStore(str(chroma), embed_model=model) as other:
+        other.client.delete_collection(UNITS)
+        other._collection(UNITS)
+
+
+def test_a_collection_replaced_by_another_session_is_judged_by_its_new_stamp(tmp_path: Path) -> None:
+    """Reviewed: A cached the old stamp, so it refused the right vector and accepted the wrong one."""
     chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as first:
+        first.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        _recreate_collection(chroma, "model-z")  # now empty and stamped model-z
+
+        with pytest.raises(EmbedIdentityError, match="records 'model-z'"):
+            first.add_unit("u2", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        first.add_unit("u2", "a document", _vector("model-z"), {"source_path": "unit.md"})
+
+    assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "model-z"
+
+
+def test_a_stamp_changed_in_place_is_read_fresh(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as first:
+        first.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        first._native(UNITS, "delete", ids=["u1"])
+        with ChromaStore(str(chroma), embed_model="model-y") as other:  # same UUID, new stamp
+            other.client.get_collection(UNITS).modify(metadata={EMBED_MODEL_KEY: "model-z"})
+
+        with pytest.raises(EmbedIdentityError, match="records 'model-z'"):
+            first.add_unit("u2", "a document", _vector("model-y"), {"source_path": "unit.md"})
+
+
+def test_a_stamp_is_not_remembered_across_a_no_op_that_found_none(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS)  # empty and unmarked
+    with ChromaStore(str(chroma), embed_model="model-y") as first:
+        first.update_unit("absent", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        _recreate_collection(chroma, "model-y")  # now it records model-y
+
+        with pytest.raises(EmbedIdentityError):
+            first.add_unit("u1", "a document", _vector("model-x"), {"source_path": "unit.md"})
+
+
+def test_the_check_is_repeated_inside_the_write_guard(tmp_path: Path) -> None:
+    """The guard may reload the client; the vector is judged against the handle then in use."""
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS, embed_model="model-y")
     with ChromaStore(str(chroma), embed_model="model-y") as store:
-        store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
-        store.add_unit("u2", "a document", _vector("model-y"), {"source_path": "unit.md"})
-        assert store.recorded_stamps == {UNITS: "model-y"}
+        entered: list[bool] = []
 
-        store._reload_client()
+        class _Guard:
+            def native_write(self, **_kwargs):
+                import contextlib
 
-        assert not store.recorded_stamps
+                @contextlib.contextmanager
+                def context():
+                    entered.append(True)
+                    _recreate_collection(chroma, "model-z")  # replaced as the guard is entered
+                    yield
+
+                return context()
+
+        store._write_guard = _Guard()
+        with pytest.raises(EmbedIdentityError, match="records 'model-z'"):
+            store._native(
+                UNITS, "upsert", ids=["u1"], documents=["a document"],
+                embeddings=[_vector("model-y")], metadatas=[{"source_path": "unit.md"}],
+            )
+
+    assert entered == [True]
