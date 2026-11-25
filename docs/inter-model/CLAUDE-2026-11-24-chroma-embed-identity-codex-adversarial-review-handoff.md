@@ -518,3 +518,61 @@ The sidecar stays the strict authority; a strict PASS means "a full re-embedding
 ### Return, as plain text
 
 (1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R5-1, R5-2, R5-5 and R5-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether a sixth round is worth the cost.
+
+---
+
+## Review round 5 outcome (appended after the fifth Codex review; text above is the record of what was reviewed at eb420d1)
+
+**The report reached me truncated:** it ends in the middle of the R5-1 answer. Items R5-2 to R5-6 and the closing recommendation were not received, so they are **not addressed here**; the round-6 prompt asks for them again. What I did receive: the 12-plus-one pending-log defect is fixed (Codex's decisive test), every round-4 counterexample but the Kelvin sign is fixed, and R2B matches (`MATCH`, digest `eb353ecb…`; the diff against `origin/main` is only the usual fields; manifest = four refreshed hashes and eleven new `unrelated` classifications; `ingest.py` blob identical). Codex's verdict was **ship after changes**, with strict-with-sidecar still able to return a false PASS through identity binding. Disposition of the seven findings (fixes in `7a2b7c0`):
+
+| Codex finding | Disposition |
+|---|---|
+| High: a census could score one collection and publish the result under another's UUID (the UUID was checked through SQLite, the client then opened the path, and the directory was rotated in between) | **Fixed.** `spot_check` compares the opened collection's id with the one it was asked to attest and scores nothing otherwise. The test rotates the restore directory after the UUID check. |
+| High: strict doctor passed during a replacement even though both complete states fail (UUID, dimension and metadata were read through separate connections) | **Fixed.** `collection_identity_facts` reads them in one read transaction, and the ambiguity count shares its snapshot. A test shows a writer trying to replace the collection mid-read is refused while the read lock is held. |
+| Medium: normal doctor reads of a WAL store created `-wal`/`-shm`, and a switch to WAL after the single header check was missed | **Fixed at the boundary.** The refusal is now in `_connect_readonly`, which every reader passes through, and it runs at each connection. **Residual:** the microseconds between the header read and SQLite opening the file. |
+| Medium: model parsing both accepted and refused wrongly (the Kelvin sign folded into `k`; a leading underscore refused) | **Fixed by porting Ollama's own parser** (`types/model/name.go`, fetched and quoted, not inferred): ASCII only, leading underscore valid, no dot in a namespace, scheme ignored, host 350 and other parts 80 characters, `x:`, digests and four-part names invalid, malformed names equal only themselves. |
+| Medium: a stored row whose segment no longer exists counted as no row, restoring the unsafe "can be dropped" advice | **Fixed.** Such a row is unaccounted evidence, like a missing or orphan segment. |
+| Medium: configuration and Chroma errors escaped `main()` as tracebacks | **Fixed.** A missing or malformed configuration and any Chroma error end the command as a refusal naming the cause; `spot_check` translates Chroma's own errors for library callers. |
+| Low: the new in-guard refusal left a mutation intent with no matching completion | **Fixed.** The check is inside the failure handler, so the session sees a failed mutation. |
+| R5-1 grammar: dotted namespaces, over-long components, scheme-qualified aliases, underscore-leading tags, colon-containing hosts | **Covered by the port** above, case by case. |
+
+Mutation sweep for round 5: 15 guards, 13 caught on the first pass; two were not (a dotted namespace was undetectable because my test pair differed either way, and the Chroma-error handling existed in two layers so removing either was hidden by the other). Each layer now has its own test and all 3 reruns are caught. (The commit message for `7a2b7c0` says "14 guards, then 3 more"; this is the accurate count.) Also fixed along the way: a missing database stays "unreadable", not "empty", so strict still fails it.
+
+**Real-store checks with this code (read-only; nothing written or created beside the live store):** doctor's read of the live store gives the same verdict as before (both collections 768-dim, unmarked, no sidecar; WARN by default, FAIL under strict) in 0.00 s, and the full-census dry run reproduces all 122,843 rows of today's restore: none failed, none below 0.9999, minimum cosine 0.999991 and 0.999998, exit 0, 669 s. Full suite at `7a2b7c0`: 213 failed / 3668 passed / 69 skipped / 1 xfailed / 52 errors, the **same 265 failing ids as the baseline, none new**.
+
+---
+
+## Round 6 review brief (focused; written after round 5 was addressed)
+
+The code under review is `7a2b7c0`; later commits are docs only. Base `origin/main` = `f10d67d` (fetch it from the source worktree's remote-tracking ref). `git diff eb420d1..7a2b7c0` is the delta (12 files outside `docs/`). **Trail (the code graph) is available: use it for callers and blast radius.**
+
+**Please first re-send what was cut off:** your round-5 answers to R5-2 (enumeration through the opened collection at 116,661 rows), R5-3 (`_serving_database`), R5-4 (`may_create_wal_files` and a hot journal), R5-5 (the fail-fast census), R5-6 (mutations that survive), and your closing recommendation. If you did not write them, answer them now against `7a2b7c0`.
+
+**Expected results:** the six identity files (`tests/test_chroma_store_embed_identity.py`, `test_chroma_production_embed_identity.py`, `test_chroma_embed_identity.py`, `test_chroma_readonly_scope.py`, `test_chroma_embed_attestation.py`, `test_chroma_embed_attestation_census.py`): **324 passed, 1 xfailed**. The nine governed-inventory files: **84 passed** on a clean tree. Manifest: four refreshed hashes and **eleven** new `unrelated` classifications.
+
+### Part 1: rerun your round-5 counterexamples (FIXED / STILL REPRODUCES / FIXED DIFFERENTLY, with a command or test)
+
+1. The restore path rotated between the SQLite UUID check and the client open (restore A nonmatching, restore B a different UUID with matching rows).
+2. Strict doctor with a same-dimension unmarked replacement scheduled right after the UUID read.
+3. A WAL-mode stand-in: `check_embed_identity` and a dry attestation, including the switch to WAL right after a header check.
+4. `K` (U+212A) against `k`; `_model` against `_model:latest`; a genuine 10/10 sidecar with `K` configured.
+5. The stored row whose `segment_id` points at a missing segment, with the queue cleared.
+6. A missing `--config`, malformed TOML, and a restore whose collection-configuration JSON Chroma cannot deserialize.
+7. A refusal inside the write guard seen through a recording session (before / after callbacks paired).
+
+### Part 2: attack the new code
+
+- **R6-1 `collection_identity_facts`.** It opens one connection, runs `BEGIN`, and reads everything under a held read lock. What does that do to the live writers (a writer waiting for the exclusive lock, a reader's default busy timeout, a long transaction on a 6.7 GB database), and can it return stale facts or deadlock with Chroma's own connection?
+- **R6-2 the connector refusal.** `_connect_readonly` now refuses anything that is not verifiably `01 01` after the SQLite magic, for every reader. Use Trail to list every consumer of `chroma_readonly` and every other module that reads a Chroma SQLite file. Is there a legitimate reader that now breaks?
+- **R6-3 `chroma_embed_model_names.py` against Ollama's parser** (source quoted in the commit message and the doc): `ParseNameBare` order of splitting, the `!MISSING!` sentinel, a scheme on a two-part name, a host without a dot, a bracketed IPv6 host, case folding of non-ASCII.
+- **R6-4 the UUID binding.** `str(collection.id)` against the live UUID: is the type and format always comparable? Can the opened handle still change after the comparison (the client holds it for the whole census)?
+- **R6-5 error boundaries.** `ChromaError` is the only Chroma exception caught. Is there a Chroma, `pyo3` or Rust-panic failure on a damaged restore that still escapes `main()`, or a failure in the provider that is not an `Exception`?
+- **R6-6 tests that pass for the wrong reason.** Every round found at least one. Remove guards I did NOT mutate (the `segments != 2` versus `orphan_segments` split now that there is a third trigger, `READ_BATCH`, the `fail_below` pass-through, the descriptor-closing structure of `_sidecar_lock`, `_normalized` stripping) and tell me whether a test notices.
+
+### Decisions already taken (unchanged), known flaky tests, hard rules
+
+The sidecar stays the strict authority; a strict PASS means "a full re-embedding of a restore copy, at the time and threshold shown, reproduced that copy's vectors"; only a first vector is judged; deferred to follow-up PRs: `open_chroma_for_read` and `refine.py:628`, the `ingest.py` summary-vector tag loss, refusing a mismatched write into a collection that holds vectors, `FileGenerationStore.stage_rows` and `restore_source_rows`, and the other name-only collection queries and unescaped URIs in other modules. Known flaky tests are under "Known flaky tests". Rules as before: read-only on the branch, never the live Chroma directory, never `~/.config/convmem/restic.env` or any client config, no `ask`, no `LATEST.md` or `STATUS`.
+
+### Return, as plain text
+
+(1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R5-2 to R5-6 (if not already sent) and to R6-1, R6-2 and R6-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether a seventh round is worth the cost.
