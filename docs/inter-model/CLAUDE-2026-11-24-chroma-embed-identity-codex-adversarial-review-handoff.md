@@ -432,3 +432,18 @@ The sidecar stays the strict authority; a strict PASS means "a full re-embedding
 ### Return, as plain text
 
 (1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest you computed, and whether the diff against `origin/main` is only the same fields as before); (4) direct answers to R4-1, R4-3, R4-5 and R4-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework, whether strict-with-sidecar is now an acceptable fail-closed gate, and whether a fifth round is worth the cost. Rules as before: read-only on the branch, never the live Chroma directory, never the client config or env files, no `ask`, no `LATEST.md` or `STATUS`.
+
+---
+
+## Decisions recorded and the first run on a real restore (appended after round 3; docs only)
+
+**Decisions (Ryan chose the defaults):** the `ingest.py` summary-vector tag loss is deferred to a separate PR (it needs a reviewed re-pin of three baseline hashes); refusing a mismatched write into a collection that already holds vectors is deferred (a policy change that needs an explicit re-embed flow); `open_chroma_for_read` and `refine.py:628` creating unmarked collections is a follow-up PR; `FileGenerationStore.stage_rows` is handled at CG2 activation.
+
+**First dry run against a real restic restore (read-only; nothing written to the live store; no `--write`).** The newest valid snapshot (`c078eb68…`, 2026-11-24, profile `complete-data-v2`) covers the whole 43 GB data root, so only its `chroma` directory (6.9 GB) was restored into a scratch directory with the repo's own credential loading and runner. Restic exited 1 because of two `lchown ... invalid argument` messages on the parent directories `/home` and `/home/lauer/.local` (the sandbox's ownership quirk); nothing else failed, the restored tree has the same 12 files and the same `chroma.sqlite3` size as the live directory, and it contains **no symlinks**. The real CLI (`chroma_embed_attestation.py --sample-size 2000 --seed 1`, real Ollama `nomic-embed-text:latest`) then reported:
+
+| collection | rows checked | population in the restore | min cosine | mean cosine |
+|---|---|---|---|---|
+| `knowledge_units` | 2,000 | 116,622 | 0.999995 | 1.0 |
+| `conversation_summaries` | 2,000 | 6,180 | 1.0 | 1.0 |
+
+It took 31 seconds for the 4,000 embeddings (about 8 ms per row including overhead), so a full census of about 122,800 rows should take roughly 16 minutes. The live store has since gained rows (116,661 and 6,182), which a restore-copy census does not cover; the doctor detail says so ("restore copy at attestation time"). **Not yet known:** whether every row reproduces. A 2,000-row sample cannot rule out a minority of rows whose stored document is not the exact text that was embedded, and one such row fails a full census. The next step is a full-census dry run (still no `--write`); `--write` and flipping `require_embed_identity` are separate operator decisions.
