@@ -368,3 +368,67 @@ Hard rules: read-only on the branch (no commit, push, force-push, PR or merge; t
 
 Return the report in your reply (not in the repo) in the five-part format at the end of the Round 3 brief. If you find nothing in an area, say what you tried so I can judge how hard you looked.
 ```
+
+---
+
+## Review round 3 outcome (appended after the third Codex review; text above is the record of what was reviewed at ae5971c)
+
+Codex recommended **rework** a third time and a focused fourth review. It independently attested R2B (`MATCH`, digest `5c846359…`; diff against `origin/main` only the C26 fields; `ingest.py` blob identical to `main`) and confirmed C22 and C26. It disagreed with C18 to C21, C23, C24 and C25. It also confirmed that the original 34,000-row census, the six parser escapes and the same-session first-write failures were fixed. Disposition of every finding (fixes in `cf71b20`):
+
+| Codex finding | Disposition |
+|---|---|
+| High: a second store can waive the first-vector check (store A published, store B emptied the collection, A then accepted a foreign first vector; a post-delete bookkeeping failure did the same inside one store) | **Fixed by removing the mechanism.** The "published" flag and the bookkeeping that set it are gone. Only a collection's *recorded model* is cached (it never changes). Whether the collection is empty is read at the moment a vector conflicts with that model, never remembered. |
+| High: a damaged catalog (databases table renamed, `collections.database_id` kept) made strict doctor PASS the wrong database's collection | **Fixed.** A catalog with one of the two but not the other is refused (`sqlite3.DatabaseError`, which doctor reports as unreadable: WARN, FAIL under strict). Only a schema with neither is read unrestricted. A second tenant's `default_database` is distinguished by a test. |
+| High: strict could call populated storage empty (rows present, metadata and dimension cleared gave a WARN; a relabelled segment made the filtered count 0 and doctor advised dropping) | **Fixed.** Emptiness is decided from every trace of a row (distinct ids in every segment whatever its scope label, plus the pending log); a collection with rows but no metadata is unproven (strict FAIL), not "empty". |
+| Medium: the census published a passing cosine for sub-threshold vectors (`[1,0]` vs `[5e-324, 5e-324]` measured 1.0) | **Fixed.** Vectors are scaled by their largest component before normalising. |
+| Medium: contradictory evidence passed strict (mean 0.0 with min 1.0 for one row) | **Fixed.** A mean below the minimum, or different from it for a single row, is not an attestation. |
+| Medium: namespace and case forms of a legitimate model name (`library/nomic-embed-text:latest`, `NOMIC-EMBED-TEXT`) refused a first write | **Fixed.** Names compare as Ollama identifies them. **Residual:** a mutable tag that keeps its spelling after its artifact changes is still accepted (names are not digests). |
+| Medium: a dry run created `-wal`/`-shm` files beside a WAL-mode live database | **Mitigated, not eliminated.** Reproduced only on a store switched to WAL; the live store and any store Chroma 1.5.9 writes use a rollback journal (header bytes `0101`, checked read-only). The tool now refuses a WAL-mode live database from its file header, before any SQLite open. Doctor's own reads of a WAL store are unchanged. |
+| Medium: a late provider failure discarded the census with a raw `HTTPError` and no row | **Fixed.** Rows are read, embedded and scored one batch at a time; a failing embedding is retried twice with backoff, then the run is refused naming the collection and row; progress is reported. Memory no longer grows with the collection. **Not done:** resume after failure. |
+| Medium: a direct `_native(..., embeddings=<numpy array>)` stored the row then raised | **Fixed** by removing the bookkeeping (see first row). |
+| Low: an existing lock file kept mode 0644 | **Fixed.** The lock is narrowed to owner-only after it is opened. |
+| Part 2c: sibling read helpers (`collection_inventory_snapshot`, `ids_for_source_path`, `unit_document_text`, `collection_count`, and the iterator) mixed in another database's rows | **Fixed.** Every name-selected query in `chroma_readonly.py` is bound to the serving database; each of the six is mutation-tested on its own. I reproduced the leak (a foreign `superseded` flag turned the serving row "historical"; a source present only in the other database returned an id). |
+| Part 2e: removing only the tenant predicate, or the `_reload_client` cache clear, left every test green | **Fixed.** A second-tenant test and a reload test now fail without them. In total 25 round-3 guards were mutation-checked; **five of them survived the first sweep, i.e. no test noticed their removal** (four of the six scoped queries, and the "every segment" half of the emptiness check, masked by the log evidence). Each has a test now and is caught. |
+| C24: the isolation scan recorded files only, so a shared empty directory was outside the proof | **Fixed.** Directories count too. **Residual I accept:** a swap after the last check cannot be excluded. |
+| Part 2 (broad handler): a programming error in a collection was labelled "cannot read collection metadata" | **Fixed.** The detail now names the exception class. |
+
+Accepted and unchanged: `restore_source_rows` (restores rows read from the same collection) and `FileGenerationStore.stage_rows` (CG2 rehearsal, rollback-baseline and cutover code only, not production-wired). Codex accepted the bounded exclusions and noted `restore_source_rows` does not verify the origin of its input.
+
+**What is still unverified:** the attestation tool has never run against a real restic restore and a real corpus. The live collections hold 116,661 and 6,182 rows; per-row embedding time is about 5 to 14 ms, so a full census is roughly 20 to 60 minutes if every row re-embeds. Whether `min cosine >= 0.99` holds across all of them (one row whose stored document differs from the embedded text fails the whole run) is unknown until a dry run on a real restore copy. That needs Ryan's go-ahead (a restic restore of about 7 GB into scratch and local Ollama calls); nothing opens or writes the live store.
+
+Full suite at `cf71b20`, from a scratch clone of the pushed commit: 213 failed / 3602 passed / 69 skipped / 1 xfailed / 52 errors, the **same 265 failing ids as the baseline on `origin/main`, none new**.
+
+---
+
+## Round 4 review brief (focused; written after round 3 was addressed)
+
+Codex's recommendation was one *focused* fourth review: rerun its counterexamples, check a second tenant, and verify the operator failure path. A broad pass over unchanged bookkeeping adds little. So this brief is deliberately narrow. The code under review is `cf71b20`; later commits are docs only. Base `origin/main` = `f10d67d` (fetch it from the source worktree's remote-tracking ref; a fresh clone's copy can be stale). `git diff ae5971c..cf71b20` is the delta (11 files, about 800 added lines; 10 files outside `docs/`).
+
+**Expected results** (hermetic environment as in "How to run things"): `tests/test_chroma_store_embed_identity.py`, `test_chroma_production_embed_identity.py`, `test_chroma_embed_identity.py`, `test_chroma_embed_attestation.py` and the new `test_chroma_embed_attestation_census.py`: **258 passed, 1 xfailed** (the xfail is the known `ingest.py` summary-vector gap). The nine governed-inventory files named earlier: **84 passed** on a clean tree. Manifest: four refreshed hashes and **nine** new `unrelated` classifications (the census test file is the ninth).
+
+### Part 1: rerun your own counterexamples (report FIXED / STILL REPRODUCES / FIXED DIFFERENTLY with a command or test)
+
+1. Store A publishes, store B (even through `_IndexWriteGuardedChromaStore` and the index lock, guard on and off) deletes the last row, then A adds a foreign first vector. Also the injected failure after a successful native delete.
+2. The two-database fixture with `databases` renamed while `collections.database_id` is kept; and a second *tenant* with its own `default_database`.
+3. Populated storage with the dimension cleared and (a) metadata cleared, (b) segment scope damaged: doctor must not say PASS, must not advise dropping, and under strict must FAIL.
+4. `[1,0]` vs `[5e-324, 5e-324]`; the one-row `mean_cosine = 0.0` evidence; `library/nomic-embed-text:latest` and `NOMIC-EMBED-TEXT` through the real writer.
+5. A dry attestation of a copy whose live side is WAL mode; and a provider that fails on call 33,999 of 34,000 (does the message name the collection and row?).
+6. A direct `_native(..., 'upsert', embeddings=np.array(...))`; a pre-existing 0644 lock file; the shared empty segment directory.
+7. The sibling helpers you named (`collection_inventory_snapshot`, `ids_for_source_path`): the same-row-id-in-two-databases case.
+
+### Part 2: attack the new code (where I am least sure)
+
+- **R4-1 `chroma_embed_first_write.py` as redesigned.** It caches only a collection's recorded model (`store.recorded_stamps`, cleared on `_reload_client`) and reads `count()` fresh only when a vector conflicts with that model. Find a way the cached model goes stale (a collection dropped and recreated with another model while a store lives: note that doctor's own advice is to drop an empty unmarked collection), a path that never reaches the check, or a conflict that is wrongly allowed or refused. The check is still advisory across processes; production sessions hold the index write lock.
+- **R4-2 `_canonical_embed_model`.** Hostile and odd inputs (empty segments, repeated colons, a port in the registry part, trailing slashes, unicode case folding). Any pair that compares equal but is not one Ollama model, or the reverse.
+- **R4-3 `_serving_database` and the scoping of every query in `chroma_readonly.py`.** Does each helper call it before it queries? Is there any query that still selects a collection by name alone, anywhere in the repo (not just this file)? The "neither table nor column" fallback reads unrestricted; is that safe for every consumer?
+- **R4-4 `collection_row_evidence`.** The log is retained after deletes, so it can only make the advice more conservative; is there a state where it returns 0 yet rows exist?
+- **R4-5 the census as an operator would run it.** Streaming, retry (2 retries, backoff 0.5 s doubling, applied to every exception including a permanent one such as an over-long text), progress every 2,000 rows, no resume. Read `main()` and the error paths. Is a failed 40-minute run diagnosable and cheap to repeat? Does anything still raise a raw traceback?
+- **R4-6 tests that pass for the wrong reason.** Every round found at least one, and this round's sweep found five, each seen only after I mutation-tested every bound query individually. Pick guards I did not mutate (the retry classification, the `journal_mode_is_wal` header read, the moved test file's fixture import) and remove them.
+
+### Decisions already taken (unchanged)
+
+The sidecar stays the strict authority; a strict PASS means "a full re-embedding of a restore copy, at the time and threshold shown, reproduced that copy's vectors", not that live vectors are certified; only a collection's first vector is judged; left for follow-ups: `open_chroma_for_read` and `refine.py:628` creating unmarked collections, the `ingest.py` summary-vector tag loss (a re-pin of three baseline hashes is Ryan's call), `FileGenerationStore.stage_rows`. Known flaky tests are listed under "Known flaky tests" above.
+
+### Return, as plain text
+
+(1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest you computed, and whether the diff against `origin/main` is only the same fields as before); (4) direct answers to R4-1, R4-3, R4-5 and R4-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework, whether strict-with-sidecar is now an acceptable fail-closed gate, and whether a fifth round is worth the cost. Rules as before: read-only on the branch, never the live Chroma directory, never the client config or env files, no `ask`, no `LATEST.md` or `STATUS`.
