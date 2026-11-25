@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 from pathlib import Path
@@ -94,7 +95,21 @@ def test_cosine_scores_identical_orthogonal_and_opposite_vectors() -> None:
     assert cosine([1.0, 2.0], [2.0, 4.0]) == pytest.approx(1.0)
     assert cosine([1.0, 0.0], [0.0, 1.0]) == pytest.approx(0.0)
     assert cosine([1.0, 0.0], [-1.0, 0.0]) == pytest.approx(-1.0)
-    assert cosine([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+
+@pytest.mark.parametrize(
+    "left,right,match",
+    [
+        ([0.0, 0.0], [1.0, 1.0], "all zeros"),
+        ([1.0, 1.0], [0.0, 0.0], "all zeros"),
+        ([1.0, math.nan], [1.0, 1.0], "non-finite"),
+        ([1.0, 1.0], [math.inf, 1.0], "non-finite"),
+        ([1.0, 1.0], [-math.inf, 1.0], "non-finite"),
+    ],
+)
+def test_a_vector_that_measures_nothing_is_an_error_not_a_score(left, right, match) -> None:
+    with pytest.raises(AttestationError, match=match):
+        cosine(left, right)
 
 
 def test_vectors_of_different_length_are_an_error_not_a_score() -> None:
@@ -253,9 +268,13 @@ def test_a_restore_copy_that_overlaps_the_live_directory_is_refused(
     assert not sidecar_path(live).exists()
 
 
-@pytest.mark.parametrize("link", [os.link, os.symlink], ids=["hardlinks", "symlinks"])
+@pytest.mark.parametrize(
+    "link,message",
+    [(os.link, "own files"), (os.symlink, "symlink")],
+    ids=["hardlinks", "symlinks"],
+)
 def test_a_copy_that_shares_files_with_the_live_store_is_refused(
-    stores: tuple[Path, Path], tmp_path: Path, link
+    stores: tuple[Path, Path], tmp_path: Path, link, message: str
 ) -> None:
     live, _ = stores
     before = fingerprint(live)
@@ -270,7 +289,7 @@ def test_a_copy_that_shares_files_with_the_live_store_is_refused(
     with mock.patch.object(
         attestation_mod, "open_chroma_for_verify", side_effect=AssertionError("client")
     ):
-        with pytest.raises(AttestationError, match="own files"):
+        with pytest.raises(AttestationError, match=message):
             attest_collections(live, clone, model=MODEL, embed=embedder(MODEL), write=True)
 
     assert fingerprint(live) == before
@@ -361,6 +380,244 @@ def test_an_empty_live_collection_cannot_be_attested(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------
+# What a run must refuse to publish
+# --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad", [math.nan, math.inf, -math.inf], ids=["nan", "inf", "-inf"])
+def test_a_provider_that_returns_non_finite_vectors_publishes_nothing(
+    stores: tuple[Path, Path], bad: float
+) -> None:
+    live, copy = stores
+
+    with pytest.raises(AttestationError, match="non-finite"):
+        attest_collections(live, copy, model=MODEL, embed=lambda _text: [bad] * DIM, write=True)
+
+    assert not sidecar_path(live).exists()
+
+
+def test_a_provider_that_returns_zero_vectors_publishes_nothing(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    with pytest.raises(AttestationError, match="all zeros"):
+        attest_collections(live, copy, model=MODEL, embed=lambda _text: [0.0] * DIM, write=True)
+
+    assert not sidecar_path(live).exists()
+
+
+@pytest.mark.parametrize("threshold", [math.nan, math.inf, 0.0, -0.5, 1.5])
+def test_a_threshold_that_cannot_reject_anything_is_refused(
+    stores: tuple[Path, Path], threshold: float
+) -> None:
+    live, copy = stores
+
+    with pytest.raises(AttestationError, match="threshold"):
+        attest_collections(
+            live, copy, model=MODEL, embed=embedder(MODEL), threshold=threshold, write=True
+        )
+
+    assert not sidecar_path(live).exists()
+
+
+def test_a_short_read_of_the_sampled_vectors_is_refused(stores: tuple[Path, Path]) -> None:
+    """The copy must return every sampled id; a partial answer is not a passing sample."""
+    _, copy = stores
+
+    class _Short:
+        def get(self, ids, include):  # pylint: disable=unused-argument
+            kept = list(ids)[:-1]
+            return {
+                "ids": kept,
+                "documents": [f"doc {i}" for i in kept],
+                "embeddings": [[1.0] * DIM for _ in kept],
+            }
+
+    class _Store:
+        def _collection(self, _name):
+            return _Short()
+
+        def close(self) -> None:
+            pass
+
+    with mock.patch.object(attestation_mod, "open_chroma_for_verify", return_value=_Store()):
+        with pytest.raises(AttestationError, match="could not read every sampled vector"):
+            spot_check(copy, UNITS, embedder(MODEL))
+
+
+def test_a_full_check_catches_foreign_vectors_a_sample_can_miss(tmp_path: Path) -> None:
+    """The sampling limit, pinned: foreign rows outside the sample pass; a census refuses."""
+    live = tmp_path / "live" / "chroma"
+    n = 100
+    docs = {f"u-{i:03d}": f"unit document {i}" for i in range(n)}
+    sampled = set(attestation_mod._sample_ids(sorted(docs), 20, 5))
+    with ChromaStore(str(live)) as store:
+        store._collection(UNITS).upsert(
+            ids=sorted(docs),
+            documents=[docs[i] for i in sorted(docs)],
+            embeddings=[
+                fake_embed(MODEL if i in sampled else "another-model", docs[i])
+                for i in sorted(docs)
+            ],
+        )
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    passed = attest_collections(
+        live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=20, seed=5
+    )
+    assert passed.evidence[UNITS]["sample_size"] == 20  # the sample alone cannot tell
+
+    with pytest.raises(AttestationError, match="does not reproduce"):
+        attest_collections(
+            live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), sample_size=None
+        )
+
+
+def test_checking_every_row_records_a_full_census(tmp_path: Path) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=60)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    report = attest_collections(
+        live, copy, model=MODEL, embed=embedder(MODEL), sample_size=None, write=True
+    )
+
+    assert report.evidence[UNITS]["sample_size"] == report.evidence[UNITS]["population"] == 60
+    assert "sampled 60 of 60" in check_embed_identity(live, MODEL).detail
+
+
+def test_the_seed_is_random_unless_given_and_always_recorded(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+
+    drawn = attest_collections(live, copy, model=MODEL, embed=embedder(MODEL))
+    fixed = attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), seed=41)
+
+    assert isinstance(drawn.evidence[UNITS]["seed"], int)
+    assert fixed.evidence[UNITS]["seed"] == 41
+
+
+def test_a_collection_asked_for_by_name_must_exist(tmp_path: Path) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    with pytest.raises(AttestationError, match="no such collection"):
+        attest_collections(
+            live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS, SUMMARIES), write=True
+        )
+
+    assert not sidecar_path(live).exists()  # units passed, but nothing is half-published
+
+
+def test_two_attestations_finishing_out_of_order_keep_both_entries(
+    stores: tuple[Path, Path],
+) -> None:
+    live, copy = stores
+    nested: list[bool] = []
+
+    def embed_then_let_another_run_finish(text: str) -> list[float]:
+        if not nested:
+            nested.append(True)
+            attest_collections(
+                live, copy, model=MODEL, embed=embedder(MODEL), names=(SUMMARIES,), write=True
+            )
+        return fake_embed(MODEL, text)
+
+    attest_collections(
+        live, copy, model=MODEL, embed=embed_then_let_another_run_finish, names=(UNITS,), write=True
+    )
+
+    assert sorted(read_attestations(live)) == sorted([UNITS, SUMMARIES])
+
+
+def test_a_relative_live_path_never_writes_inside_the_live_directory(
+    stores: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    live, copy = stores
+    monkeypatch.chdir(live)
+
+    report = attest_collections(".", copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+    assert report.path == live.parent / "chroma.embed-attestation.json"
+    assert not [p for p in live.iterdir() if "attestation" in p.name]
+
+
+def test_a_copy_sharing_only_a_segment_file_with_the_live_store_is_refused(
+    stores: tuple[Path, Path],
+) -> None:
+    live, copy = stores
+    before = fingerprint(live)
+    shared = next(p for p in live.rglob("*") if p.is_file() and p.parent != live)
+    twin = copy / shared.relative_to(live)
+    twin.unlink()
+    os.link(shared, twin)  # chroma.sqlite3 stays separate; one segment file is the live inode
+
+    with mock.patch.object(
+        attestation_mod, "open_chroma_for_verify", side_effect=AssertionError("client")
+    ):
+        with pytest.raises(AttestationError, match="own files"):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+    assert fingerprint(live) == before and not sidecar_path(live).exists()
+
+
+def test_the_copy_is_checked_again_before_each_collection_is_opened(
+    stores: tuple[Path, Path],
+) -> None:
+    """A copy that becomes a hardlink after the first check must not reach a client."""
+    live, copy = stores
+    shared = next(p for p in live.rglob("*") if p.is_file() and p.parent != live)
+    swapped: list[bool] = []
+
+    def embed_and_swap(text: str) -> list[float]:
+        if not swapped:
+            swapped.append(True)
+            twin = copy / shared.relative_to(live)
+            twin.unlink()
+            os.link(shared, twin)
+        return fake_embed(MODEL, text)
+
+    with pytest.raises(AttestationError, match="own files"):
+        attest_collections(
+            live, copy, model=MODEL, embed=embed_and_swap, names=(UNITS, SUMMARIES), write=True
+        )
+
+    assert not sidecar_path(live).exists()
+
+
+def test_a_copy_whose_segment_directory_is_a_link_into_live_is_refused(
+    stores: tuple[Path, Path],
+) -> None:
+    live, copy = stores
+    segment = next(p for p in live.iterdir() if p.is_dir())
+    shutil.rmtree(copy / segment.name)
+    os.symlink(segment, copy / segment.name)
+
+    with mock.patch.object(
+        attestation_mod, "open_chroma_for_verify", side_effect=AssertionError("client")
+    ):
+        with pytest.raises(AttestationError, match="symlink"):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+
+def test_a_directory_that_cannot_be_inspected_refuses_the_copy(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    real_walk = os.walk
+
+    def failing_walk(top, **kwargs):
+        if Path(top) == copy.resolve():
+            kwargs["onerror"](PermissionError(13, "denied", str(top)))
+            return iter(())
+        return real_walk(top, **kwargs)
+
+    with mock.patch.object(attestation_mod.os, "walk", failing_walk):
+        with pytest.raises(AttestationError, match="cannot inspect"):
+            attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+
+# --------------------------------------------------------------------------------------
 # The command line
 # --------------------------------------------------------------------------------------
 
@@ -404,3 +661,48 @@ def test_the_command_reports_a_refusal_and_exits_nonzero(
     assert code == 2
     assert "attestation refused" in capsys.readouterr().err
     assert not sidecar_path(live).exists()
+
+
+@pytest.mark.parametrize("value", ["nan", "0", "1.5", "-1", "inf", "high"])
+def test_the_command_rejects_a_threshold_that_cannot_reject(
+    tmp_path: Path, stores: tuple[Path, Path], value: str
+) -> None:
+    live, copy = stores
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with pytest.raises(SystemExit) as raised:
+        main(["--config", str(cfg), "--restore-copy", str(copy), "--threshold", value])
+
+    assert raised.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["0", "-3", "some"])
+def test_the_command_rejects_a_sample_size_that_is_not_a_count_or_all(
+    tmp_path: Path, stores: tuple[Path, Path], value: str
+) -> None:
+    live, copy = stores
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with pytest.raises(SystemExit) as raised:
+        main(["--config", str(cfg), "--restore-copy", str(copy), "--sample-size", value])
+
+    assert raised.value.code == 2
+
+
+def test_the_command_can_check_every_row_and_says_when_it_did_not(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=60)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch.object(attestation_mod, "_ollama_embedder", return_value=embedder(MODEL)):
+        assert main(["--config", str(cfg), "--restore-copy", str(copy)]) == 0
+        sampled = capsys.readouterr().out
+        assert main(["--config", str(cfg), "--restore-copy", str(copy), "--sample-size", "all"]) == 0
+        full = capsys.readouterr().out
+
+    assert "sample=50/60" in sampled and "cannot rule out a minority" in sampled
+    assert "sample=60/60" in full and "cannot rule out" not in full

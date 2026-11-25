@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -19,6 +20,7 @@ from unittest import mock
 import chromadb
 import pytest
 
+import chroma_embed_identity
 from chroma_embed_identity import (
     ATTESTATION_SCHEMA,
     FAIL,
@@ -41,6 +43,23 @@ COSINE = {"hnsw:space": "cosine"}
 RECORDED = {**COSINE, EMBED_MODEL_KEY: MODEL}
 
 
+def _evidence(**over: Any) -> dict[str, Any]:
+    """Evidence shaped like what the attestation tool writes."""
+    evidence: dict[str, Any] = {
+        "method": "reembed-spot-check-v1",
+        "attested_at": "2026-11-24T00:00:00Z",
+        "population": 100,
+        "sample_size": 50,
+        "seed": 7,
+        "threshold": 0.99,
+        "min_cosine": 0.999,
+        "mean_cosine": 0.9995,
+        "note": "",
+    }
+    evidence.update(over)
+    return evidence
+
+
 def _attestation(**over: Any) -> CollectionAttestation:
     fields: dict[str, Any] = {
         "name": UNITS,
@@ -48,6 +67,8 @@ def _attestation(**over: Any) -> CollectionAttestation:
         "dimension": 768,
         "embed_model": MODEL,
         "attested_at": "2026-11-24T00:00:00Z",
+        "sample_size": 50,
+        "population": 100,
     }
     fields.update(over)
     return CollectionAttestation(**fields)
@@ -84,7 +105,12 @@ def test_sidecar_sits_beside_the_chroma_dir_never_inside_it(tmp_path: Path) -> N
 
 
 def _doc(**entry: Any) -> dict[str, Any]:
-    base = {"collection_uuid": UUID, "dimension": 768, "embed_model": MODEL, "evidence": {}}
+    base = {
+        "collection_uuid": UUID,
+        "dimension": 768,
+        "embed_model": MODEL,
+        "evidence": _evidence(),
+    }
     base.update(entry)
     return {"schema": ATTESTATION_SCHEMA, "collections": {UNITS: base}}
 
@@ -95,9 +121,7 @@ def test_read_attestations_without_a_sidecar_means_none(tmp_path: Path) -> None:
 
 def test_a_valid_sidecar_round_trips(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
-    payload = _doc()
-    payload["collections"][UNITS]["evidence"] = {"attested_at": "2026-11-24T00:00:00Z"}
-    sidecar_path(chroma).write_text(json.dumps(payload), encoding="utf-8")
+    sidecar_path(chroma).write_text(json.dumps(_doc()), encoding="utf-8")
 
     assert read_attestations(chroma) == {UNITS: _attestation()}
 
@@ -117,12 +141,63 @@ def test_a_valid_sidecar_round_trips(tmp_path: Path) -> None:
         _doc(dimension=True),
         _doc(dimension="many"),
         {"schema": ATTESTATION_SCHEMA, "collections": {UNITS: "yes"}},
+        # Evidence is part of the claim: a hand-written entry without it is not an attestation.
+        _doc(evidence=None),
+        _doc(evidence={}),
+        _doc(evidence=_evidence(method="hand-written")),
+        _doc(evidence=_evidence(attested_at="yesterday")),
+        _doc(evidence=_evidence(attested_at=None)),
+        _doc(evidence=_evidence(population=0)),
+        _doc(evidence=_evidence(population=True)),
+        _doc(evidence=_evidence(sample_size=51, population=50)),
+        _doc(evidence=_evidence(threshold=0.0)),
+        _doc(evidence=_evidence(threshold=float("nan"))),
+        _doc(evidence=_evidence(min_cosine=float("nan"))),
+        _doc(evidence=_evidence(min_cosine=float("inf"))),
+        _doc(evidence=_evidence(min_cosine=0.5)),  # below its own threshold
+        _doc(evidence=_evidence(mean_cosine="high")),
     ],
     ids=repr,
 )
 def test_a_malformed_sidecar_is_refused_not_half_loaded(payload: object) -> None:
     with pytest.raises(AttestationError):
         parse_attestations(payload)
+
+
+@pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity"])
+def test_a_non_finite_literal_in_the_file_is_refused(tmp_path: Path, token: str) -> None:
+    chroma = tmp_path / "chroma"
+    text = json.dumps(_doc()).replace("0.999", token, 1)
+    sidecar_path(chroma).write_text(text, encoding="utf-8")
+
+    with pytest.raises(AttestationError, match="not valid JSON"):
+        read_attestations(chroma)
+
+
+def test_a_sidecar_that_is_not_utf8_is_an_attestation_error(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    sidecar_path(chroma).write_bytes(b"\xff\xfe{\x80")
+
+    with pytest.raises(AttestationError, match="cannot read"):
+        read_attestations(chroma)
+
+
+def test_a_relative_chroma_dir_still_gets_its_sidecar_beside_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    chroma = tmp_path / "state" / "chroma"
+    chroma.mkdir(parents=True)
+    monkeypatch.chdir(chroma)
+
+    for spelling in (".", "", "../chroma", "./"):
+        path = sidecar_path(spelling or ".")
+        assert path == chroma.parent / "chroma.embed-attestation.json", spelling
+        assert chroma not in path.parents, spelling
+
+
+def test_the_filesystem_root_has_no_place_for_a_sidecar() -> None:
+    with pytest.raises(AttestationError, match="root"):
+        sidecar_path("/")
 
 
 def test_unreadable_json_is_refused(tmp_path: Path) -> None:
@@ -242,9 +317,28 @@ def test_a_recorded_collection_ignores_a_broken_attestation() -> None:
     assert verdict.status == PASS
 
 
-def test_a_collection_without_any_metadata_warns() -> None:
+def test_an_empty_collection_without_metadata_warns_even_when_strict() -> None:
+    nothing = {"meta": {}, "chroma_dimension": None}
+    assert _judge(**nothing).status == WARN
+    assert _judge(**nothing, strict=True).status == WARN  # nothing to judge yet
+
+
+def test_a_collection_with_vectors_and_no_metadata_is_unproven_not_ignored() -> None:
     assert _judge(meta={}).status == WARN
-    assert _judge(meta={}, strict=True).status == WARN  # not an identity problem
+    assert _judge(meta={}, strict=True).status == FAIL
+    # ...and an attestation can still vouch for it.
+    assert _judge(meta={}, attestation=_attestation(), strict=True).status == PASS
+
+
+def test_an_attestation_needs_a_known_collection_dimension_to_bind_to() -> None:
+    unknown = _judge(attestation=_attestation(), chroma_dimension=None)
+    assert unknown.status == WARN
+    assert _judge(attestation=_attestation(), chroma_dimension=None, strict=True).status == FAIL
+
+
+def test_an_attested_detail_says_how_much_was_sampled() -> None:
+    verdict = _judge(attestation=_attestation(sample_size=50, population=1000))
+    assert verdict.status == PASS and "sampled 50 of 1000" in verdict.detail
 
 
 # --------------------------------------------------------------------------------------
@@ -317,7 +411,7 @@ def test_legacy_store_warns_then_passes_once_attested_and_fails_when_strict_with
                         "collection_uuid": collection_uuid(chroma, name),
                         "dimension": collection_dimension(chroma, name),
                         "embed_model": MODEL,
-                        "evidence": {},
+                        "evidence": _evidence(),
                     }
                     for name in (UNITS, SUMMARIES)
                 },
@@ -341,6 +435,70 @@ def test_a_corrupt_sidecar_fails_a_legacy_store(tmp_path: Path) -> None:
 
     assert verdict.status == FAIL
     assert "attestation unusable" in verdict.detail
+
+
+def test_a_sidecar_that_is_not_utf8_fails_a_legacy_store(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    sidecar_path(chroma).write_bytes(b"\xff\xfe{\x80")
+
+    verdict = check_embed_identity(chroma, MODEL)
+
+    assert verdict.status == FAIL and "attestation unusable" in verdict.detail
+
+
+def test_one_collection_that_cannot_be_read_does_not_hide_anothers_failure(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model="model-a")  # units: a definite mismatch
+    real = chroma_embed_identity.collection_dimension
+
+    def flaky(directory: Any, name: str) -> int | None:
+        if name == SUMMARIES:
+            raise sqlite3.OperationalError("database disk image is malformed")
+        return real(directory, name)
+
+    with mock.patch.object(chroma_embed_identity, "collection_dimension", flaky):
+        default = check_embed_identity(chroma, "model-b")
+        strict = check_embed_identity(chroma, "model-b", strict=True)
+
+    for verdict in (default, strict):
+        assert verdict.status == FAIL  # the mismatch survives the unreadable collection
+        assert "embed model mismatch" in verdict.detail
+        assert "cannot read collection metadata" in verdict.detail
+
+
+def test_an_unreadable_collection_is_a_warn_and_a_strict_fail(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, embed_model=MODEL)
+
+    with mock.patch.object(
+        chroma_embed_identity, "collection_dimension", side_effect=sqlite3.OperationalError("locked")
+    ):
+        assert check_embed_identity(chroma, MODEL).status == WARN
+        assert check_embed_identity(chroma, MODEL, strict=True).status == FAIL
+
+
+@pytest.mark.parametrize("configured", ["", "   ", None])
+def test_no_configured_model_cannot_pass_anything(tmp_path: Path, configured: str | None) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model=MODEL)
+
+    default = check_embed_identity(chroma, configured)  # type: ignore[arg-type]
+    strict = check_embed_identity(chroma, configured, strict=True)  # type: ignore[arg-type]
+
+    assert default.status == WARN and "no [models] embed_model is configured" in default.detail
+    assert strict.status == FAIL
+
+
+def test_a_model_name_is_compared_the_way_it_is_stamped(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model=" model ")  # recorded as 'model'
+
+    assert check_embed_identity(chroma, " model ", strict=True).status == PASS
+    assert check_embed_identity(chroma, "model", strict=True).status == PASS
+    assert check_embed_identity(chroma, "model-b", strict=True).status == FAIL
 
 
 def test_chroma_contradicting_a_recorded_dimension_fails_on_a_real_store(tmp_path: Path) -> None:

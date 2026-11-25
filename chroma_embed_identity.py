@@ -21,8 +21,12 @@ a replaced or re-shaped collection stops matching it.
 from __future__ import annotations
 
 import json
+import math
+import os
+import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +39,10 @@ from chroma_store import EMBED_MODEL_KEY, SUMMARIES, UNITS, normalize_embed_mode
 
 EMBED_DIMENSIONS_KEY = "convmem:embed_dimensions"
 ATTESTATION_SCHEMA = "convmem.chroma-embed-attestation.v1"
+ATTESTATION_METHOD = "reembed-spot-check-v1"
+TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+# round(cosine, 6) is what the writer stores; allow that much slack when re-checking.
+_SCORE_SLACK = 1e-6
 
 PASS = "pass"
 WARN = "warn"
@@ -55,6 +63,8 @@ class CollectionAttestation:
     dimension: int
     embed_model: str
     attested_at: str | None = None
+    sample_size: int | None = None
+    population: int | None = None
 
 
 @dataclass(frozen=True)
@@ -65,7 +75,11 @@ class IdentityVerdict:
 
 def sidecar_path(chroma_dir: str | Path) -> Path:
     """Where the attestation for ``chroma_dir`` lives: beside it, never inside it."""
-    base = Path(chroma_dir).expanduser()
+    # abspath, not resolve(): "." or a relative spelling must still land *beside* the
+    # directory, and a symlinked chroma dir keeps its sidecar next to the link.
+    base = Path(os.path.abspath(Path(chroma_dir).expanduser()))
+    if not base.name:
+        raise AttestationError("a sidecar cannot be placed beside the filesystem root")
     return base.parent / f"{base.name}.embed-attestation.json"
 
 
@@ -81,6 +95,53 @@ def _as_dimension(value: object) -> int:
     if number <= 0:
         raise ValueError("not positive")
     return number
+
+
+def _count(value: object, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise AttestationError(f"evidence {label} must be a positive integer")
+    return value
+
+
+def _score(value: object, label: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise AttestationError(f"evidence {label} must be a number")
+    number = float(value)
+    if not math.isfinite(number) or abs(number) > 1.0 + _SCORE_SLACK:
+        raise AttestationError(f"evidence {label} must be a finite cosine, got {value!r}")
+    return number
+
+
+def _parse_evidence(name: str, evidence: object) -> tuple[str, int, int]:
+    """Check that the evidence is what the attestation tool writes; return what to show.
+
+    A sidecar with no evidence, or evidence that does not even reach its own
+    threshold, is a hand-written claim and does not count.
+    """
+    if not isinstance(evidence, Mapping):
+        raise AttestationError(f"{name}: missing evidence")
+    try:
+        if evidence.get("method") != ATTESTATION_METHOD:
+            raise AttestationError(f"evidence method must be {ATTESTATION_METHOD!r}")
+        stamp = evidence.get("attested_at")
+        try:
+            datetime.strptime(stamp, TIMESTAMP_FORMAT)  # type: ignore[arg-type]
+        except (TypeError, ValueError) as exc:
+            raise AttestationError("evidence attested_at must be a UTC timestamp") from exc
+        population = _count(evidence.get("population"), "population")
+        sample = _count(evidence.get("sample_size"), "sample_size")
+        if sample > population:
+            raise AttestationError("evidence sample_size exceeds its population")
+        threshold = _score(evidence.get("threshold"), "threshold")
+        if not 0.0 < threshold <= 1.0 + _SCORE_SLACK:
+            raise AttestationError("evidence threshold must be in (0, 1]")
+        lowest = _score(evidence.get("min_cosine"), "min_cosine")
+        _score(evidence.get("mean_cosine"), "mean_cosine")
+        if lowest + _SCORE_SLACK < threshold:
+            raise AttestationError("evidence min_cosine is below its own threshold")
+    except AttestationError as exc:
+        raise AttestationError(f"{name}: {exc}") from exc
+    return stamp, sample, population
 
 
 def parse_attestations(payload: object) -> dict[str, CollectionAttestation]:
@@ -104,16 +165,21 @@ def parse_attestations(payload: object) -> dict[str, CollectionAttestation]:
             dimension = _as_dimension(entry.get("dimension"))
         except ValueError as exc:
             raise AttestationError(f"{name}: dimension is {exc}") from exc
-        evidence = entry.get("evidence")
-        attested_at = evidence.get("attested_at") if isinstance(evidence, Mapping) else None
+        stamp, sample, population = _parse_evidence(name, entry.get("evidence"))
         parsed[name] = CollectionAttestation(
             name=name,
             collection_uuid=uuid.strip(),
             dimension=dimension,
             embed_model=model,
-            attested_at=attested_at if isinstance(attested_at, str) else None,
+            attested_at=stamp,
+            sample_size=sample,
+            population=population,
         )
     return parsed
+
+
+def _reject_constant(token: str) -> object:
+    raise ValueError(f"{token} is not valid in an attestation")
 
 
 def read_attestations(chroma_dir: str | Path) -> dict[str, CollectionAttestation]:
@@ -123,10 +189,10 @@ def read_attestations(chroma_dir: str | Path) -> dict[str, CollectionAttestation
         text = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return {}
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         raise AttestationError(f"cannot read {path.name}: {exc}") from exc
     try:
-        payload = json.loads(text)
+        payload = json.loads(text, parse_constant=_reject_constant)
     except ValueError as exc:
         raise AttestationError(f"{path.name} is not valid JSON: {exc}") from exc
     return parse_attestations(payload)
@@ -156,6 +222,8 @@ def _judge_recorded(
         return IdentityVerdict(
             FAIL, f"recorded {EMBED_DIMENSIONS_KEY}={meta.get(EMBED_DIMENSIONS_KEY)!r} is {exc}"
         )
+    # An unknown Chroma dimension means no vector has been stored yet, so a recorded
+    # dimension has nothing to contradict; it is only a mismatch when both are known.
     if recorded is not None and chroma_dimension is not None and recorded != chroma_dimension:
         return IdentityVerdict(
             FAIL, f"embed dimension mismatch: recorded={recorded} chroma={chroma_dimension}"
@@ -168,11 +236,11 @@ def _judge_recorded(
 
 def _judge_attestation(
     attestation: CollectionAttestation,
-    chroma_dimension: int | None,
+    chroma_dimension: int,
     configured_model: str,
 ) -> IdentityVerdict:
     """The attestation applies to this very collection; is it still true?"""
-    if chroma_dimension is not None and attestation.dimension != chroma_dimension:
+    if attestation.dimension != chroma_dimension:
         return IdentityVerdict(
             FAIL,
             f"attested dimension {attestation.dimension} != collection dimension "
@@ -185,10 +253,13 @@ def _judge_attestation(
             f"config={configured_model!r}",
         )
     when = f" on {attestation.attested_at}" if attestation.attested_at else ""
+    coverage = ""
+    if attestation.sample_size and attestation.population:
+        coverage = f" (sampled {attestation.sample_size} of {attestation.population} rows)"
     return IdentityVerdict(
         PASS,
         f"attested legacy embed_model={attestation.embed_model!r} "
-        f"dimensions={attestation.dimension!r}{when}",
+        f"dimensions={attestation.dimension!r}{when}{coverage}",
     )
 
 
@@ -220,22 +291,29 @@ def judge_collection(  # pylint: disable=too-many-arguments
 
     Pure: no I/O. States, in order:
 
+    * no metadata and no vectors: nothing to judge yet, WARN.
     * records a model: PASS if it matches the configuration and any recorded
       dimension matches Chroma's own; FAIL otherwise.
-    * records no model, with a matching attestation: PASS (attested legacy).
-    * records no model, with an attestation for another model or another
-      dimension: FAIL. So is an attestation file that cannot be read.
+    * records no model (including empty metadata on a collection that holds
+      vectors), with an attestation for this collection, this dimension and this
+      model: PASS (attested legacy). An attestation for another model or another
+      dimension is FAIL, and so is an attestation file that cannot be read.
     * records no model and nothing applicable attests it: WARN, or FAIL when
       ``strict`` (the switch to flip once the live collections are attested).
     """
-    if not meta:
+    if not meta and chroma_dimension is None:
         return IdentityVerdict(
             WARN,
-            "WARN: collection missing or has no collection_metadata "
+            "WARN: collection missing, or empty with no collection_metadata "
             f"(configured={configured_model!r}; shadow stores must set metadata)",
         )
-    stored_model = str(meta.get(EMBED_MODEL_KEY) or "")
-    if stored_model:
+    raw_model = meta.get(EMBED_MODEL_KEY)
+    if raw_model is not None and raw_model != "":
+        stored_model = normalize_embed_model(raw_model)
+        if stored_model is None:
+            return IdentityVerdict(
+                FAIL, f"collection {EMBED_MODEL_KEY}={raw_model!r} is not a usable model name"
+            )
         return _judge_recorded(meta, stored_model, chroma_dimension, configured_model)
     if attestation_error is not None:
         return IdentityVerdict(FAIL, f"attestation unusable: {attestation_error}")
@@ -247,7 +325,37 @@ def judge_collection(  # pylint: disable=too-many-arguments
             f"attestation is for another collection (uuid={attestation.collection_uuid})",
             strict,
         )
+    if chroma_dimension is None:
+        return _judge_unattested(
+            configured_model,
+            "the collection records no vector dimension, so the attestation has nothing to bind to",
+            strict,
+        )
     return _judge_attestation(attestation, chroma_dimension, configured_model)
+
+
+def _judge_named(  # pylint: disable=too-many-arguments
+    chroma_dir: str | Path,
+    name: str,
+    *,
+    attestations: Mapping[str, CollectionAttestation],
+    attestation_error: str | None,
+    configured_model: str,
+    strict: bool,
+) -> IdentityVerdict | None:
+    """Judge one collection, or None for an optional collection that does not exist."""
+    uuid = collection_uuid(chroma_dir, name)
+    if uuid is None and name != UNITS:
+        return None
+    return judge_collection(
+        meta=collection_config_metadata(chroma_dir, name),
+        uuid=uuid or "",
+        chroma_dimension=collection_dimension(chroma_dir, name),
+        attestation=attestations.get(name),
+        attestation_error=attestation_error,
+        configured_model=configured_model,
+        strict=strict,
+    )
 
 
 def check_embed_identity(
@@ -257,8 +365,12 @@ def check_embed_identity(
 
     ``knowledge_units`` is always judged (a missing one is a WARN, as before);
     ``conversation_summaries`` is judged only when it exists, because it is
-    created lazily. Read errors propagate so the caller can report them.
+    created lazily. Each collection is judged on its own: a collection whose
+    identity cannot be read is a WARN (FAIL when ``strict``) and never hides
+    another collection's verdict. The configured model is normalised the way the
+    stamp is, and an absent one can pass nothing.
     """
+    configured = normalize_embed_model(configured_model) or ""
     try:
         attestations, attestation_error = read_attestations(chroma_dir), None
     except AttestationError as exc:
@@ -267,20 +379,28 @@ def check_embed_identity(
     parts: list[str] = []
     worst = PASS
     for name in (UNITS, SUMMARIES):
-        uuid = collection_uuid(chroma_dir, name)
-        if uuid is None and name != UNITS:
+        try:
+            verdict = _judge_named(
+                chroma_dir,
+                name,
+                attestations=attestations,
+                attestation_error=attestation_error,
+                configured_model=configured,
+                strict=strict,
+            )
+        except (sqlite3.Error, OSError, ValueError) as exc:
+            verdict = IdentityVerdict(
+                FAIL if strict else WARN, f"WARN: cannot read collection metadata: {exc}"
+            )
+        if verdict is None:
             continue
-        meta = collection_config_metadata(chroma_dir, name)
-        verdict = judge_collection(
-            meta=meta,
-            uuid=uuid or "",
-            chroma_dimension=collection_dimension(chroma_dir, name),
-            attestation=attestations.get(name),
-            attestation_error=attestation_error,
-            configured_model=configured_model,
-            strict=strict,
-        )
         parts.append(verdict.detail if name == UNITS else f"{name}: {verdict.detail}")
         if _SEVERITY[verdict.status] > _SEVERITY[worst]:
             worst = verdict.status
+    if not configured:
+        # Nothing to compare against: that is unproven, not a pass.
+        floor = FAIL if strict else WARN
+        parts.insert(0, "WARN: no [models] embed_model is configured, so no collection can be compared")
+        if _SEVERITY[floor] > _SEVERITY[worst]:
+            worst = floor
     return IdentityVerdict(worst, "; ".join(parts))
