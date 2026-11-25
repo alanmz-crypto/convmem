@@ -1982,6 +1982,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "docs/inter-model/CLAUDE-2026-11-24-chroma-embed-identity-codex-adversarial-review-handoff.md",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "docs/inter-model/CLAUDE-SONNET-2026-06-25-global-planner-critique.md",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
