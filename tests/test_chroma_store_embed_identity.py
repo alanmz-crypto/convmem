@@ -188,6 +188,19 @@ def test_ollama_embed_tags_the_vector_with_the_model_that_made_it() -> None:
     assert json.dumps(vector) == "[0.25, 0.5, 0.75]"  # still an ordinary list to everything else
 
 
+def test_the_tag_survives_pickling_and_copying_but_not_slicing() -> None:
+    """The watch service indexes in subprocesses; a lost tag fails open (it is never judged)."""
+    import copy
+    import pickle
+
+    vector = _vector("model-a", (0.1, 0.2, 0.3))
+
+    assert pickle.loads(pickle.dumps(vector)).embed_model == "model-a"
+    assert copy.deepcopy(vector).embed_model == "model-a"
+    assert getattr(list(vector), "embed_model", None) is None  # documented: a plain copy is untagged
+    assert getattr(vector[:2], "embed_model", None) is None
+
+
 @pytest.mark.parametrize("how,collection", WRITES, ids=[w[0] for w in WRITES])
 def test_a_vector_from_another_model_cannot_create_a_collection_stamped_for_this_one(
     tmp_path: Path, how: str, collection: str

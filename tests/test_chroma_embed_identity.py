@@ -488,6 +488,37 @@ def test_one_collection_that_cannot_be_read_does_not_hide_anothers_failure(
         assert "cannot read collection metadata" in verdict.detail
 
 
+def test_a_sidecar_nested_deeply_enough_to_overflow_the_parser_fails_a_legacy_store(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    sidecar_path(chroma).write_text("[" * 200_000, encoding="utf-8")
+
+    verdict = check_embed_identity(chroma, MODEL)  # must not raise
+
+    assert verdict.status == FAIL and "attestation unusable" in verdict.detail
+
+
+def test_an_unexpected_error_in_one_collection_does_not_hide_anothers_failure(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model="model-a")  # units: a definite mismatch
+    real = chroma_embed_identity.collection_config_metadata
+
+    def surprising(directory: Any, name: str) -> Any:
+        if name == SUMMARIES:
+            raise TypeError("something nobody planned for")
+        return real(directory, name)
+
+    with mock.patch.object(chroma_embed_identity, "collection_config_metadata", surprising):
+        verdict = check_embed_identity(chroma, "model-b")
+
+    assert verdict.status == FAIL
+    assert "embed model mismatch" in verdict.detail and "cannot read" in verdict.detail
+
+
 def test_an_unreadable_collection_is_a_warn_and_a_strict_fail(tmp_path: Path) -> None:
     chroma = tmp_path / "chroma"
     _store(chroma, UNITS, embed_model=MODEL)

@@ -23,7 +23,6 @@ from __future__ import annotations
 import json
 import math
 import os
-import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -193,7 +192,7 @@ def read_attestations(chroma_dir: str | Path) -> dict[str, CollectionAttestation
         raise AttestationError(f"cannot read {path.name}: {exc}") from exc
     try:
         payload = json.loads(text, parse_constant=_reject_constant)
-    except ValueError as exc:
+    except (ValueError, RecursionError) as exc:  # nesting deep enough overflows the parser
         raise AttestationError(f"{path.name} is not valid JSON: {exc}") from exc
     return parse_attestations(payload)
 
@@ -417,7 +416,8 @@ def check_embed_identity(
                 configured_model=configured,
                 strict=strict,
             )
-        except (sqlite3.Error, OSError, ValueError) as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
+            # Whatever went wrong with one collection must not hide the other's verdict.
             verdict = IdentityVerdict(
                 FAIL if strict else WARN, f"WARN: cannot read collection metadata: {exc}"
             )
