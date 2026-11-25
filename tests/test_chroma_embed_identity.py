@@ -49,7 +49,7 @@ def _evidence(**over: Any) -> dict[str, Any]:
         "method": "reembed-spot-check-v1",
         "attested_at": "2026-11-24T00:00:00Z",
         "population": 100,
-        "sample_size": 50,
+        "sample_size": 100,
         "seed": 7,
         "threshold": 0.99,
         "min_cosine": 0.999,
@@ -67,7 +67,7 @@ def _attestation(**over: Any) -> CollectionAttestation:
         "dimension": 768,
         "embed_model": MODEL,
         "attested_at": "2026-11-24T00:00:00Z",
-        "sample_size": 50,
+        "sample_size": 100,
         "population": 100,
     }
     fields.update(over)
@@ -341,6 +341,18 @@ def test_an_attestation_needs_a_known_collection_dimension_to_bind_to() -> None:
     unknown = _judge(attestation=_attestation(), chroma_dimension=None)
     assert unknown.status == WARN
     assert _judge(attestation=_attestation(), chroma_dimension=None, strict=True).status == FAIL
+
+
+def test_strict_accepts_only_an_attestation_that_checked_every_row() -> None:
+    sampled = _attestation(sample_size=50, population=1000)
+    unknown = _attestation(sample_size=None, population=None)
+
+    # The default mode still takes a sampled attestation and says how much was checked.
+    assert _judge(attestation=sampled).status == PASS
+    for partial in (sampled, unknown):
+        verdict = _judge(attestation=partial, strict=True)
+        assert verdict.status == FAIL and "--sample-size all" in verdict.detail
+    assert _judge(attestation=_attestation(), strict=True).status == PASS
 
 
 def test_an_attested_detail_says_how_much_was_sampled() -> None:

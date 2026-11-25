@@ -29,6 +29,7 @@ from chroma_embed_attestation import (
     spot_check,
 )
 from chroma_embed_identity import (
+    FAIL,
     PASS,
     WARN,
     check_embed_identity,
@@ -485,6 +486,23 @@ def test_checking_every_row_records_a_full_census(tmp_path: Path) -> None:
 
     assert report.evidence[UNITS]["sample_size"] == report.evidence[UNITS]["population"] == 60
     assert "sampled 60 of 60" in check_embed_identity(live, MODEL).detail
+
+
+def test_strict_doctor_wants_a_full_check_not_a_sample(tmp_path: Path) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=60)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+
+    attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)  # 50 of 60
+    sampled = check_embed_identity(live, MODEL, strict=True)
+    assert sampled.status == FAIL and "--sample-size all" in sampled.detail
+    assert check_embed_identity(live, MODEL).status == PASS  # the default mode still accepts it
+
+    attest_collections(
+        live, copy, model=MODEL, embed=embedder(MODEL), sample_size=None, write=True
+    )
+    assert check_embed_identity(live, MODEL, strict=True).status == PASS
 
 
 def test_the_seed_is_random_unless_given_and_always_recorded(stores: tuple[Path, Path]) -> None:

@@ -8641,7 +8641,7 @@
     },
     {
       "path": "config.example.toml",
-      "sha256": "a83cc6ad85303d33f851a28422b4892ec123db172ef78f3454c19ebc56043551",
+      "sha256": "3e1794cb6fd047bbb83146ac0f6f457ea2377bf75c918a8ecf25dba1d609fd02",
       "content_class": "toml",
       "parser_mode": "toml_table_spans",
       "adapter_contract_version": "repository_knowledge_v1",

@@ -234,12 +234,25 @@ def _judge_recorded(
     return IdentityVerdict(PASS, detail)
 
 
+def _covers_every_row(attestation: CollectionAttestation) -> bool:
+    return (
+        attestation.sample_size is not None
+        and attestation.population is not None
+        and attestation.sample_size >= attestation.population
+    )
+
+
 def _judge_attestation(
     attestation: CollectionAttestation,
     chroma_dimension: int,
     configured_model: str,
+    strict: bool,
 ) -> IdentityVerdict:
-    """The attestation applies to this very collection; is it still true?"""
+    """The attestation applies to this very collection; is it still true?
+
+    Strict mode accepts only a full check: a sample cannot rule out a minority of
+    rows from another model, and strict is the setting that claims there are none.
+    """
     if attestation.dimension != chroma_dimension:
         return IdentityVerdict(
             FAIL,
@@ -251,6 +264,14 @@ def _judge_attestation(
             FAIL,
             f"attested embed model mismatch: attested={attestation.embed_model!r} "
             f"config={configured_model!r}",
+        )
+    if strict and not _covers_every_row(attestation):
+        return IdentityVerdict(
+            FAIL,
+            f"attested legacy embed_model={attestation.embed_model!r} covers "
+            f"{attestation.sample_size} of {attestation.population} rows; "
+            "require_embed_identity needs a full check "
+            "(re-run chroma_embed_attestation with --sample-size all)",
         )
     when = f" on {attestation.attested_at}" if attestation.attested_at else ""
     coverage = ""
@@ -297,7 +318,8 @@ def judge_collection(  # pylint: disable=too-many-arguments
     * records no model (including empty metadata on a collection that holds
       vectors), with an attestation for this collection, this dimension and this
       model: PASS (attested legacy). An attestation for another model or another
-      dimension is FAIL, and so is an attestation file that cannot be read.
+      dimension is FAIL, and so is an attestation file that cannot be read. Under
+      ``strict`` the attestation must also have checked every row.
     * records no model and nothing applicable attests it: WARN, or FAIL when
       ``strict`` (the switch to flip once the live collections are attested).
     """
@@ -338,7 +360,7 @@ def judge_collection(  # pylint: disable=too-many-arguments
             "the collection records no vector dimension, so the attestation has nothing to bind to",
             strict,
         )
-    return _judge_attestation(attestation, chroma_dimension, configured_model)
+    return _judge_attestation(attestation, chroma_dimension, configured_model, strict)
 
 
 def _judge_named(  # pylint: disable=too-many-arguments

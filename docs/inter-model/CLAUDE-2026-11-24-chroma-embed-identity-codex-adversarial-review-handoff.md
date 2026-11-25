@@ -117,3 +117,31 @@ Tasks:
 
 Rules: read-only on the branch (no push, PR, merge or force-push); do not touch ~/Projects/convmem; never open the live Chroma directory (~/.local/share/convmem/chroma) or write under ~/.local/share/convmem; never read or print ~/.claude.json, ~/.codex/config.toml, ~/.kiro/settings/mcp.json, ~/.claude/settings.json or env files with API keys; do not call the convmem ask tool; do not edit LATEST.md or STATUS files. Put the report in your reply, not in the repo.
 ```
+
+---
+
+## Review round 1 outcome (appended after the Codex review; the text above is the record of what was reviewed at 73e072b)
+
+Codex recommended **rework before a PR**. It reproduced eight problems, answered the suspicion items, and independently attested the R2B regeneration at bea21a2 (`MATCH`, digest `7d306fe3…`). Disposition of each finding:
+
+| Codex finding | Disposition |
+|---|---|
+| High: a new collection can be stamped with the wrong model (embed, config reload, writer open) | **Fixed** (332591f). `llm.ollama_embed` returns a list tagged with its model; `ChromaStore` refuses to *create* a collection when a tagged vector was made by another model, at `add_unit`/`update_unit` (ahead of `get_unit()`, which creates the collection) and in `_native`. Only creation is policed; untagged vectors and existing collections are not judged. |
+| High: strict legacy PASS survives replacing every vector | **Not closed, hardened.** A sidecar is a point-in-time claim about a restore copy; it cannot prove the vectors are unchanged. Hardening: evidence is mandatory and validated, doctor reports "sampled k of N", and strict accepts only a full check (`--sample-size all`). Ryan decided to keep the sidecar as the strict authority rather than extend CG2 D0. |
+| High: non-finite vectors or threshold publish a result | **Fixed** (2f247c0). NaN, infinity, zero vectors and non-finite or out-of-range thresholds are errors; NaN/Infinity literals in the sidecar are refused. |
+| High: an error in one collection erases a FAIL in the other | **Fixed** (2f247c0). Each collection is judged on its own; unreadable is WARN (FAIL when strict); a non-UTF-8 sidecar is an attestation error; empty metadata on a collection that holds vectors is unproven, not ignored. |
+| High: C5 live-directory isolation | **Fixed for what was observed.** The sidecar path is made absolute (`"."` can no longer land inside live); the copy is compared file by file (device and inode), symlinks in the copy are refused, an uninspectable directory refuses the copy, the check repeats before each collection's client opens, and a collection requested by name must exist. **Residual:** a local actor swapping files between the last check and the client open; no shared-segment write was observed by Codex or me. |
+| Medium: PASS without a configured model or a comparable dimension | **Fixed.** No configured model is WARN (FAIL when strict); the sidecar needs a known Chroma dimension. A stamped collection with no vectors yet and a recorded dimension still passes, deliberately (nothing to contradict). |
+| Medium: read or refine jobs create unmarked collections first | **Not changed.** Only affects brand-new empty stores (the live collections exist). Doctor now says an empty unmarked collection can be dropped so the next write stamps it. Making `open_chroma_for_read` and `refine.py:628` get-only changes first-run behaviour of the serving path and belongs in its own PR. |
+| Medium: two attestations can lose an entry | **Fixed.** Exclusive lock, re-read under it, parent directory fsync. |
+| Low: whitespace in the model name FAILs an unchanged config | **Fixed.** Both ends use `normalize_embed_model`. |
+
+Claim verdicts after the fixes: C1 and C2 stand. C3, C4 and C5 now hold as corrected above. **C6 stays false as an absolute:** a sample can miss a minority of foreign rows (pinned by `test_a_full_check_catches_foreign_vectors_a_sample_can_miss`); the full-census option and the strict rule are the mitigation. C7: Codex found the sampled-id completeness guard had no test; it has one, and 29 guards across the new code were mutation-checked. C8 correction: the manifest change is four refreshed hashes (`chroma_store.py`, `chroma_write_store.py`, `config.example.toml`, `tests/test_shadow_writer_gate_c3.py`) and seven new `unrelated` classifications (including this document), not one hash and six files.
+
+Also recorded from the review: a ratified owner-scoped CG2 D0 chain exists under the machine's file_generations root (captured 2026-08-29, both collections, historical model explicitly UNKNOWN). Nobody compared its roots with today's live store. It matters for any later move from the sidecar to a CG2 extension.
+
+**Operating rule (Ryan's decision):** attest with `--sample-size all`, then set `[index] require_embed_identity = true`. Strict mode enforces the full-census part itself.
+
+**Still open for Ryan:** (1) whether writes into an already-stamped collection with another model's vector should be refused (today only creation is); (2) the serving-read and `refine` creators, as a follow-up PR.
+
+Verification at the tip that follows this section: full suite 213 failed / 3533 passed / 52 errors with the same 265 failing ids as the baseline and none new; identity and store suites green; R2B, manifest, shadow and read-boundary suites green on a clean tree. **R2B has been regenerated since Codex attested it, so it needs a fresh independent attestation at the final tip.**

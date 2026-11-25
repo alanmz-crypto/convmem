@@ -35,7 +35,9 @@ Operator steps (nothing here writes to the live store):
 3. If the report looks right: the same command with ``--write``.
 4. ``convmem doctor`` now reports ``attested legacy``. Once both collections pass,
    ``[index] require_embed_identity = true`` makes doctor FAIL on any collection that
-   nothing proves, which is the fail-closed state.
+   nothing proves, which is the fail-closed state. Strict accepts an attestation only
+   if it checked every row, so run step 2 and 3 with ``--sample-size all`` before
+   flipping it; a sampled attestation still passes in the default mode.
 """
 
 from __future__ import annotations
