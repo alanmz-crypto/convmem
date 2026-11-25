@@ -31,10 +31,17 @@ from typing import Any
 
 from chroma_readonly import (
     collection_config_metadata,
+    collection_count,
     collection_dimension,
     collection_uuid,
 )
-from chroma_store import EMBED_MODEL_KEY, SUMMARIES, UNITS, normalize_embed_model
+from chroma_store import (
+    EMBED_MODEL_KEY,
+    SUMMARIES,
+    UNITS,
+    normalize_embed_model,
+    same_embed_model,
+)
 
 EMBED_DIMENSIONS_KEY = "convmem:embed_dimensions"
 ATTESTATION_SCHEMA = "convmem.chroma-embed-attestation.v1"
@@ -54,7 +61,7 @@ class AttestationError(ValueError):
 
 
 @dataclass(frozen=True)
-class CollectionAttestation:
+class CollectionAttestation:  # pylint: disable=too-many-instance-attributes
     """An operator's claim about one collection, bound to what Chroma recorded."""
 
     name: str
@@ -64,6 +71,8 @@ class CollectionAttestation:
     attested_at: str | None = None
     sample_size: int | None = None
     population: int | None = None
+    min_cosine: float | None = None
+    threshold: float | None = None
 
 
 @dataclass(frozen=True)
@@ -105,13 +114,16 @@ def _count(value: object, label: str) -> int:
 def _score(value: object, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise AttestationError(f"evidence {label} must be a number")
-    number = float(value)
+    try:
+        number = float(value)
+    except OverflowError as exc:  # a JSON integer too large for a float
+        raise AttestationError(f"evidence {label} is out of range") from exc
     if not math.isfinite(number) or abs(number) > 1.0 + _SCORE_SLACK:
         raise AttestationError(f"evidence {label} must be a finite cosine, got {value!r}")
     return number
 
 
-def _parse_evidence(name: str, evidence: object) -> tuple[str, int, int]:
+def _parse_evidence(name: str, evidence: object) -> tuple[str, int, int, float, float]:
     """Check that the evidence is what the attestation tool writes; return what to show.
 
     A sidecar with no evidence, or evidence that does not even reach its own
@@ -140,7 +152,7 @@ def _parse_evidence(name: str, evidence: object) -> tuple[str, int, int]:
             raise AttestationError("evidence min_cosine is below its own threshold")
     except AttestationError as exc:
         raise AttestationError(f"{name}: {exc}") from exc
-    return stamp, sample, population
+    return stamp, sample, population, threshold, lowest
 
 
 def parse_attestations(payload: object) -> dict[str, CollectionAttestation]:
@@ -164,7 +176,7 @@ def parse_attestations(payload: object) -> dict[str, CollectionAttestation]:
             dimension = _as_dimension(entry.get("dimension"))
         except ValueError as exc:
             raise AttestationError(f"{name}: dimension is {exc}") from exc
-        stamp, sample, population = _parse_evidence(name, entry.get("evidence"))
+        stamp, sample, population, threshold, lowest = _parse_evidence(name, entry.get("evidence"))
         parsed[name] = CollectionAttestation(
             name=name,
             collection_uuid=uuid.strip(),
@@ -173,6 +185,8 @@ def parse_attestations(payload: object) -> dict[str, CollectionAttestation]:
             attested_at=stamp,
             sample_size=sample,
             population=population,
+            min_cosine=lowest,
+            threshold=threshold,
         )
     return parsed
 
@@ -194,7 +208,12 @@ def read_attestations(chroma_dir: str | Path) -> dict[str, CollectionAttestation
         payload = json.loads(text, parse_constant=_reject_constant)
     except (ValueError, RecursionError) as exc:  # nesting deep enough overflows the parser
         raise AttestationError(f"{path.name} is not valid JSON: {exc}") from exc
-    return parse_attestations(payload)
+    try:
+        return parse_attestations(payload)
+    except AttestationError:
+        raise
+    except (ValueError, TypeError, AttributeError, ArithmeticError, RecursionError) as exc:
+        raise AttestationError(f"{path.name} is malformed: {exc!r}") from exc
 
 
 def _recorded_dimension(meta: Mapping[str, Any]) -> int | None:
@@ -210,7 +229,7 @@ def _judge_recorded(
     chroma_dimension: int | None,
     configured_model: str,
 ) -> IdentityVerdict:
-    if configured_model and stored_model != configured_model:
+    if configured_model and not same_embed_model(stored_model, configured_model):
         return IdentityVerdict(
             FAIL,
             f"embed model mismatch: collection={stored_model!r} config={configured_model!r}",
@@ -258,7 +277,7 @@ def _judge_attestation(
             f"attested dimension {attestation.dimension} != collection dimension "
             f"{chroma_dimension}",
         )
-    if configured_model and attestation.embed_model != configured_model:
+    if configured_model and not same_embed_model(attestation.embed_model, configured_model):
         return IdentityVerdict(
             FAIL,
             f"attested embed model mismatch: attested={attestation.embed_model!r} "
@@ -275,7 +294,13 @@ def _judge_attestation(
     when = f" on {attestation.attested_at}" if attestation.attested_at else ""
     coverage = ""
     if attestation.sample_size and attestation.population:
-        coverage = f" (sampled {attestation.sample_size} of {attestation.population} rows)"
+        measured = ""
+        if attestation.min_cosine is not None and attestation.threshold is not None:
+            measured = f", min cosine {attestation.min_cosine:.4f}, threshold {attestation.threshold}"
+        coverage = (
+            f" (restore copy at attestation time: sampled {attestation.sample_size} of "
+            f"{attestation.population} rows{measured})"
+        )
     return IdentityVerdict(
         PASS,
         f"attested legacy embed_model={attestation.embed_model!r} "
@@ -306,6 +331,7 @@ def judge_collection(  # pylint: disable=too-many-arguments
     attestation_error: str | None,
     configured_model: str,
     strict: bool,
+    row_count: int | None = None,
 ) -> IdentityVerdict:
     """Decide one collection's identity state from facts already read.
 
@@ -340,8 +366,8 @@ def judge_collection(  # pylint: disable=too-many-arguments
         return IdentityVerdict(FAIL, f"attestation unusable: {attestation_error}")
     if attestation is None:
         reason = "no attestation"
-        if chroma_dimension is None:
-            # Created empty by a read or a refine job before any write could stamp it.
+        if chroma_dimension is None and row_count == 0:
+            # Verified empty: created by a read or a refine job before any write could stamp it.
             reason += (
                 "; it holds no vectors, so it can be dropped and the next write "
                 f"will recreate it recording {EMBED_MODEL_KEY}"
@@ -375,10 +401,13 @@ def _judge_named(  # pylint: disable=too-many-arguments
     uuid = collection_uuid(chroma_dir, name)
     if uuid is None and name != UNITS:
         return None
+    dimension = collection_dimension(chroma_dir, name)
     return judge_collection(
         meta=collection_config_metadata(chroma_dir, name),
         uuid=uuid or "",
-        chroma_dimension=collection_dimension(chroma_dir, name),
+        chroma_dimension=dimension,
+        # A missing dimension is not proof of emptiness (damaged metadata); count the rows.
+        row_count=collection_count(chroma_dir, name) if dimension is None and uuid else None,
         attestation=attestations.get(name),
         attestation_error=attestation_error,
         configured_model=configured_model,
@@ -401,8 +430,8 @@ def check_embed_identity(
     configured = normalize_embed_model(configured_model) or ""
     try:
         attestations, attestation_error = read_attestations(chroma_dir), None
-    except AttestationError as exc:
-        attestations, attestation_error = {}, str(exc)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        attestations, attestation_error = {}, str(exc)  # an unusable sidecar fails, never raises
 
     parts: list[str] = []
     worst = PASS

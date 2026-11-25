@@ -69,6 +69,8 @@ def _attestation(**over: Any) -> CollectionAttestation:
         "attested_at": "2026-11-24T00:00:00Z",
         "sample_size": 100,
         "population": 100,
+        "min_cosine": 0.999,
+        "threshold": 0.99,
     }
     fields.update(over)
     return CollectionAttestation(**fields)
@@ -332,9 +334,12 @@ def test_a_collection_with_vectors_and_no_metadata_is_unproven_not_ignored() -> 
 
 def test_an_empty_unmarked_collection_says_how_to_get_it_stamped() -> None:
     for strict in (False, True):
-        verdict = _judge(chroma_dimension=None, strict=strict)
+        verdict = _judge(chroma_dimension=None, row_count=0, strict=strict)
         assert "can be dropped" in verdict.detail
     assert "can be dropped" not in _judge().detail  # one that holds vectors must not be dropped
+    # A missing dimension alone is not proof of emptiness: unknown or non-zero counts get no advice.
+    assert "can be dropped" not in _judge(chroma_dimension=None).detail
+    assert "can be dropped" not in _judge(chroma_dimension=None, row_count=3).detail
 
 
 def test_an_attestation_needs_a_known_collection_dimension_to_bind_to() -> None:
@@ -621,3 +626,86 @@ def test_doctor_still_contains_unreadable_stores_as_a_warning(tmp_path: Path) ->
 
     assert check.effective_status() == "warn"
     assert "cannot read collection metadata" in check.detail
+
+
+# --------------------------------------------------------------------------------------
+# Reads must describe the collection the client serves, and survive hostile sidecars
+# --------------------------------------------------------------------------------------
+
+
+def test_a_same_named_collection_in_another_database_cannot_pass_for_the_serving_one(
+    tmp_path: Path,
+) -> None:
+    from chromadb import AdminClient
+    from chromadb.config import Settings
+
+    from chroma_readonly import collection_config_metadata, collection_uuid
+
+    chroma = tmp_path / "chroma"
+    serving = chromadb.PersistentClient(path=str(chroma))
+    wrong = serving.get_or_create_collection(
+        UNITS, metadata={**COSINE, EMBED_MODEL_KEY: "wrong-model"}
+    )
+    wrong.upsert(ids=["a"], embeddings=[[1.0, 0.0]], documents=["x"])
+    AdminClient(Settings(is_persistent=True, persist_directory=str(chroma))).create_database("other")
+    other = chromadb.PersistentClient(path=str(chroma), database="other")
+    other.get_or_create_collection(
+        UNITS, metadata={**COSINE, EMBED_MODEL_KEY: "wanted-model"}
+    ).upsert(ids=["b"], embeddings=[[0.0, 1.0]], documents=["y"])
+
+    assert collection_uuid(chroma, UNITS) == str(wrong.id)
+    assert collection_config_metadata(chroma, UNITS)[EMBED_MODEL_KEY] == "wrong-model"
+    verdict = check_embed_identity(chroma, "wanted-model", strict=True)
+    assert verdict.status == FAIL and "wrong-model" in verdict.detail
+
+
+_HOSTILE = [None, True, "x", [], {}, 10**400, -(10**400), 2**63, -1, 0, 1.5, "NaN"]
+
+
+def test_no_sidecar_content_can_make_the_check_raise_or_hide_a_definite_failure(
+    tmp_path: Path,
+) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)  # legacy: the sidecar is the only thing that can vouch for it
+    from chroma_readonly import collection_dimension, collection_uuid
+
+    good = _doc(
+        collection_uuid=collection_uuid(chroma, UNITS),
+        dimension=collection_dimension(chroma, UNITS),
+    )
+    entry = good["collections"][UNITS]
+    paths = [(k,) for k in ("collection_uuid", "dimension", "embed_model", "evidence")]
+    paths += [("evidence", k) for k in entry["evidence"]]
+    for path in paths:
+        for bad in _HOSTILE:
+            doc = json.loads(json.dumps(good))
+            target = doc["collections"][UNITS]
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = bad
+            sidecar_path(chroma).write_text(json.dumps(doc), encoding="utf-8")
+
+            verdict = check_embed_identity(chroma, MODEL, strict=True)  # must not raise
+
+            assert verdict.status in (PASS, FAIL), (path, bad, verdict)
+            if verdict.status == PASS:  # only a mutation that does not change the claim may pass
+                assert path in (("evidence", "note"), ("evidence", "seed"), ("evidence", "mean_cosine")), (path, bad)
+
+
+def test_a_missing_dimension_alone_is_not_proof_a_collection_is_empty(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:  # a scratch store: simulate damage
+        con.execute("UPDATE collections SET dimension = NULL")
+
+    verdict = check_embed_identity(chroma, MODEL)
+
+    assert verdict.status == WARN and "can be dropped" not in verdict.detail
+
+
+def test_a_bare_model_name_and_its_latest_tag_are_one_model_for_doctor(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, SUMMARIES, embed_model="nomic-embed-text")
+
+    assert check_embed_identity(chroma, "nomic-embed-text:latest", strict=True).status == PASS
+    assert check_embed_identity(chroma, "nomic-embed-text:v1.5", strict=True).status == FAIL

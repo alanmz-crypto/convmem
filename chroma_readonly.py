@@ -7,6 +7,15 @@ from collections.abc import Collection, Iterator
 from pathlib import Path
 
 
+# ConvMem serves the collections of Chroma's default tenant and database. A collection
+# of the same name in another database is a different collection and must never be read
+# as the serving one, so identity reads are restricted to the database the client uses.
+_SERVING_DATABASE = (
+    "c.database_id IN (SELECT id FROM databases "
+    "WHERE name = 'default_database' AND tenant_id = 'default_tenant')"
+)
+
+
 def _db_path(chroma_dir: str | Path) -> Path:
     return Path(chroma_dir).expanduser() / "chroma.sqlite3"
 
@@ -196,11 +205,11 @@ def collection_config_metadata(
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
             FROM collection_metadata cm
             JOIN collections c ON c.id = cm.collection_id
-            WHERE c.name = ?
+            WHERE c.name = ? AND {_SERVING_DATABASE}
             """,
             (collection_name,),
         )
@@ -222,12 +231,12 @@ def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT DISTINCT e.embedding_id
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_SERVING_DATABASE}
             """,
             (collection_name,),
         )
@@ -244,12 +253,12 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT e.embedding_id)
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_SERVING_DATABASE}
             """,
             (collection_name,),
         )
@@ -408,7 +417,7 @@ def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id FROM collections WHERE name = ? LIMIT 1",
+            f"SELECT c.id FROM collections c WHERE c.name = ? AND {_SERVING_DATABASE} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()
@@ -433,7 +442,7 @@ def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | 
     try:
         cur = conn.cursor()
         cur.execute(
-            "SELECT dimension FROM collections WHERE name = ? LIMIT 1",
+            f"SELECT c.dimension FROM collections c WHERE c.name = ? AND {_SERVING_DATABASE} LIMIT 1",
             (collection_name,),
         )
         row = cur.fetchone()

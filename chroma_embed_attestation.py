@@ -66,6 +66,7 @@ from chroma_embed_identity import (
     TIMESTAMP_FORMAT,
     AttestationError,
     CollectionAttestation,
+    parse_attestations,
     read_attestations,
     sidecar_path,
 )
@@ -86,6 +87,8 @@ from chroma_store import (
 DEFAULT_SAMPLE_SIZE = 50
 MIN_SAMPLE_SIZE = 10
 DEFAULT_THRESHOLD = 0.99
+# Chroma's get() binds one SQL variable per id; SQLite caps those (32766 on current builds).
+READ_BATCH = 500
 METHOD = ATTESTATION_METHOD
 
 EmbedFn = Callable[[str], Sequence[float]]
@@ -133,14 +136,21 @@ def cosine(left: Sequence[float], right: Sequence[float]) -> float:
         raise AttestationError(
             f"re-embedded vector has {len(right)} dimensions, stored vector has {len(left)}"
         )
-    _require_usable(left, "stored vector")
-    _require_usable(right, "re-embedded vector")
-    dot = math.fsum(a * b for a, b in zip(left, right))
-    norm = math.sqrt(math.fsum(a * a for a in left)) * math.sqrt(math.fsum(b * b for b in right))
-    score = dot / norm if norm else math.nan
-    if not math.isfinite(score):
-        raise AttestationError("cosine similarity is not finite")
-    return score
+    # Unit vectors first: squaring tiny components underflows to zero and squaring huge ones
+    # overflows, either of which turns a real measurement into an impossible score.
+    left_unit, right_unit = _unit(left, "stored vector"), _unit(right, "re-embedded vector")
+    score = math.fsum(a * b for a, b in zip(left_unit, right_unit))
+    if not math.isfinite(score) or abs(score) > 1.0 + 1e-9:
+        raise AttestationError(f"cosine similarity {score!r} is not a valid measurement")
+    return max(-1.0, min(1.0, score))
+
+
+def _unit(vector: Sequence[float], what: str) -> list[float]:
+    _require_usable(vector, what)
+    length = math.hypot(*vector)
+    if not math.isfinite(length) or length == 0.0:
+        raise AttestationError(f"{what} has no usable length")
+    return [x / length for x in vector]
 
 
 def _sample_ids(ids: Sequence[str], sample_size: int | None, seed: int) -> list[str]:
@@ -150,19 +160,21 @@ def _sample_ids(ids: Sequence[str], sample_size: int | None, seed: int) -> list[
     return sorted(random.Random(seed).sample(ordered, sample_size))
 
 
-def spot_check(  # pylint: disable=too-many-arguments
+def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     copy_dir: str | Path,
     name: str,
     embed: EmbedFn,
     *,
     sample_size: int | None = DEFAULT_SAMPLE_SIZE,
     seed: int = 0,
+    before_open: Callable[[], None] | None = None,
 ) -> SpotCheck:
     """Re-embed a reproducible sample of stored documents and compare to storage.
 
     ``sample_size=None`` checks every row. Opens ``copy_dir`` with a Chroma client
     (``open_chroma_for_verify``), so ``copy_dir`` must be a restore copy. Missing
-    collections are never created.
+    collections are never created. ``before_open`` runs immediately before the client
+    opens, so a guard there leaves the least room for the directory to change after it.
     """
     ids = collection_ids(copy_dir, name)
     if not ids:
@@ -173,28 +185,29 @@ def spot_check(  # pylint: disable=too-many-arguments
             f"{min(MIN_SAMPLE_SIZE, len(ids))}"
         )
     sample = _sample_ids(ids, sample_size, seed)
+    if before_open is not None:
+        before_open()
+    stored: list[tuple[str, Any, Any]] = []
     # The restore-drill opener: get_collection only, so nothing is ever created.
     try:
         with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
-            got = store._collection(name).get(  # pylint: disable=protected-access
-                ids=sample, include=["embeddings", "documents"]
-            )
+            collection = store._collection(name)  # pylint: disable=protected-access
+            for start in range(0, len(sample), READ_BATCH):
+                batch = sample[start : start + READ_BATCH]
+                got = collection.get(ids=batch, include=["embeddings", "documents"])
+                if sorted(got["ids"]) != batch:
+                    raise AttestationError(f"{name}: could not read every sampled vector from the copy")
+                stored.extend(zip(got["ids"], got["documents"], got["embeddings"]))
     except NotFoundError as exc:
         raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
-    stored_ids = list(got["ids"])
-    if sorted(stored_ids) != sample:
-        raise AttestationError(f"{name}: could not read every sampled vector from the copy")
-    documents = got["documents"]
-    embeddings = got["embeddings"]
     scores: list[float] = []
     dimension = 0
-    for index, doc_id in enumerate(stored_ids):
-        document = documents[index]
+    for doc_id, document, vector in stored:
         if not isinstance(document, str) or not document.strip():
             raise AttestationError(f"{name}: sampled item {doc_id!r} has no document to embed")
-        stored = [float(x) for x in embeddings[index]]
-        dimension = len(stored)
-        scores.append(cosine(stored, [float(x) for x in embed(document)]))
+        values = [float(x) for x in vector]
+        dimension = len(values)
+        scores.append(cosine(values, [float(x) for x in embed(document)]))
     return SpotCheck(
         collection=name,
         population=len(ids),
@@ -223,6 +236,7 @@ def _file_identities(root: Path, *, forbid_symlinks: bool) -> set[tuple[int, int
     a file that cannot be stat'ed refuses the copy instead of being skipped.
     """
     found: set[tuple[int, int]] = set()
+    visited: set[tuple[int, int]] = set()
     try:
         root.stat()
     except FileNotFoundError:
@@ -230,7 +244,16 @@ def _file_identities(root: Path, *, forbid_symlinks: bool) -> set[tuple[int, int
     except OSError as exc:
         raise AttestationError(f"cannot inspect {root} to prove it is separate: {exc}") from exc
     try:
-        for directory, subdirectories, names in os.walk(root, followlinks=False, onerror=_raise):
+        # The live side follows links: a file reached through a linked directory is still
+        # a live file. The copy side forbids links outright, so it never needs to follow.
+        for directory, subdirectories, names in os.walk(
+            root, followlinks=not forbid_symlinks, onerror=_raise
+        ):
+            here = os.stat(directory)
+            if (here.st_dev, here.st_ino) in visited:
+                subdirectories[:] = []  # a link cycle: already walked
+                continue
+            visited.add((here.st_dev, here.st_ino))
             for entry in (*subdirectories, *names):
                 path = Path(directory, entry)
                 if forbid_symlinks and path.is_symlink():
@@ -259,7 +282,7 @@ def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(payload, handle, indent=2, sort_keys=True)
+            json.dump(payload, handle, indent=2, sort_keys=True, allow_nan=False)
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
@@ -278,7 +301,12 @@ def _atomic_write_json(path: Path, payload: Mapping[str, Any]) -> None:
 def _sidecar_lock(path: Path):
     """Serialise read-merge-replace so two attestations cannot drop each other's entry."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path.with_name(path.name + ".lock"), os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fd = os.open(
+            path.with_name(path.name + ".lock"), os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600
+        )
+    except OSError as exc:  # includes ELOOP: a symlink planted at the lock path
+        raise AttestationError(f"cannot take the sidecar lock: {exc}") from exc
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         yield
@@ -364,8 +392,15 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             raise AttestationError(
                 f"{name}: live and copy must record the same non-empty vector dimension"
             )
-        _require_separate_copy(live, copy)  # again, right before a client opens the copy
-        check = spot_check(copy, name, embed, sample_size=sample_size, seed=used_seed)
+        check = spot_check(
+            copy,
+            name,
+            embed,
+            sample_size=sample_size,
+            seed=used_seed,
+            # checked again right before a client opens the copy
+            before_open=lambda: _require_separate_copy(live, copy),
+        )
         if check.dimension != live_dim:
             raise AttestationError(
                 f"{name}: stored vectors have {check.dimension} dimensions, Chroma recorded {live_dim}"
@@ -411,7 +446,10 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             current = read_attestations(live)
             merged = {**current, **attested}
             kept = _existing_evidence(path, set(current) - set(attested))
-            _atomic_write_json(path, _encode(merged, {**kept, **evidence}))
+            payload = _encode(merged, {**kept, **evidence})
+            # What is written must be what doctor will read; refuse before replacing a good file.
+            parse_attestations(json.loads(json.dumps(payload, allow_nan=False)))
+            _atomic_write_json(path, payload)
         written = True
     return AttestationReport(path, attested, evidence, skipped, written)
 

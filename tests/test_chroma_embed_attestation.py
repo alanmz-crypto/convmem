@@ -15,6 +15,9 @@ import json
 import math
 import os
 import shutil
+import threading
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -633,6 +636,176 @@ def test_a_directory_that_cannot_be_inspected_refuses_the_copy(stores: tuple[Pat
     with mock.patch.object(attestation_mod.os, "walk", failing_walk):
         with pytest.raises(AttestationError, match="cannot inspect"):
             attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+
+# --------------------------------------------------------------------------------------
+# Round 2: arithmetic, scale, isolation, locking and what gets published
+# --------------------------------------------------------------------------------------
+
+
+def test_cosine_of_a_vector_with_tiny_or_huge_components_is_still_a_valid_score() -> None:
+    assert cosine([1.0, 0.0], [2.6e-162, 0.0]) == pytest.approx(1.0)  # squares used to underflow
+    assert cosine([1e200, 1e200], [1.0, 1.0]) == pytest.approx(1.0)  # squares used to overflow
+    assert -1.0 <= cosine([1.0, 2.0, 3.0], [-3.0, 2.0, -1.0]) <= 1.0
+
+
+def test_a_full_check_reads_in_batches_and_checks_completeness_across_them(tmp_path: Path) -> None:
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, n=30)
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+    seen: list[int] = []
+    real_get = None
+
+    with mock.patch.object(attestation_mod, "READ_BATCH", 7):
+        original = attestation_mod.open_chroma_for_verify
+
+        def counting_open(path):
+            store = original(path)
+            collection = store._collection(UNITS)
+            nonlocal real_get
+            real_get = collection.get
+
+            def get(ids, include):
+                seen.append(len(ids))
+                return real_get(ids=ids, include=include)
+
+            collection.get = get  # type: ignore[method-assign]
+            store._collection = lambda _name: collection  # type: ignore[method-assign]
+            return store
+
+        with mock.patch.object(attestation_mod, "open_chroma_for_verify", counting_open):
+            check = spot_check(copy, UNITS, embedder(MODEL), sample_size=None)
+
+    assert seen == [7, 7, 7, 7, 2] and check.sample_size == 30
+
+
+def test_a_short_read_in_a_later_batch_is_still_refused(tmp_path: Path) -> None:
+    copy = tmp_path / "chroma"
+    build(copy, UNITS, n=20)
+    calls: list[int] = []
+
+    class _Collection:
+        def get(self, ids, include):  # pylint: disable=unused-argument
+            calls.append(len(ids))
+            kept = list(ids) if len(calls) == 1 else list(ids)[:-1]
+            return {
+                "ids": kept,
+                "documents": [f"doc {i}" for i in kept],
+                "embeddings": [[1.0] * DIM for _ in kept],
+            }
+
+    class _Store:
+        def _collection(self, _name):
+            return _Collection()
+
+        def close(self) -> None:
+            pass
+
+    with mock.patch.object(attestation_mod, "READ_BATCH", 8), mock.patch.object(
+        attestation_mod, "open_chroma_for_verify", return_value=_Store()
+    ):
+        with pytest.raises(AttestationError, match="could not read every sampled vector"):
+            spot_check(copy, UNITS, embedder(MODEL), sample_size=None)
+
+    assert len(calls) == 2
+
+
+def test_an_attestation_the_reader_would_reject_is_never_published(
+    stores: tuple[Path, Path],
+) -> None:
+    live, copy = stores
+    attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,), write=True)
+    before = sidecar_path(live).read_bytes()
+
+    with pytest.raises(AttestationError, match="attested_at"):
+        attest_collections(
+            live,
+            copy,
+            model=MODEL,
+            embed=embedder(MODEL),
+            names=(SUMMARIES,),
+            write=True,
+            now=datetime(900, 1, 1, tzinfo=timezone.utc),  # strftime writes '900-...'
+        )
+
+    assert sidecar_path(live).read_bytes() == before  # the good file is untouched
+
+
+def test_files_reached_through_a_linked_live_directory_still_count_as_live(tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "segment.bin").write_bytes(b"live data")
+    live = tmp_path / "live"
+    live.mkdir()
+    os.symlink(outside, live / "linked")
+    copy = tmp_path / "copy"
+    copy.mkdir()
+    os.link(outside / "segment.bin", copy / "segment.bin")  # the copy shares a live file
+
+    with pytest.raises(AttestationError, match="own files"):
+        attestation_mod._require_separate_copy(live, copy)
+
+
+def test_a_link_cycle_in_the_live_directory_does_not_hang_the_scan(tmp_path: Path) -> None:
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / "data.bin").write_bytes(b"x")
+    os.symlink(live, live / "loop")  # points back at its own parent
+    copy = tmp_path / "copy"
+    copy.mkdir()
+    (copy / "data.bin").write_bytes(b"y")
+
+    attestation_mod._require_separate_copy(live, copy)  # returns, and finds nothing shared
+
+
+def test_a_symlink_planted_at_the_lock_path_is_refused(stores: tuple[Path, Path]) -> None:
+    live, copy = stores
+    target = live.parent / "elsewhere.lock"
+    os.symlink(target, sidecar_path(live).with_name(sidecar_path(live).name + ".lock"))
+
+    with pytest.raises(AttestationError, match="lock"):
+        attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), write=True)
+
+    assert not sidecar_path(live).exists() and not target.exists()
+
+
+def test_the_lock_serialises_two_writers_inside_the_read_merge_replace(
+    stores: tuple[Path, Path],
+) -> None:
+    """Without the lock the slow writer replaces the file with a merge made before the other one."""
+    live, copy = stores
+    inside = threading.Event()
+    first: list[bool] = []
+    real_write = attestation_mod._atomic_write_json
+    errors: list[BaseException] = []
+
+    def slow_first_write(path, payload):
+        if not first:
+            first.append(True)
+            inside.set()
+            time.sleep(0.5)  # the other writer arrives while this one is mid-critical-section
+        return real_write(path, payload)
+
+    def run(names: tuple[str, ...]) -> None:
+        try:
+            attest_collections(
+                live, copy, model=MODEL, embed=embedder(MODEL), names=names, write=True
+            )
+        except BaseException as exc:  # pylint: disable=broad-exception-caught
+            errors.append(exc)
+
+    with mock.patch.object(attestation_mod, "_atomic_write_json", slow_first_write):
+        slow = threading.Thread(target=run, args=((UNITS,),))
+        slow.start()
+        assert inside.wait(10)
+        other = threading.Thread(target=run, args=((SUMMARIES,),))
+        other.start()
+        slow.join(30)
+        other.join(30)
+
+    assert not errors
+    assert sorted(read_attestations(live)) == sorted([UNITS, SUMMARIES])
 
 
 # --------------------------------------------------------------------------------------

@@ -144,6 +144,15 @@ def normalize_embed_model(value: object) -> str | None:
     return None
 
 
+def same_embed_model(first: object, second: object) -> bool:
+    """True when two model names denote one Ollama model: a bare name means ``:latest``."""
+    names = [normalize_embed_model(v) for v in (first, second)]
+    if None in names:
+        return False
+    first_name, second_name = (n.removesuffix(":latest") for n in names)  # type: ignore[union-attr]
+    return first_name == second_name
+
+
 class EmbedIdentityError(ValueError):
     """A collection's first vector was made by a model other than the one it records."""
 
@@ -182,8 +191,8 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
         # sink, it is handed in: this class never loads config. None records
         # nothing, so direct and test stores behave exactly as before.
         self.embed_model = normalize_embed_model(embed_model)
-        # Collections whose first vector has already been compared with their stamp.
-        self._first_write_checked: set[str] = set()
+        # Collections this session has stored a vector in (see chroma_embed_first_write).
+        self.published_collections: set[str] = set()
         self.client = self._new_client()
 
     def _new_client(self):
@@ -195,6 +204,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
     def _reload_client(self) -> None:
         """Drop this process's Chroma system so the next access loads the on-disk save."""
         self._release_client()
+        self.published_collections.clear()
         stale_elsewhere = chroma_system_cached(self.chroma_dir)
         self.client = self._new_client()
         if stale_elsewhere:
@@ -204,40 +214,17 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
             )
 
     def _require_vectors_match_first_write(self, name: str, embeddings: Any) -> None:
-        """Refuse a first vector made by a different model than the collection records.
+        """Refuse a first vector made by a different model than the collection records."""
+        from chroma_embed_first_write import require_first_vector_matches
 
-        ``llm.ollama_embed`` tags each vector with its model, but the stamp comes from
-        the config read when the writer opened, possibly after the embedding. Writers
-        also read before they write, and a read creates the collection already
-        stamped, so the first vector is compared with what the collection records
-        (or what this store would stamp if it does not exist yet). Later mismatches
-        are left to ``doctor``; untagged vectors and unmarked collections are not judged.
-        """
-        if not self.create_collections or self.embed_model is None:
-            return
-        if name in self._first_write_checked or embeddings is None or len(embeddings) == 0:
-            return
-        made_by = {normalize_embed_model(getattr(v, "embed_model", None)) for v in embeddings} - {None}
-        if not made_by:
-            return
-        from chromadb.errors import NotFoundError
+        require_first_vector_matches(self, name, embeddings)
 
-        try:
-            collection = self.client.get_collection(name=name)
-        except NotFoundError:
-            stamped: str | None = self.embed_model  # created by the write about to happen
-        else:
-            if collection.count() > 0:
-                self._first_write_checked.add(name)
-                return
-            stamped = normalize_embed_model((collection.metadata or {}).get(EMBED_MODEL_KEY))
-        if stamped is not None and made_by - {stamped}:
-            raise EmbedIdentityError(
-                f"refusing to store a vector made by {sorted(made_by)} as the first vector of "
-                f"{name!r}, which records {stamped!r}: the configured model changed after it "
-                "was embedded, so re-run the write"
-            )
-        self._first_write_checked.add(name)
+    def _note_write(self, collection: str, operation: str, kwargs: dict) -> None:
+        """Remember a collection only once a vector really reached it; forget it on delete."""
+        if operation in ("add", "upsert") and len(kwargs.get("embeddings") or ()):
+            self.published_collections.add(collection)
+        elif operation == "delete":
+            self.published_collections.discard(collection)
 
     def _native(self, collection: str, operation: str, **kwargs: Any) -> Any:
         """Run one native Chroma mutation, under the write guard when one is attached."""
@@ -264,6 +251,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                     )
                 raise
             note_unguarded_write(self.chroma_dir, before)
+            self._note_write(collection, operation, kwargs)
             if session is not None:
                 session.on_native_after(
                     collection=collection,
@@ -284,6 +272,7 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                         guard_finalized=False,
                     )
                 raise
+        self._note_write(collection, operation, kwargs)
         if session is not None:
             session.on_native_after(
                 collection=collection,

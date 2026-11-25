@@ -28,6 +28,7 @@ from chroma_store import (
     ChromaStore,
     EmbedIdentityError,
     normalize_embed_model,
+    same_embed_model,
 )
 from chroma_write_store import open_chroma_for_write
 
@@ -290,12 +291,14 @@ def test_the_collection_is_looked_up_once_per_session_not_on_every_write(tmp_pat
         with mock.patch.object(
             store.client, "get_collection", wraps=store.client.get_collection
         ) as lookup:
-            for index in range(3):
+            store.add_unit("u0", "a document", _vector("model-b"), {"source_path": "unit.md"})
+            after_the_first_write = lookup.call_count
+            for index in (1, 2):
                 store.add_unit(
                     f"u{index}", "a document", _vector("model-b"), {"source_path": "unit.md"}
                 )
 
-    assert lookup.call_count == 1
+    assert lookup.call_count == after_the_first_write  # later writes look nothing up
 
 
 def test_an_empty_collection_that_records_nothing_is_not_judged(tmp_path: Path) -> None:
@@ -394,3 +397,89 @@ def test_the_summary_vector_keeps_its_model_tag_through_ingest(tmp_path: Path) -
 
     assert artifact is not None
     assert getattr(artifact.summary_embedding, "embed_model", None) == "nomic-embed-text:latest"
+
+
+# --------------------------------------------------------------------------------------
+# A check must not be waived by anything short of a vector actually being stored
+# --------------------------------------------------------------------------------------
+
+
+def _empty_collection_recording(chroma: Path, model: str) -> None:
+    _create(chroma, UNITS, embed_model=model)
+
+
+def test_a_no_op_update_does_not_waive_the_first_vector_check(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _empty_collection_recording(chroma, "model-y")
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store.update_unit("absent", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        assert store.count_units() == 0  # nothing was stored
+
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", _vector("model-x"), {"source_path": "unit.md"})
+        assert store.count_units() == 0
+
+
+def test_a_failed_first_write_does_not_waive_the_check_for_the_retry(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _empty_collection_recording(chroma, "model-y")
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        with mock.patch.object(store, "_native", side_effect=RuntimeError("write failed")):
+            with pytest.raises(RuntimeError):
+                store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", _vector("model-x"), {"source_path": "unit.md"})
+
+
+@pytest.mark.parametrize(
+    "kwargs", [{"create_collections": False}, {"embed_model": None}], ids=["no-create", "no-model"]
+)
+def test_a_store_without_its_own_model_still_protects_an_empty_stamped_collection(
+    tmp_path: Path, kwargs: dict
+) -> None:
+    chroma = tmp_path / "chroma"
+    _empty_collection_recording(chroma, "model-y")
+
+    with ChromaStore(str(chroma), **kwargs) as store:
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u1", "a document", _vector("model-x"), {"source_path": "unit.md"})
+        store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        assert store.count_units() == 1
+
+
+def test_emptying_a_collection_in_a_session_restores_the_first_vector_check(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store.add_unit("u1", "a document", _vector("model-y"), {"source_path": "unit.md"})
+        store.add_unit("u2", "a document", _vector("model-x"), {"source_path": "unit.md"})  # left to doctor
+        store._native(UNITS, "delete", ids=["u1", "u2"])
+        assert store.count_units() == 0
+
+        with pytest.raises(EmbedIdentityError):
+            store.add_unit("u3", "a document", _vector("model-x"), {"source_path": "unit.md"})
+
+
+@pytest.mark.parametrize(
+    "first,second,same",
+    [
+        ("nomic-embed-text", "nomic-embed-text:latest", True),
+        ("nomic-embed-text:latest", "nomic-embed-text", True),
+        (" nomic-embed-text ", "nomic-embed-text:latest", True),
+        ("nomic-embed-text", "nomic-embed-text:v1.5", False),
+        ("nomic-embed-text:v1", "nomic-embed-text:v2", False),
+        ("nomic-embed-text", "other-model", False),
+        ("nomic-embed-text", None, False),
+        ("", "", False),
+    ],
+)
+def test_a_bare_model_name_means_latest_and_nothing_else_is_merged(first, second, same) -> None:
+    assert same_embed_model(first, second) is same
+
+
+def test_an_alias_only_config_change_does_not_refuse_the_first_write(tmp_path: Path) -> None:
+    """Embedded as the bare name, then the config spells it ':latest': one Ollama model."""
+    chroma = tmp_path / "chroma"
+    with ChromaStore(str(chroma), embed_model="nomic-embed-text:latest") as store:
+        store.add_unit("u1", "a document", _vector("nomic-embed-text"), {"source_path": "unit.md"})
+        assert store.count_units() == 1

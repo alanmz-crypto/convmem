@@ -397,6 +397,11 @@
       "reason": "outside the W0 maintenance inventory"
     },
     {
+      "path": "chroma_embed_first_write.py",
+      "class": "unrelated",
+      "reason": "outside the W0 maintenance inventory"
+    },
+    {
       "path": "chroma_embed_identity.py",
       "class": "unrelated",
       "reason": "outside the W0 maintenance inventory"
@@ -8573,7 +8578,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "542c47cbc5f2f594d6d4bc68f337c4900f47385e553aa1a2f7f2e53ece03cf09",
+      "sha256": "51d903724a0f88fa37acbcb91b3142fe373d2a9c9156472ac96553c09d2205db",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",
