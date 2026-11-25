@@ -544,7 +544,7 @@ Mutation sweep for round 5: 15 guards, 13 caught on the first pass; two were not
 
 ## Round 6 review brief (focused; written after round 5 was addressed)
 
-The code under review is `7a2b7c0`; later commits are docs only. Base `origin/main` = `f10d67d` (fetch it from the source worktree's remote-tracking ref). `git diff eb420d1..7a2b7c0` is the delta (12 files outside `docs/`). **Trail (the code graph) is available: use it for callers and blast radius.**
+The code under review is `7a2b7c0`; later commits are docs only. Base `origin/main` = `f10d67d` (fetch it from the source worktree's remote-tracking ref). `git diff eb420d1..7a2b7c0` is the delta (10 files outside `docs/`, about 470 added lines). **Trail (the code graph) is available: use it for callers and blast radius.**
 
 **Please first re-send what was cut off:** your round-5 answers to R5-2 (enumeration through the opened collection at 116,661 rows), R5-3 (`_serving_database`), R5-4 (`may_create_wal_files` and a hot journal), R5-5 (the fail-fast census), R5-6 (mutations that survive), and your closing recommendation. If you did not write them, answer them now against `7a2b7c0`.
 
