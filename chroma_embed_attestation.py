@@ -60,7 +60,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from chromadb.errors import NotFoundError
+from chromadb.errors import ChromaError, NotFoundError
 
 from chroma_embed_identity import (
     ATTESTATION_METHOD,
@@ -196,6 +196,7 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     before_open: Callable[[], None] | None = None,
     progress: ProgressFn | None = None,
     fail_below: float | None = None,
+    expected_uuid: str | None = None,
 ) -> SpotCheck:
     """Re-embed a reproducible sample of stored documents and compare to storage.
 
@@ -209,7 +210,10 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     missed them would vouch for fewer rows than the collection holds. Rows are then read,
     embedded and scored one batch at a time, so memory does not grow with the collection;
     ``progress(name, done, total)`` is called after each batch. With ``fail_below`` the run
-    stops at the first row under that cosine and names it.
+    stops at the first row under that cosine and names it. With ``expected_uuid`` the opened
+    collection must be that collection: the UUID was checked through SQLite before the
+    client opened the path, and the directory can change in between, so the handle that is
+    scored is compared with it.
     """
     if before_open is not None:
         before_open()
@@ -220,6 +224,11 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
     try:
         with contextlib.closing(open_chroma_for_verify(str(copy_dir))) as store:
             collection = store._collection(name)  # pylint: disable=protected-access
+            if expected_uuid is not None and str(collection.id) != expected_uuid:
+                raise AttestationError(
+                    f"{name}: the restore copy that was opened is collection {collection.id}, not "
+                    f"{expected_uuid}; it changed after it was checked, so nothing was scored"
+                )
             ids = sorted(collection.get(include=[])["ids"])
             population = collection.count()
             if len(ids) != population:
@@ -263,6 +272,10 @@ def spot_check(  # pylint: disable=too-many-arguments,too-many-locals
                 raise AttestationError(f"{name}: the census did not cover every row the copy holds")
     except NotFoundError as exc:
         raise AttestationError(f"{name}: the restore copy is incomplete: {exc}") from exc
+    except ChromaError as exc:  # a copy Chroma itself cannot read (e.g. damaged collection config)
+        raise AttestationError(
+            f"{name}: the restore copy cannot be read by Chroma: {type(exc).__name__}: {exc}"
+        ) from exc
     return SpotCheck(
         collection=name,
         population=population,
@@ -472,6 +485,7 @@ def attest_collections(  # pylint: disable=too-many-arguments,too-many-locals
             before_open=lambda: _require_separate_copy(live, copy),
             progress=progress,
             fail_below=threshold,
+            expected_uuid=live_uuid,
         )
         if check.dimension != live_dim:
             raise AttestationError(
@@ -588,11 +602,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     from config import load_config
 
-    cfg = load_config(args.config)
-    live_dir = args.live_chroma_dir or Path(cfg["index"]["chroma_dir"])
-    models = cfg.get("models") or {}
-    model = args.model or models.get("embed_model") or ""
-    host = models.get("ollama_host") or ""
+    try:
+        cfg = load_config(args.config)
+        live_dir = args.live_chroma_dir or Path(cfg["index"]["chroma_dir"])
+        models = cfg.get("models") or {}
+        model = args.model or models.get("embed_model") or ""
+        host = models.get("ollama_host") or ""
+    except (OSError, ValueError, KeyError, TypeError) as exc:  # missing or malformed config
+        print(f"attestation refused: cannot use the configuration: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+
     def show(name: str, done: int, total: int) -> None:
         if done == total or done % 2000 == 0:
             print(f"  {name}: {done}/{total} rows checked", file=sys.stderr, flush=True)
@@ -613,7 +632,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except AttestationError as exc:
         print(f"attestation refused: {exc}", file=sys.stderr)
         return 2
-    except (sqlite3.Error, OSError) as exc:  # an unreadable or damaged store or directory
+    except (sqlite3.Error, OSError, ChromaError) as exc:  # an unreadable or damaged store
         print(f"attestation refused: cannot read a store: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
     for name, item in sorted(report.attested.items()):

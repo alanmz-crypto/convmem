@@ -29,12 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from chroma_readonly import (
-    collection_config_metadata,
-    collection_dimension,
-    collection_row_evidence,
-    collection_uuid,
-)
+from chroma_readonly import collection_identity_facts
 from chroma_store import (
     EMBED_MODEL_KEY,
     SUMMARIES,
@@ -401,17 +396,23 @@ def _judge_named(  # pylint: disable=too-many-arguments
     strict: bool,
 ) -> IdentityVerdict | None:
     """Judge one collection, or None for an optional collection that does not exist."""
-    uuid = collection_uuid(chroma_dir, name)
-    if uuid is None and name != UNITS:
+    # One read transaction: the UUID, dimension and metadata used for a verdict must describe
+    # the same collection, even if another session replaces it while this runs.
+    try:
+        facts = collection_identity_facts(chroma_dir, name)
+    except FileNotFoundError:
+        if name != UNITS:
+            return None  # knowledge_units reports a missing database; summaries add nothing
+        raise
+    if facts.uuid is None and name != UNITS:
         return None
-    dimension = collection_dimension(chroma_dir, name)
     return judge_collection(
-        meta=collection_config_metadata(chroma_dir, name),
-        uuid=uuid or "",
-        chroma_dimension=dimension,
-        # A missing dimension is not proof of emptiness (damaged metadata): count every trace
-        # of a row in any segment or the log, not just the one view that may be damaged.
-        row_count=collection_row_evidence(chroma_dir, name) if dimension is None and uuid else None,
+        meta=facts.metadata,
+        uuid=facts.uuid or "",
+        chroma_dimension=facts.dimension,
+        # A missing dimension is not proof of emptiness (damaged metadata): the facts count
+        # every trace of a row in any segment or the log, not just the one view that may be damaged.
+        row_count=facts.row_evidence,
         attestation=attestations.get(name),
         attestation_error=attestation_error,
         configured_model=configured_model,

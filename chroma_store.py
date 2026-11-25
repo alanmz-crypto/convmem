@@ -241,9 +241,11 @@ class ChromaStore:  # pylint: disable=too-many-public-methods,too-many-instance-
                 )
             return result
         with guard.native_write(identifier=self.chroma_dir, reload_client=self._reload_client):
-            # Again, now that the guard may have reloaded the client: judge the handle in use.
-            self._require_vectors_match_first_write(collection, kwargs.get("embeddings"))
             try:
+                # Again, now that the guard may have reloaded the client: judge the handle in use.
+                # Inside the handler, so a refusal reports the failure it is to the session that
+                # was told this mutation was about to happen.
+                self._require_vectors_match_first_write(collection, kwargs.get("embeddings"))
                 result = getattr(self._collection(collection), operation)(**kwargs)
             except Exception:
                 if session is not None:

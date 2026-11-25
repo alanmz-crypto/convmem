@@ -14,6 +14,7 @@ from pathlib import Path
 import chromadb
 import pytest
 
+import chroma_readonly
 from chroma_embed_identity import FAIL, WARN, check_embed_identity
 from chroma_store import EMBED_MODEL_KEY, UNITS, ChromaStore
 from tests.test_chroma_embed_identity import COSINE, MODEL, _store
@@ -314,3 +315,73 @@ def test_a_trace_in_the_log_alone_is_enough_to_withhold_the_drop_advice(tmp_path
 
     assert collection_row_evidence(chroma, UNITS) > 0  # only the pending log still shows it
     assert "can be dropped" not in check_embed_identity(chroma, MODEL).detail
+
+
+def test_the_facts_for_a_verdict_come_from_one_read_transaction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reviewed: separate connections let a collection be replaced between the UUID and the
+    stamp, giving a verdict about a collection that never existed. Here a writer tries to replace it
+    after the first query; inside one read transaction it cannot commit."""
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    outcomes: list[str] = []
+    real_connect = chroma_readonly._connect_readonly
+
+    def connect(db: Path) -> sqlite3.Connection:
+        conn = real_connect(db)
+        seen: list[str] = []
+
+        def trace(statement: str) -> None:
+            seen.append(statement)
+            if len(seen) == 3 and not outcomes:  # BEGIN and a first query are done: a read lock is held
+                writer = sqlite3.connect(db, timeout=0)
+                try:
+                    writer.execute("UPDATE collections SET name = 'replaced'")
+                    writer.commit()
+                    outcomes.append("replaced")
+                except sqlite3.OperationalError as exc:
+                    outcomes.append(str(exc))
+                finally:
+                    writer.close()
+
+        conn.set_trace_callback(trace)
+        return conn
+
+    monkeypatch.setattr(chroma_readonly, "_connect_readonly", connect)
+
+    facts = chroma_readonly.collection_identity_facts(chroma, UNITS)
+
+    assert outcomes == ["database is locked"]
+    assert facts.uuid is not None and facts.dimension is not None and facts.metadata
+
+
+def test_a_wal_mode_database_is_refused_by_every_reader_and_nothing_is_created(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS, embed_model=MODEL)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:
+        con.execute("PRAGMA journal_mode=WAL")
+    before = sorted(p.name for p in chroma.iterdir())
+
+    with pytest.raises(sqlite3.DatabaseError, match="rollback-journal"):
+        chroma_readonly.collection_uuid(chroma, UNITS)
+    default = check_embed_identity(chroma, MODEL)
+    strict = check_embed_identity(chroma, MODEL, strict=True)
+
+    assert default.status == WARN and strict.status == FAIL  # unreadable is never a PASS
+    assert "rollback-journal" in strict.detail
+    assert sorted(p.name for p in chroma.iterdir()) == before  # no -wal/-shm beside it
+
+
+def test_a_stored_row_that_belongs_to_no_segment_withholds_the_drop_advice(tmp_path: Path) -> None:
+    chroma = tmp_path / "chroma"
+    _store(chroma, UNITS)
+    with sqlite3.connect(chroma / "chroma.sqlite3") as con:  # both segments stay; the row loses its own
+        con.execute("DELETE FROM embeddings_queue")
+        con.execute("UPDATE collections SET dimension = NULL")
+        con.execute("UPDATE embeddings SET segment_id = 'no-such-segment'")
+
+    assert chroma_readonly.collection_row_evidence(chroma, UNITS) > 0
+    default = check_embed_identity(chroma, MODEL)
+    assert "can be dropped" not in default.detail and default.status == WARN
+    assert check_embed_identity(chroma, MODEL, strict=True).status == FAIL

@@ -367,3 +367,89 @@ def test_a_copy_whose_listing_and_count_disagree_is_refused(tmp_path: Path) -> N
     with mock.patch.object(attestation_mod, "open_chroma_for_verify", return_value=_Store()):
         with pytest.raises(AttestationError, match="lists 12 rows but counts 13"):
             spot_check(tmp_path, UNITS, embedder(MODEL), sample_size=None)
+
+
+def test_a_restore_that_changes_after_its_uuid_was_checked_is_not_scored_under_the_old_uuid(
+    tmp_path: Path,
+) -> None:
+    """Reviewed: restore A (nonmatching rows) was checked by UUID, the path was rotated to restore
+    B (a different collection, ten matching rows), B was scored, and A's UUID was published."""
+    live = tmp_path / "live" / "chroma"
+    build(live, UNITS, vectors_from="some-other-model", n=12)  # these rows do NOT match MODEL
+    copy = tmp_path / "restored" / "chroma"
+    shutil.copytree(live, copy)
+    other = tmp_path / "other" / "chroma"
+    build(other, UNITS, vectors_from=MODEL, n=10)  # a different collection whose rows DO match
+    calls: list[int] = []
+    real_check = attestation_mod._require_separate_copy
+
+    def rotate_on_the_second_call(live_dir: Path, copy_dir: Path) -> None:
+        real_check(live_dir, copy_dir)
+        calls.append(1)
+        if len(calls) == 2:  # the guard that runs just before the client opens the copy
+            shutil.rmtree(copy_dir)
+            shutil.copytree(other, copy_dir)
+
+    with mock.patch.object(attestation_mod, "_require_separate_copy", rotate_on_the_second_call):
+        with pytest.raises(AttestationError, match="changed after it was checked"):
+            attest_collections(
+                live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,),
+                sample_size=None, write=True,
+            )
+
+    assert not sidecar_path(live).exists()
+
+
+def test_the_command_refuses_a_missing_or_malformed_configuration(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    _, copy = stores
+
+    assert main(["--config", str(tmp_path / "absent.toml"), "--restore-copy", str(copy)]) == 2
+    broken = tmp_path / "broken.toml"
+    broken.write_text("[index\nchroma_dir = ", encoding="utf-8")
+    assert main(["--config", str(broken), "--restore-copy", str(copy)]) == 2
+    err = capsys.readouterr().err
+    assert err.count("attestation refused: cannot use the configuration") == 2
+
+
+def test_a_restore_whose_collection_configuration_chroma_cannot_read_is_a_refusal(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    live, copy = stores
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:  # SQLite stays readable; Chroma's config is not
+        con.execute("UPDATE collections SET config_json_str = '{not json'")
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch.object(attestation_mod, "_ollama_embedder", return_value=embedder(MODEL)):
+        code = main(["--config", str(cfg), "--restore-copy", str(copy)])
+
+    assert code == 2
+    assert "attestation refused" in capsys.readouterr().err
+
+
+def test_a_copy_chroma_cannot_read_is_an_attestation_error_at_the_library_level(
+    stores: tuple[Path, Path],
+) -> None:
+    """The inner layer: spot_check translates Chroma's own errors, so library callers get one type."""
+    live, copy = stores
+    with sqlite3.connect(copy / "chroma.sqlite3") as con:
+        con.execute("UPDATE collections SET config_json_str = '{not json'")
+
+    with pytest.raises(AttestationError, match="cannot be read by Chroma"):
+        attest_collections(live, copy, model=MODEL, embed=embedder(MODEL), names=(UNITS,))
+
+
+def test_the_command_refuses_a_chroma_error_raised_outside_the_census(
+    tmp_path: Path, stores: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The outer layer: any Chroma error that reaches main() is a refusal, not a traceback."""
+    from chromadb.errors import InternalError
+
+    live, copy = stores
+    cfg = _config(tmp_path / "config.toml", live)
+
+    with mock.patch.object(attestation_mod, "attest_collections", side_effect=InternalError("boom")):
+        code = main(["--config", str(cfg), "--restore-copy", str(copy)])
+
+    assert code == 2 and "attestation refused: cannot read a store: InternalError" in capsys.readouterr().err

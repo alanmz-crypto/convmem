@@ -8593,7 +8593,7 @@
     },
     {
       "path": "chroma_store.py",
-      "sha256": "c284b4044847982004e8beb18938444133107bb4890de18db25ac613b01c731f",
+      "sha256": "a9aec9e0c944dcdc61795453230378674d671562319d2625f639760429e03525",
       "content_class": "python",
       "parser_mode": "python_ast_spans",
       "adapter_contract_version": "repository_knowledge_v1",

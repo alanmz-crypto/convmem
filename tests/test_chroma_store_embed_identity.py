@@ -468,6 +468,28 @@ def test_emptying_a_collection_in_a_session_restores_the_first_vector_check(tmp_
         ("x:", "x:", True),
         ("a/b/c/d", "b/c/d", False),
         ("a/b/c/d", "d", False),  # four parts must not collapse to the bare model "d"
+        # the rest of Ollama's own grammar (types/model/name.go)
+        ("\u212a", "k", False),  # the Kelvin sign is not ASCII, so it is never folded into "k"
+        ("K", "k", True),
+        ("_model", "_model:latest", True),  # a leading underscore is valid in every part
+        ("m:_t", "registry.ollama.ai/library/m:_t", True),
+        ("https://registry.ollama.ai/library/m", "m", True),  # the scheme is not part of the identity
+        ("http://h.example/ns/m", "https://h.example/ns/m", True),
+        # two parts: "registry.ollama.ai" is read as a namespace, and a namespace may not contain a dot
+        ("registry.ollama.ai/llama3", "llama3", False),
+        ("llama3@sha256:abc", "llama3", False),  # digests are not part of the grammar
+        ("a:b:c", "a", False),
+        ("a.b/m", "m", False),
+        ("a.b/m", "registry.ollama.ai/a.b/m", False),  # a dotted namespace is invalid, so only equal to itself
+        ("localhost:11434", "localhost:11434", True),  # this is model "localhost" with tag "11434"
+        ("localhost:11434", "localhost", False),
+        ("llama3.1", "llama3_1", False),  # '.', '-' and '_' are significant
+        ("x" * 81, "x" * 81, True),  # over-long: outside the grammar, so only equal to itself
+        ("x" * 81, "x", False),
+        ("x" * 81, "registry.ollama.ai/library/" + "x" * 81 + ":latest", False),  # no 81-char model exists
+        ("x" * 80, "registry.ollama.ai/library/" + "x" * 80 + ":latest", True),  # 80 is the limit
+        ("h" * 351 + "/ns/m", "h" * 351 + "/ns/m:latest", False),  # a 351-char host is over its limit
+        ("a_b.c-d/ns_1/M.1:T-1", "A_B.C-D/NS_1/m.1:t-1", True),
         ("a/b/c/d", "a/b/c/d", True),
         ("nomic-embed-text", "nomic-embed-text:v1.5", False),
         ("nomic-embed-text:v1", "nomic-embed-text:v2", False),
@@ -609,3 +631,46 @@ def test_the_check_is_repeated_inside_the_write_guard(tmp_path: Path) -> None:
             )
 
     assert entered == [True]
+
+
+def test_a_refusal_inside_the_write_guard_is_reported_to_the_session_as_a_failed_mutation(
+    tmp_path: Path,
+) -> None:
+    """Reviewed: the session was told a mutation was about to happen and never that it failed."""
+    chroma = tmp_path / "chroma"
+    _create(chroma, UNITS, embed_model="model-y")
+    events: list[object] = []
+
+    class _Session:
+        store = None
+
+        def bind_store(self, store) -> None:
+            self.store = store
+
+        def on_native_before(self, *_args, **_kwargs) -> None:
+            events.append("before")
+
+        def on_native_after(self, **kwargs) -> None:
+            events.append(("after", kwargs["succeeded"]))
+
+    class _Guard:
+        def native_write(self, **_kwargs):
+            import contextlib
+
+            @contextlib.contextmanager
+            def context():
+                _recreate_collection(chroma, "model-z")  # replaced as the guard is entered
+                yield
+
+            return context()
+
+    with ChromaStore(str(chroma), embed_model="model-y") as store:
+        store._write_guard = _Guard()
+        with mock.patch("incremental_mutation_proof.active_session", return_value=_Session()):
+            with pytest.raises(EmbedIdentityError):
+                store._native(
+                    UNITS, "upsert", ids=["u1"], documents=["a document"],
+                    embeddings=[_vector("model-y")], metadatas=[{"source_path": "unit.md"}],
+                )
+
+    assert events == ["before", ("after", False)]

@@ -476,14 +476,14 @@ def test_one_collection_that_cannot_be_read_does_not_hide_anothers_failure(
 ) -> None:
     chroma = tmp_path / "chroma"
     _store(chroma, UNITS, SUMMARIES, embed_model="model-a")  # units: a definite mismatch
-    real = chroma_embed_identity.collection_dimension
+    real = chroma_embed_identity.collection_identity_facts
 
-    def flaky(directory: Any, name: str) -> int | None:
+    def flaky(directory: Any, name: str) -> Any:
         if name == SUMMARIES:
             raise sqlite3.OperationalError("database disk image is malformed")
         return real(directory, name)
 
-    with mock.patch.object(chroma_embed_identity, "collection_dimension", flaky):
+    with mock.patch.object(chroma_embed_identity, "collection_identity_facts", flaky):
         default = check_embed_identity(chroma, "model-b")
         strict = check_embed_identity(chroma, "model-b", strict=True)
 
@@ -510,14 +510,14 @@ def test_an_unexpected_error_in_one_collection_does_not_hide_anothers_failure(
 ) -> None:
     chroma = tmp_path / "chroma"
     _store(chroma, UNITS, SUMMARIES, embed_model="model-a")  # units: a definite mismatch
-    real = chroma_embed_identity.collection_config_metadata
+    real = chroma_embed_identity.collection_identity_facts
 
     def surprising(directory: Any, name: str) -> Any:
         if name == SUMMARIES:
             raise TypeError("something nobody planned for")
         return real(directory, name)
 
-    with mock.patch.object(chroma_embed_identity, "collection_config_metadata", surprising):
+    with mock.patch.object(chroma_embed_identity, "collection_identity_facts", surprising):
         verdict = check_embed_identity(chroma, "model-b")
 
     assert verdict.status == FAIL
@@ -529,7 +529,7 @@ def test_an_unreadable_collection_is_a_warn_and_a_strict_fail(tmp_path: Path) ->
     _store(chroma, UNITS, embed_model=MODEL)
 
     with mock.patch.object(
-        chroma_embed_identity, "collection_dimension", side_effect=sqlite3.OperationalError("locked")
+        chroma_embed_identity, "collection_identity_facts", side_effect=sqlite3.OperationalError("locked")
     ):
         assert check_embed_identity(chroma, MODEL).status == WARN
         assert check_embed_identity(chroma, MODEL, strict=True).status == FAIL
@@ -625,7 +625,7 @@ def test_doctor_still_contains_unreadable_stores_as_a_warning(tmp_path: Path) ->
     check = _check_embed_collection_identity(_cfg(empty))
 
     assert check.effective_status() == "warn"
-    assert "cannot read collection metadata" in check.detail
+    assert check.detail.count("cannot read collection metadata") == 1  # knowledge_units only
 
 
 # --------------------------------------------------------------------------------------
