@@ -19,7 +19,9 @@ cross-arc snapshot and the linked arc brief below.
   doctor-fault acknowledgment design (PR #415, Timeshift event, G0-G6) is
   moot and will not be implemented. The older tripwire handoffs and issue
   notes are historical only. Do not reintroduce CPU-based gating or
-  known-bad-CPU config. Not yet committed or deployed to runtime.
+  known-bad-CPU config. Committed on `chore/2026-10-23-retire-cpu-tripwire`
+  (`a3af563`, unpushed, unmerged); the runtime deploy checkout still ships
+  `cpu_tripwire.py` until a runtime-promotion grant.
 
 - **Arc Safe Harbor — V6 accepted; delivery decision next (2026-10-14):**
   Kiro's independent PASS and Ryan's acceptance are pinned in the [V6 acceptance record](../plans/VERIFY-safe-harbor.md#v6-independent-kiro-review-and-owner-acceptance).
