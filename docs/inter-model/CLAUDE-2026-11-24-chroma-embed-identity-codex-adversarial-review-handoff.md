@@ -632,3 +632,57 @@ The sidecar stays the strict authority; a strict PASS means "a full re-embedding
 ### Return, as plain text
 
 (1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R7-1, R7-2, R7-4 and R7-6 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether an eighth round is worth the cost.
+
+---
+
+## Review round 7 outcome (appended after the seventh Codex review; text above is the record of what was reviewed at cf147db)
+
+Codex recommended **ship after changes** and said strict-with-sidecar was not yet an acceptable general fail-closed gate, on one reproduction: no writer during the census, yet a false PASS. It attested R2B (`MATCH`, digest `7d81b0f4…`; only the usual fields differ; manifest = four hashes and eleven classifications; `ingest.py` identical) and confirmed the round-6 fixes: 17 ordinary readers preserve another connection's lock (run in a process that never loaded Chroma), the stamp swap no longer yields a PASS, the same-process two-batch census refuses, and `models = ["k"]`, a dimension `'unknown'` and a provider `SystemExit(0)` all return 2. Disposition (fixes in `a730284`):
+
+| Codex finding | Disposition |
+|---|---|
+| **High:** an already-open Chroma client in the process was handed to the census, so after another process negated one vector on disk the census scored 12/12 at 1.0 and published a sidecar; a fresh process refused the same row at -1.0 | **Fixed, and reproduced first.** The census now reloads its view of the copy (the repo's own `ChromaStore._reload_client` protocol, the one that exists to "show me the disk, not a cached index") before listing or scoring. If another client in the same process still holds the copy, the run is refused ("run the attestation in a fresh process"); once that client is closed, the census sees the disk, and an unchanged copy that was used and closed is accepted (both controls tested). The command line always starts a fresh process, so it is unaffected. |
+| Medium: historical big-endian blob sequence ids crashed the fingerprint (`ValueError`) and SQL's `SUM` read them as zero, so converting only the maximum left it wrong | **Fixed.** Sequence ids are read and decoded in Python in either format (integers or big-endian blobs, the repo's own decoder), and a mixed store is tested. **Relevance:** your live store holds integers only (all 122,872 embeddings and 883 log rows), so this could not affect it. |
+| Medium: the two collections' census entries could describe different committed states (units finished, a unit broken, a summary repaired: both published at 1.0) | **Fixed.** Each collection's final fingerprint is kept and all are compared again once every collection is done. This still requires the private-copy condition for protection while a collection is being checked, and now closes the gap between collections. |
+| Low: a header-probe child that printed a banner made `may_create_wal_files` raise a bare `ValueError` | **Fixed.** It raises `HeaderProbeError` naming the cause when the child cannot run (including a sandbox that forbids subprocesses), times out, fails, or answers something that is not a header; the command reports it as a refusal. A failed probe is no longer confused with "unsafe". |
+| R7-1 fingerprint coverage | Update, metadata update, delete-and-re-add and a pending log record all move it; a collection-level `modify(metadata=...)` and **an isolated HNSW segment substitution with identical SQLite content do not**. Codex's own reading: it cannot establish which native vector bytes a client served. **Not changed:** the fingerprint covers SQLite state; segment files changed outside Chroma by a hostile writer are undetected. |
+| R7-2 child-process probe | A sandbox that forbids children cannot use this path; it now fails with the cause (above). Kept: probing in a child is what keeps this process's locks safe. |
+| R7-3 reader lifetime | **Not fixed (follow-up).** Every reader now begins a transaction, and `iter_collection_metadata_rows` holds its read lock while a consumer iterates (`brief.py:578` resolves source paths during iteration; `doctor.py:1096` builds its ledger index as it consumes); pausing at the last row blocks a writer until the generator closes. |
+| R7-4 mixed SQLite libraries | **Not fixed (pre-existing).** The census adds two Python `sqlite3` opens and closes inside the native client's lifetime, on a copy that must already be private. A safer boundary (SQLite reads in a process holding no native client, or one library) is a design decision for Ryan. |
+| R7-5 provider exceptions | **Not changed.** A custom `BaseException` or a `BaseExceptionGroup` from a provider escapes with little context (nothing is published). |
+| R7-6 surviving mutations | **Fixed.** The log component of the fingerprint and the "row evidence only when no dimension is recorded" path each have a test now. |
+
+Mutation sweep for round 7: 10 guards, all caught on the first pass. Round-7 stopping rule held: this round had a High, so there is one more round.
+
+**Real-store checks with this code (read-only; nothing written or created beside the live store).** Doctor's read of the live store is unchanged (both collections 768-dim, unmarked, no sidecar; WARN by default, FAIL under strict). The fingerprint of the live units collection takes 0.10 s on 116,685 rows. The full-census dry run reproduces all 122,843 rows of today's restore with the reload and the whole-run recheck on, and no false refusal: none failed, none below 0.9999, minimum cosine 0.999991 and 0.999998, exit 0, 666 s. Full suite at `a730284`: 213 failed / 3710 passed / 69 skipped / 1 xfailed / 52 errors, **exactly the 265 baseline failing ids, none new**.
+
+---
+
+## Round 8 review brief (focused; written after round 7 was addressed)
+
+The code under review is `a730284`; later commits are docs only. Base `origin/main` = `f10d67d`. `git diff cf147db..a730284` is the delta (4 files outside `docs/`, about 280 added lines). **Trail is available.** Under the rule agreed after round 6, this round exists only because round 7 found a High; if round 8 finds nothing High or Critical, review stops here.
+
+**Expected results:** the six identity files: **366 passed, 1 xfailed**. The nine governed-inventory files: **84 passed** on a clean tree. Manifest: four refreshed hashes and **eleven** new `unrelated` classifications (unchanged).
+
+### Part 1: rerun your round-7 counterexamples (FIXED / STILL REPRODUCES / FIXED DIFFERENTLY, with a command or test)
+
+1. The warm-process false PASS: a client holds a cached row, another process negates it on disk, then `main(... --sample-size all --write)` runs in the first process. Also the two controls: the warm client closed (does the census see the disk?) and unchanged-and-closed (is it accepted?).
+2. The mixed-format legacy store (blob and integer sequence ids): fingerprint and census.
+3. The units-then-summaries cross-collection writer: is a sidecar still published?
+4. A header probe that prints a banner, forbids children, or times out.
+
+### Part 2: attack the new code
+
+- **R8-1 the reload.** `spot_check` calls `store._reload_client()` right after `open_chroma_for_verify`. That releases (closes) a client, and if another client in the process still holds the system it raises. When it raises, did closing *our* client damage the shared system the other client is using? Is the warm client still usable afterwards? Does the reload really discard cached HNSW state in every case, including a client that is open on a *different path alias* of the same directory?
+- **R8-2 whole-run recheck.** The final fingerprints are compared after every collection and after each client has closed. Does closing a Chroma client itself change the fingerprint (compaction, a flush), so a legitimate run could refuse? I saw none in 122,843 rows; try small, fresh and WAL-adjacent cases.
+- **R8-3 the fingerprint in Python.** It now reads every sequence id of a collection (116,685 on the live store; 0.10 s). Any case where decoding is wrong: a negative or oversized blob, an empty blob, a NULL, a string, a float.
+- **R8-4 HeaderProbeError.** It is an `OSError`; the command catches `OSError`. Does any *library* caller of `attest_collections` or `may_create_wal_files` now see an exception type it does not expect?
+- **R8-5 tests that pass for the wrong reason.** Every round found at least one. Remove guards I did NOT mutate (the `fingerprint=after` assignment's use in `SpotCheck`, `store._reload_client = lambda: None` in the wrapper tests, the `max(..., default=0)` of the log component, the `bytearray` branch of `_sequence`) and tell me whether a test notices.
+
+### Decisions already taken (unchanged), known flaky tests, hard rules
+
+The sidecar stays the strict authority; a strict PASS means "a full re-embedding of a *private* restore copy, at the time and threshold shown, reproduced that copy's vectors", not that live vectors are certified; only a first vector is judged; deferred to follow-up PRs: `open_chroma_for_read` and `refine.py:628`, the `ingest.py` summary-vector tag loss, refusing a mismatched write into a collection that holds vectors, `FileGenerationStore.stage_rows` and `restore_source_rows`, the other name-only collection queries and unescaped URIs, reader lock lifetime (R7-3), the mixed-SQLite-library hazard (R7-4) and provider `BaseException` context (R7-5). Known flaky tests are under "Known flaky tests". Rules as before: read-only on the branch, never the live Chroma directory, never `~/.config/convmem/restic.env` or any client config, no `ask`, no `LATEST.md` or `STATUS`.
+
+### Return, as plain text
+
+(1) a re-verification table for Part 1; (2) new findings ranked Critical / High / Medium / Low with `file:line`, a reproduction and observed-or-inferred; (3) the R2B attestation regenerated independently (`MATCH` or `DIFFERS`, the digest, and whether the diff against `origin/main` is only the usual fields); (4) direct answers to R8-1, R8-2 and R8-5 even if "nothing found", with how you looked; (5) a recommendation: ship, ship after named changes, or rework; whether strict-with-sidecar is now an acceptable fail-closed gate; and whether a ninth round is worth the cost.
