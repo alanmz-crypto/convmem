@@ -1679,17 +1679,20 @@ def _check_logical_projection(cfg: dict) -> DoctorCheck:
 def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
     """Read-only: configured embed model vs collection metadata (SQLite mode=ro).
 
-    Never opens PersistentClient / never calls embed APIs. Legacy missing
-    ``convmem:embed_model`` is WARN; shadow mismatches FAIL.
+    Never opens PersistentClient / never calls embed APIs. Covers both
+    collections. A collection that predates identity recording is WARN unless an
+    operator attested it (``chroma_embed_attestation``); model or dimension
+    mismatches FAIL. ``[index] require_embed_identity = true`` turns the
+    unattested WARN into a FAIL.
     """
     name = "embed_collection_identity"
     chroma_dir = Path(cfg["index"]["chroma_dir"]).expanduser()
     want_model = str((cfg.get("models") or {}).get("embed_model") or "")
+    strict = (cfg.get("index") or {}).get("require_embed_identity") is True
     try:
-        from chroma_readonly import collection_config_metadata
-        from chroma_store import UNITS
+        from chroma_embed_identity import check_embed_identity
 
-        meta = collection_config_metadata(chroma_dir, UNITS)
+        verdict = check_embed_identity(chroma_dir, want_model, strict=strict)
     except FileNotFoundError as exc:
         return DoctorCheck(
             name,
@@ -1707,36 +1710,12 @@ def _check_embed_collection_identity(cfg: dict) -> DoctorCheck:
             f"WARN: cannot read collection metadata (no embed probe): {exc}",
             status="warn",
         )
-
-    if not meta:
-        return DoctorCheck(
-            name,
-            True,
-            "WARN: collection missing or has no collection_metadata "
-            f"(configured={want_model!r}; shadow stores must set metadata)",
-            status="warn",
-        )
-
-    stored_model = str(meta.get("convmem:embed_model") or "")
-    stored_dim = meta.get("convmem:embed_dimensions")
-    if not stored_model:
-        return DoctorCheck(
-            name,
-            True,
-            "WARN: legacy collection metadata lacks convmem:embed_model "
-            f"(configured={want_model!r}; shadow stores must set metadata)",
-            status="warn",
-        )
-    if want_model and stored_model != want_model:
-        return DoctorCheck(
-            name,
-            False,
-            f"embed model mismatch: collection={stored_model!r} config={want_model!r}",
-        )
-    detail = f"collection embed_model={stored_model!r}"
-    if stored_dim is not None:
-        detail += f" dimensions={stored_dim!r}"
-    return DoctorCheck(name, True, detail)
+    return DoctorCheck(
+        name,
+        verdict.status != "fail",
+        verdict.detail,
+        status="warn" if verdict.status == "warn" else "",
+    )
 
 
 def _check_shadow_ledger(cfg: dict) -> DoctorCheck:

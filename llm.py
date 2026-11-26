@@ -193,6 +193,18 @@ def summarize_prompt(chunk_text: str) -> str:
     return SUMMARIZE_PROMPT.format(messages=summarize_consumed_view(chunk_text))
 
 
+class EmbeddingVector(list):
+    """An embedding that remembers which model made it.
+
+    It is a plain ``list`` everywhere (indexing, JSON, Chroma). The tag lets a
+    store notice that the model its new collection is about to be stamped with is
+    not the model that produced the vector it was handed, which happens when the
+    configuration changes between embedding and opening the writer.
+    """
+
+    embed_model: str | None = None
+
+
 def ollama_embed(text: str, model: str, host: str) -> list[float]:
     """Return an embedding vector for `text` from a local Ollama model."""
     from purge_locks import reject_provider_under_write_scope
@@ -215,7 +227,9 @@ def ollama_embed(text: str, model: str, host: str) -> list[float]:
     embedding = data.get("embedding")
     if not embedding:
         raise RuntimeError(f"Empty embedding from Ollama for model {model!r}")
-    return embedding
+    tagged = EmbeddingVector(embedding)
+    tagged.embed_model = model
+    return tagged
 
 
 def _ollama_generate(prompt: str, model: str, host: str, *, timeout: float = 300) -> str:

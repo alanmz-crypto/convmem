@@ -3,8 +3,113 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Collection, Iterator
+import subprocess
+import sys
+from dataclasses import dataclass
+from collections.abc import Collection, Iterator, Sequence
 from pathlib import Path
+
+
+# ConvMem serves the collections of Chroma's default tenant and database. A collection
+# of the same name in another database is a different collection and must never be read
+# as the serving one, so identity reads are restricted to the database the client uses.
+_SERVING_DATABASE = (
+    "c.database_id IN (SELECT id FROM databases "
+    "WHERE name = 'default_database' AND tenant_id = 'default_tenant')"
+)
+
+
+def _serving_database(conn: sqlite3.Connection, name: str) -> str:
+    """SQL restricting alias ``c`` to the serving database.
+
+    Three layouts exist. A modern Chroma catalog has ``databases`` and
+    ``collections.database_id``: restrict to the default database. A legacy or hand-made
+    schema has neither, so it cannot hold more than one database and needs no restriction.
+    One without the other is a damaged catalog in which a same-named collection of another
+    database cannot be told apart, so it is refused rather than guessed at. ``name`` is the
+    collection about to be read: more than one match within the serving database is refused.
+    """
+    has_databases = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'databases'"
+    ).fetchone() is not None
+    has_column = "database_id" in {row[1] for row in conn.execute("PRAGMA table_info(collections)")}
+    if has_databases and has_column:
+        fragment = _SERVING_DATABASE
+    elif not has_databases and not has_column:
+        fragment = "1 = 1"
+    else:
+        fragment = None
+    if fragment is not None:
+        # A name that matches two collections cannot be read as one: uuid, dimension and
+        # metadata would each pick a different one. Real Chroma enforces UNIQUE(name,
+        # database_id); a hand-made or damaged schema may not.
+        matches = conn.execute(
+            f"SELECT COUNT(*) FROM collections c WHERE c.name = ? AND {fragment}", (name,)
+        ).fetchone()[0]
+        if matches > 1:
+            raise sqlite3.DatabaseError(f"ambiguous catalog: {matches} collections are named {name!r}")
+        return fragment
+    raise sqlite3.DatabaseError(
+        "inconsistent Chroma catalog: "
+        f"{'databases table present' if has_databases else 'databases table missing'}, "
+        f"{'collections.database_id present' if has_column else 'collections.database_id missing'}"
+    )
+
+
+_HEADER_PROBE = (
+    "import sys\n"
+    "try:\n"
+    "    handle = open(sys.argv[1], 'rb')\n"
+    "except FileNotFoundError:\n"
+    "    print('missing'); raise SystemExit(0)\n"
+    "print(handle.read(20).hex())\n"
+)
+
+
+class HeaderProbeError(OSError):
+    """The database header could not be read, so nothing can be said about it (not "unsafe", not "safe")."""
+
+
+def may_create_wal_files(chroma_dir: str | Path) -> bool:
+    """True unless ``chroma.sqlite3`` is verifiably a plain rollback-journal SQLite file.
+
+    A pre-flight for a command that promises to leave a directory untouched: SQLite may create
+    ``-wal``/``-shm`` beside a WAL database even for a read-only open. Bytes 18 and 19 of the
+    header are the write and read format versions: 1 is the rollback journal, 2 is WAL, and SQLite
+    opens a file as WAL when *either* byte says so, so only ``01 01`` is safe. A missing file is not
+    a risk (nothing is opened); an unreadable, short or non-SQLite header is, because it cannot be
+    vouched for.
+
+    The header is read by a child process. Reading it here would ``close()`` a descriptor on the
+    database, and on POSIX that cancels every lock this process holds on the file through SQLite
+    (see :func:`_connect_readonly`), so it is safe to call from a process that has the file open.
+
+    Raises :class:`HeaderProbeError` when the probe itself fails (no child process allowed, a timeout,
+    an unexpected answer): that is not evidence the file is safe or unsafe, and the cause is kept.
+    """
+    db = _db_path(chroma_dir)
+    try:
+        done = subprocess.run(
+            [sys.executable, "-I", "-S", "-c", _HEADER_PROBE, str(db)],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise HeaderProbeError(
+            f"could not run the header probe for {db.name}: {type(exc).__name__}: {exc}"
+        ) from exc
+    out = done.stdout.strip()
+    if done.returncode != 0 or not out:
+        raise HeaderProbeError(
+            f"the header probe for {db.name} failed (exit {done.returncode}): "
+            f"{done.stderr.strip()[:200] or 'no output'}"
+        )
+    if out == "missing":
+        return False
+    try:
+        header = bytes.fromhex(out)
+    except ValueError as exc:  # anything but the hex of the first bytes, e.g. a wrapper's banner
+        raise HeaderProbeError(f"the header probe for {db.name} answered {out[:60]!r}, not a header") from exc
+    return header[:16] != b"SQLite format 3\x00" or header[18:20] != b"\x01\x01"
 
 
 def _db_path(chroma_dir: str | Path) -> Path:
@@ -12,11 +117,23 @@ def _db_path(chroma_dir: str | Path) -> Path:
 
 
 def _connect_readonly(db: Path) -> sqlite3.Connection:
-    """Open chroma.sqlite3 with URI mode=ro (never creates WAL/SHM or the DB)."""
+    """Open chroma.sqlite3 with URI mode=ro: never creates or writes the DB itself.
+
+    Opens a read transaction before returning, so every query a reader makes on this connection,
+    including the ambiguity check that guards it, sees one snapshot; closing the connection ends it.
+
+    Nothing here opens the file with an ordinary ``open()``. On POSIX, closing *any* descriptor for a
+    file cancels every lock the process holds on it, including those of SQLite connections in the
+    same process (Chroma's own, in a process that serves queries), so a header probe on a path this
+    process also has open through SQLite silently releases another transaction's lock.
+    """
     if not db.is_file():
         raise FileNotFoundError(str(db))
-    uri = f"file:{db.resolve().as_posix()}?mode=ro"
-    return sqlite3.connect(uri, uri=True)
+    # as_uri() percent-encodes the path: a '#' or '?' in a directory name would otherwise end
+    # the path early, drop "mode=ro" and open (and create) a different, writable file.
+    conn = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True)
+    conn.execute("BEGIN")
+    return conn
 
 
 def _coerce_value(string_value, int_value, float_value, bool_value):
@@ -73,12 +190,12 @@ def iter_collection_metadata_rows(
                 sql_keys.append("chroma:document")
         if sql_keys is not None and not sql_keys:
             cur.execute(
-                """
+                f"""
                 SELECT DISTINCT e.embedding_id
                 FROM embeddings e
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
-                WHERE c.name = ? AND s.scope = 'METADATA'
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                 ORDER BY e.embedding_id
                 """,
                 (collection_name,),
@@ -88,7 +205,7 @@ def iter_collection_metadata_rows(
             return
         if sql_keys is None:
             cur.execute(
-                """
+                f"""
                 SELECT
                     e.embedding_id,
                     em.key,
@@ -100,7 +217,7 @@ def iter_collection_metadata_rows(
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
                 JOIN embedding_metadata em ON em.id = e.id
-                WHERE c.name = ? AND s.scope = 'METADATA'
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                 ORDER BY e.embedding_id, em.key
                 """,
                 (collection_name,),
@@ -120,7 +237,7 @@ def iter_collection_metadata_rows(
                 JOIN segments s ON e.segment_id = s.id
                 JOIN collections c ON s.collection = c.id
                 JOIN embedding_metadata em ON em.id = e.id
-                WHERE c.name = ? AND s.scope = 'METADATA'
+                WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
                   AND em.key IN ({placeholders})
                 ORDER BY e.embedding_id, em.key
                 """,
@@ -158,13 +275,13 @@ def unit_document_text(chroma_dir: str | Path, chroma_id: str) -> str | None:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT em.string_value
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
             JOIN embedding_metadata em ON em.id = e.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, UNITS)}
               AND e.embedding_id = ?
               AND em.key = 'chroma:document'
             LIMIT 1
@@ -184,6 +301,21 @@ def collection_metadata_rows(chroma_dir: str | Path, collection_name: str) -> li
     return list(iter_collection_metadata_rows(chroma_dir, collection_name))
 
 
+def _metadata_in(conn: sqlite3.Connection, collection_name: str) -> dict:
+    out: dict = {}
+    for key, str_value, int_value, float_value, bool_value in conn.execute(
+        f"""
+        SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
+        FROM collection_metadata cm
+        JOIN collections c ON c.id = cm.collection_id
+        WHERE c.name = ? AND {_serving_database(conn, collection_name)}
+        """,
+        (collection_name,),
+    ).fetchall():
+        out[key] = _coerce_value(str_value, int_value, float_value, bool_value)
+    return out
+
+
 def collection_config_metadata(
     chroma_dir: str | Path, collection_name: str
 ) -> dict:
@@ -191,23 +323,9 @@ def collection_config_metadata(
 
     Reads ``collection_metadata`` (column ``str_value``). Missing collection → {}.
     """
-    db = _db_path(chroma_dir)
-    conn = _connect_readonly(db)
+    conn = _connect_readonly(_db_path(chroma_dir))
     try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT cm.key, cm.str_value, cm.int_value, cm.float_value, cm.bool_value
-            FROM collection_metadata cm
-            JOIN collections c ON c.id = cm.collection_id
-            WHERE c.name = ?
-            """,
-            (collection_name,),
-        )
-        out: dict = {}
-        for key, str_value, int_value, float_value, bool_value in cur.fetchall():
-            out[key] = _coerce_value(str_value, int_value, float_value, bool_value)
-        return out
+        return _metadata_in(conn, collection_name)
     finally:
         conn.close()
 
@@ -222,12 +340,12 @@ def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT DISTINCT e.embedding_id
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
             """,
             (collection_name,),
         )
@@ -237,6 +355,150 @@ def collection_ids(chroma_dir: str | Path, collection_name: str) -> list[str]:
     return [str(r[0]) for r in rows if r[0] is not None]
 
 
+def _evidence_in(conn: sqlite3.Connection, collection_name: str) -> int:
+    uuid = _uuid_in(conn, collection_name)
+    if uuid is None:
+        return 0
+    stored = conn.execute(
+        """
+        SELECT COUNT(DISTINCT e.embedding_id)
+        FROM embeddings e JOIN segments s ON e.segment_id = s.id
+        WHERE s.collection = ?
+        """,
+        (uuid,),
+    ).fetchone()[0]
+    # A Chroma collection has exactly two segments (vector and metadata). If they cannot both
+    # be found, if a segment belongs to no collection, or if any stored row belongs to no
+    # segment, rows may sit where this count cannot see them: that is evidence of rows, not of
+    # emptiness.
+    segments = conn.execute("SELECT COUNT(*) FROM segments WHERE collection = ?", (uuid,)).fetchone()[0]
+    orphan_segments = conn.execute(
+        "SELECT COUNT(*) FROM segments s WHERE NOT EXISTS (SELECT 1 FROM collections c WHERE c.id = s.collection)"
+    ).fetchone()[0]
+    orphan_rows = conn.execute(
+        "SELECT COUNT(*) FROM embeddings e WHERE NOT EXISTS (SELECT 1 FROM segments s WHERE s.id = e.segment_id)"
+    ).fetchone()[0]
+    unaccounted = int(segments != 2) + int(orphan_segments > 0) + int(orphan_rows > 0)
+    logged = 0
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'embeddings_queue'").fetchone():
+        logged = conn.execute(
+            "SELECT COUNT(*) FROM embeddings_queue WHERE topic LIKE ?", (f"%/{uuid}",)
+        ).fetchone()[0]
+    return int(stored or 0) + int(logged or 0) + unaccounted
+
+
+def collection_row_evidence(chroma_dir: str | Path, collection_name: str) -> int:
+    """Rows a collection has left a trace of, however its segments are labelled.
+
+    Distinct embedding ids in *every* segment of the collection (not only the METADATA
+    segment that :func:`collection_count` reads) plus any rows in the pending log. Used to
+    decide a collection is empty, which must never be concluded from a damaged or relabelled
+    segment: zero here means nothing was ever stored, not merely that one view found nothing.
+    A collection whose two segments cannot both be found, a segment that belongs to no
+    collection, and a stored row that belongs to no segment each count as one unaccounted row.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return 0
+    conn = _connect_readonly(db)
+    try:
+        return _evidence_in(conn, collection_name)
+    finally:
+        conn.close()
+
+
+@dataclass(frozen=True)
+class CollectionFacts:
+    """What one read transaction found out about one collection."""
+
+    uuid: str | None
+    dimension: int | None
+    metadata: dict
+    row_evidence: int | None  # only read when no dimension is recorded
+
+
+def collection_identity_facts_many(
+    chroma_dir: str | Path, collection_names: Sequence[str]
+) -> dict[str, CollectionFacts | Exception]:
+    """Facts for several collections from one connection and one read transaction.
+
+    A verdict about several collections must describe one moment: read one collection at a time and
+    a catalog that swaps their stamps in between yields a combined PASS that no committed state
+    deserves. A failure reading one collection (an ambiguous or inconsistent catalog, a malformed
+    value) is returned for that collection so it cannot hide another's; an unreadable *database*
+    raises. The read lock is held for as long as it takes to read these facts and no longer.
+    """
+    conn = _connect_readonly(_db_path(chroma_dir))  # a missing database is unreadable, not "empty"
+    try:
+        out: dict[str, CollectionFacts | Exception] = {}
+        for name in collection_names:
+            try:
+                uuid = _uuid_in(conn, name)
+                if uuid is None:
+                    out[name] = CollectionFacts(None, None, {}, None)
+                    continue
+                dimension = _dimension_in(conn, name)
+                out[name] = CollectionFacts(
+                    uuid,
+                    dimension,
+                    _metadata_in(conn, name),
+                    _evidence_in(conn, name) if dimension is None else None,
+                )
+            except (sqlite3.Error, ValueError, TypeError) as exc:
+                out[name] = exc
+        return out
+    finally:
+        conn.close()
+
+
+def collection_identity_facts(chroma_dir: str | Path, collection_name: str) -> CollectionFacts:
+    """:func:`collection_identity_facts_many` for one collection; its failure is raised."""
+    fact = collection_identity_facts_many(chroma_dir, (collection_name,))[collection_name]
+    if isinstance(fact, Exception):
+        raise fact
+    return fact
+
+
+def _sequence(value: object) -> int:
+    """A sequence id as an integer, whether stored as one or as a historical big-endian blob."""
+    if isinstance(value, (bytes, bytearray)):
+        return int.from_bytes(value, "big")
+    return int(value or 0)  # type: ignore[call-overload]
+
+
+def collection_change_fingerprint(chroma_dir: str | Path, collection_name: str) -> tuple[int, int, int, int]:
+    """(rows, newest sequence, sum of sequences, newest log sequence) of a collection's stored rows.
+
+    Every write Chroma accepts gives a row a new sequence number, so any change to a collection,
+    including an in-place repair of one vector, changes this fingerprint. Comparing it before and
+    after a long read says whether the collection stayed the same while it was being read.
+    """
+    conn = _connect_readonly(_db_path(chroma_dir))
+    try:
+        uuid = _uuid_in(conn, collection_name)
+        # Sequence ids are read and decoded here, not aggregated in SQL: chromadb < 0.5 stored them
+        # as big-endian blobs, which SQL's MAX and SUM treat as text and zero respectively.
+        sequences = [
+            _sequence(row[0])
+            for row in conn.execute(
+                "SELECT e.seq_id FROM embeddings e JOIN segments s ON e.segment_id = s.id WHERE s.collection = ?",
+                (uuid,),
+            )
+        ]
+        logged = 0
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'embeddings_queue'").fetchone():
+            logged = max(
+                (
+                    _sequence(row[0])
+                    for row in conn.execute("SELECT seq_id FROM embeddings_queue WHERE topic LIKE ?", (f"%/{uuid}",))
+                ),
+                default=0,
+            )
+        return len(sequences), max(sequences, default=0), sum(sequences), logged
+    finally:
+        conn.close()
+
+
 def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     """Count distinct embeddings in the metadata segment of a collection."""
     db = _db_path(chroma_dir)
@@ -244,12 +506,12 @@ def collection_count(chroma_dir: str | Path, collection_name: str) -> int:
     try:
         cur = conn.cursor()
         cur.execute(
-            """
+            f"""
             SELECT COUNT(DISTINCT e.embedding_id)
             FROM embeddings e
             JOIN segments s ON e.segment_id = s.id
             JOIN collections c ON s.collection = c.id
-            WHERE c.name = ? AND s.scope = 'METADATA'
+            WHERE c.name = ? AND s.scope = 'METADATA' AND {_serving_database(conn, collection_name)}
             """,
             (collection_name,),
         )
@@ -396,6 +658,15 @@ def ids_for_source_path(
     )
 
 
+def _uuid_in(conn: sqlite3.Connection, collection_name: str) -> str | None:
+    row = conn.execute(
+        "SELECT c.id FROM collections c "
+        f"WHERE c.name = ? AND {_serving_database(conn, collection_name)} LIMIT 1",
+        (collection_name,),
+    ).fetchone()
+    return None if not row or row[0] is None else str(row[0])
+
+
 def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
     """Return the immutable Chroma collection UUID (collections.id) via mode=ro.
 
@@ -406,14 +677,37 @@ def collection_uuid(chroma_dir: str | Path, collection_name: str) -> str | None:
         return None
     conn = _connect_readonly(db)
     try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT id FROM collections WHERE name = ? LIMIT 1",
-            (collection_name,),
-        )
-        row = cur.fetchone()
+        return _uuid_in(conn, collection_name)
     finally:
         conn.close()
+
+
+def _dimension_in(conn: sqlite3.Connection, collection_name: str) -> int | None:
+    row = conn.execute(
+        "SELECT c.dimension FROM collections c "
+        f"WHERE c.name = ? AND {_serving_database(conn, collection_name)} LIMIT 1",
+        (collection_name,),
+    ).fetchone()
     if not row or row[0] is None:
         return None
-    return str(row[0])
+    try:
+        return int(row[0])
+    except (TypeError, ValueError) as exc:
+        raise sqlite3.DatabaseError(f"collection {collection_name!r} records the dimension {row[0]!r}") from exc
+
+
+def collection_dimension(chroma_dir: str | Path, collection_name: str) -> int | None:
+    """Return the vector dimension Chroma itself recorded for a collection (mode=ro).
+
+    Chroma sets ``collections.dimension`` when the first vector arrives, so an
+    empty collection, a missing collection and a missing DB all return None.
+    This is the store's own measurement, never a configured or guessed value.
+    """
+    db = _db_path(chroma_dir)
+    if not db.is_file():
+        return None
+    conn = _connect_readonly(db)
+    try:
+        return _dimension_in(conn, collection_name)
+    finally:
+        conn.close()
